@@ -2,7 +2,7 @@
 
 set -xe
 
-CFLAGS="-Wall -Wextra `pkg-config --cflags raylib`"
+CFLAGS="-Wall -Wextra -ggdb `pkg-config --cflags raylib`"
 LIBS="`pkg-config --libs raylib` -lglfw -lm -ldl -lpthread"
 
 mkdir -p ./build/
