@@ -54,14 +54,14 @@ float amp(float complex z)
 
 void callback(void *bufferData, unsigned int frames)
 {
-    if (frames < N) return;
+    if (frames > N) frames = N;
 
     Frame *fs = bufferData;
 
     for (size_t i = 0; i < frames; ++i) {
         in[i] = fs[i].left;
     }
-    
+
     fft(in, 1, out, N);
 
     max_amp = 0.0f;
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     pi = atan2f(1, 1)*4;
 
     const char *program = shift_args(&argc, &argv);
-    
+
     // TODO: supply input files via drag&drop
     if (argc == 0) {
         fprintf(stderr, "Usage: %s <input>\n", program);
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     printf("music.stream.channels = %u\n", music.stream.channels);
     assert(music.stream.sampleSize == 16);
     assert(music.stream.channels == 2);
-    
+
     PlayMusicStream(music);
     SetMusicVolume(music, 0.5f);
     AttachAudioStreamProcessor(music.stream, callback);
