@@ -1,9 +1,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include "plug.h"
 
-#define N (1<<15)
+#define N (1<<13)
 
 float in[N];
 float complex out[N];
@@ -45,12 +46,11 @@ float amp(float complex z)
 
 void callback(void *bufferData, unsigned int frames)
 {
-    if (frames > N) frames = N;
-
     Frame *fs = bufferData;
 
     for (size_t i = 0; i < frames; ++i) {
-        in[i] = fs[i].left;
+        memmove(in, in + 1, (N - 1)*sizeof(in[0]));
+        in[N-1] = fs[i].left;
     }
 }
 
@@ -74,6 +74,16 @@ void plug_init(Plug *plug, const char *file_path)
     AttachAudioStreamProcessor(plug->music.stream, callback);
 }
 
+void plug_pre_reload(Plug *plug)
+{
+    DetachAudioStreamProcessor(plug->music.stream, callback);
+}
+
+void plug_post_reload(Plug *plug)
+{
+    AttachAudioStreamProcessor(plug->music.stream, callback);
+}
+
 void plug_update(Plug *plug)
 {
     UpdateMusicStream(plug->music);
@@ -84,6 +94,11 @@ void plug_update(Plug *plug)
         } else {
             ResumeMusicStream(plug->music);
         }
+    }
+
+    if (IsKeyPressed(KEY_Q)) {
+        StopMusicStream(plug->music);
+        PlayMusicStream(plug->music);
     }
 
     int w = GetRenderWidth();
@@ -118,7 +133,7 @@ void plug_update(Plug *plug)
         }
         a /= (size_t) f1 - (size_t) f + 1;
         float t = a/max_amp;
-        DrawRectangle(m*cell_width, h/2 - h/2*t, cell_width, h/2*t, BLUE);
+        DrawRectangle(m*cell_width, h/2 - h/2*t, cell_width, h/2*t, RED);
         m += 1;
     }
     EndDrawing();
