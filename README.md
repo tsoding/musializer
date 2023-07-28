@@ -9,6 +9,11 @@ $ ./build/musualizer <song.ogg>
 
 ## Hot Reloading
 
+<!--
+TODO: Use rpath to eliminate the need for LD_LIBRARY_PATH
+- https://en.wikipedia.org/wiki/Rpath
+-->
+
 ```console
 $ export HOTRELOAD=1
 $ export LD_LIBRARY_PATH="./build/:$LD_LIBRARY_PATH"

@@ -13,6 +13,7 @@ typedef void (plug_pre_reload_t)(Plug *plug);
 typedef void (plug_post_reload_t)(Plug *plug);
 typedef void (plug_update_t)(Plug *plug);
 
+// TODO: Make Plug accept the signature of the functions
 #define LIST_OF_PLUGS \
     PLUG(plug_init) \
     PLUG(plug_pre_reload) \
