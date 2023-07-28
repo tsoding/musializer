@@ -77,7 +77,8 @@ int main(int argc, char **argv)
     }
     const char *file_path = shift_args(&argc, &argv);
 
-    InitWindow(800, 600, "Musializer");
+    size_t factor = 60;
+    InitWindow(factor*16, factor*9, "Musializer");
     SetTargetFPS(60);
     InitAudioDevice();
 
