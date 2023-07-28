@@ -54,16 +54,6 @@ void callback(void *bufferData, unsigned int frames)
     }
 }
 
-void plug_hello(void)
-{
-    printf("Hello from Plugin\n");
-}
-
-void plug_world(void)
-{
-    printf("Foo Bar\n");
-}
-
 void plug_init(Plug *plug, const char *file_path)
 {
     plug->music = LoadMusicStream(file_path);

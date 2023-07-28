@@ -88,9 +88,6 @@ int main(int argc, char **argv)
             if (!reload_libplug()) return 1;
             plug_post_reload(&plug);
         }
-        if (IsKeyPressed(KEY_P)) {
-            plug_world();
-        }
         plug_update(&plug);
     }
 
