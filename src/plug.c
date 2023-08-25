@@ -187,8 +187,12 @@ void plug_update(void)
         // Display the Frequencies
         float cell_width = (float)w/m;
         for (size_t i = 0; i < m; ++i) {
-            float t = out_log[i];
-            DrawRectangle(i*cell_width, h - h*2/3*t, cell_width, h*2/3*t, GREEN);
+            float hue = (float)i/m;
+            float t = out_smooth[i];
+            float saturation = 0.75f;
+            float value = 1.0f;
+            Color color = ColorFromHSV(hue*360, saturation, value);
+            DrawRectangle(i*cell_width, h - h*2/3*t, ceilf(cell_width), h*2/3*t, color);
         }
     } else {
         const char *label;
