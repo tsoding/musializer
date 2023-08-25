@@ -20,6 +20,7 @@ float in_raw[N];
 float in_win[N];
 float complex out_raw[N];
 float out_log[N];
+float out_smooth[N];
 
 // Ported from https://rosettacode.org/wiki/Fast_Fourier_transform#Python
 void fft(float in[], size_t stride, float complex out[], size_t n)
@@ -139,6 +140,7 @@ void plug_update(void)
 
     int w = GetRenderWidth();
     int h = GetRenderHeight();
+    float dt = GetFrameTime();
 
     BeginDrawing();
     ClearBackground(CLITERAL(Color) {
@@ -175,6 +177,11 @@ void plug_update(void)
         // Normalize Frequencies to 0..1 range
         for (size_t i = 0; i < m; ++i) {
             out_log[i] /= max_amp;
+        }
+
+        float smoothness = 8;
+        for (size_t i = 0; i < m; ++i) {
+            out_smooth[i] += (out_log[i] - out_smooth[i])*smoothness*dt;
         }
 
         // Display the Frequencies
