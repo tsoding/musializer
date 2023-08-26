@@ -59,7 +59,7 @@ float amp(float complex z)
 void callback(void *bufferData, unsigned int frames)
 {
     // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
-    float (*fs)[2] = bufferData; 
+    float (*fs)[2] = bufferData;
 
     for (size_t i = 0; i < frames; ++i) {
         memmove(in_raw, in_raw + 1, (N - 1)*sizeof(in_raw[0]));
@@ -193,7 +193,7 @@ void plug_update(void)
         for (size_t i = 0; i < m; ++i) {
             float smoothness = 8;
             out_smooth[i] += (out_log[i] - out_smooth[i])*smoothness*dt;
-            float smearness = 6;
+            float smearness = 3;
             out_smear[i] += (out_smooth[i] - out_smear[i])*smearness*dt;
         }
 
@@ -214,7 +214,7 @@ void plug_update(void)
                 i*cell_width + cell_width/2,
                 h,
             };
-            float thick = cell_width/2*sqrtf(t);
+            float thick = cell_width/3*sqrtf(t);
             DrawLineEx(startPos, endPos, thick, color);
         }
 
@@ -234,22 +234,22 @@ void plug_update(void)
                 i*cell_width + cell_width/2,
                 h - h*2/3*end,
             };
-            float radius = cell_width*sqrtf(end);
+            float radius = cell_width*3*sqrtf(end);
             Vector2 origin = {0};
             if (endPos.y >= startPos.y) {
                 Rectangle dest = {
-                    .x = startPos.x - radius,
+                    .x = startPos.x - radius/2,
                     .y = startPos.y,
-                    .width = 2*radius,
+                    .width = radius,
                     .height = endPos.y - startPos.y
                 };
                 Rectangle source = {0, 0, 1, 0.5};
                 DrawTexturePro(texture, source, dest, origin, 0, color);
             } else {
                 Rectangle dest = {
-                    .x = endPos.x - radius,
+                    .x = endPos.x - radius/2,
                     .y = endPos.y,
-                    .width = 2*radius,
+                    .width = radius,
                     .height = startPos.y - endPos.y
                 };
                 Rectangle source = {0, 0.5, 1, 0.5};
@@ -268,7 +268,7 @@ void plug_update(void)
                 i*cell_width + cell_width/2,
                 h - h*2/3*t,
             };
-            float radius = cell_width*5*sqrtf(t);
+            float radius = cell_width*6*sqrtf(t);
             Vector2 position = {
                 .x = center.x - radius,
                 .y = center.y - radius,
