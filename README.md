@@ -6,9 +6,14 @@ https://github.com/tsoding/musializer/assets/165283/40f8a8da-c349-4533-a350-a353
 
 ## Quick Start
 
+Dependencies:
+- [raylib](https://www.raylib.com/) and all its transitive dependencies/
+
+*Only Linux is supported for now. Windows soon.*
+
 ```console
 $ ./build.sh
-$ ./build/musualizer <song.ogg>
+$ ./build/musualizer
 ```
 
 ## Hot Reloading
