@@ -5,12 +5,16 @@
 #include <string.h>
 #include "plug.h"
 
+#include <rlgl.h>
+
 #define N (1<<13)
 #define FONT_SIZE 69
 
 typedef struct {
     Music music;
     Font font;
+    Shader circle;
+    Shader smear;
     bool error;
 } Plug;
 
@@ -21,6 +25,7 @@ float in_win[N];
 float complex out_raw[N];
 float out_log[N];
 float out_smooth[N];
+float out_smear[N];
 
 // Ported from https://rosettacode.org/wiki/Fast_Fourier_transform#Python
 void fft(float in[], size_t stride, float complex out[], size_t n)
@@ -69,6 +74,8 @@ void plug_init(void)
     memset(plug, 0, sizeof(*plug));
 
     plug->font = LoadFontEx("./fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
+    plug->circle = LoadShader(NULL, "./shaders/circle.fs");
+    plug->smear = LoadShader(NULL, "./shaders/smear.fs");
 }
 
 Plug *plug_pre_reload(void)
@@ -85,6 +92,10 @@ void plug_post_reload(Plug *prev)
     if (IsMusicReady(plug->music)) {
         AttachAudioStreamProcessor(plug->music.stream, callback);
     }
+    UnloadShader(plug->circle);
+    plug->circle = LoadShader(NULL, "./shaders/circle.fs");
+    UnloadShader(plug->smear);
+    plug->smear = LoadShader(NULL, "./shaders/smear.fs");
 }
 
 void plug_update(void)
@@ -144,7 +155,7 @@ void plug_update(void)
 
     BeginDrawing();
     ClearBackground(CLITERAL(Color) {
-        0x18, 0x18, 0x18, 0xFF
+        0x15, 0x15, 0x15, 0xFF
     });
 
     if (IsMusicReady(plug->music)) {
@@ -179,21 +190,93 @@ void plug_update(void)
             out_log[i] /= max_amp;
         }
 
-        float smoothness = 8;
         for (size_t i = 0; i < m; ++i) {
+            float smoothness = 8;
             out_smooth[i] += (out_log[i] - out_smooth[i])*smoothness*dt;
+            float smearness = 6;
+            out_smear[i] += (out_smooth[i] - out_smear[i])*smearness*dt;
         }
 
-        // Display the Frequencies
         float cell_width = (float)w/m;
+        float saturation = 0.75f;
+        float value = 1.0f;
+
+        // Display the Bars
         for (size_t i = 0; i < m; ++i) {
-            float hue = (float)i/m;
             float t = out_smooth[i];
-            float saturation = 0.75f;
-            float value = 1.0f;
+            float hue = (float)i/m;
             Color color = ColorFromHSV(hue*360, saturation, value);
-            DrawRectangle(i*cell_width, h - h*2/3*t, ceilf(cell_width), h*2/3*t, color);
+            Vector2 startPos = {
+                i*cell_width + cell_width/2,
+                h - h*2/3*t,
+            };
+            Vector2 endPos = {
+                i*cell_width + cell_width/2,
+                h,
+            };
+            float thick = cell_width/2*sqrtf(t);
+            DrawLineEx(startPos, endPos, thick, color);
         }
+
+        Texture2D texture = { rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+
+        BeginShaderMode(plug->smear);
+        for (size_t i = 0; i < m; ++i) {
+            float start = out_smear[i];
+            float end = out_smooth[i];
+            float hue = (float)i/m;
+            Color color = ColorFromHSV(hue*360, saturation, value);
+            Vector2 startPos = {
+                i*cell_width + cell_width/2,
+                h - h*2/3*start,
+            };
+            Vector2 endPos = {
+                i*cell_width + cell_width/2,
+                h - h*2/3*end,
+            };
+            float radius = cell_width*sqrtf(end);
+            Vector2 origin = {0};
+            if (endPos.y >= startPos.y) {
+                Rectangle dest = {
+                    .x = startPos.x - radius,
+                    .y = startPos.y,
+                    .width = 2*radius,
+                    .height = endPos.y - startPos.y
+                };
+                Rectangle source = {0, 0, 1, 0.5};
+                DrawTexturePro(texture, source, dest, origin, 0, color);
+            } else {
+                Rectangle dest = {
+                    .x = endPos.x - radius,
+                    .y = endPos.y,
+                    .width = 2*radius,
+                    .height = startPos.y - endPos.y
+                };
+                Rectangle source = {0, 0.5, 1, 0.5};
+                DrawTexturePro(texture, source, dest, origin, 0, color);
+            }
+        }
+        EndShaderMode();
+
+        // Display the Circles
+        BeginShaderMode(plug->circle);
+        for (size_t i = 0; i < m; ++i) {
+            float t = out_smooth[i];
+            float hue = (float)i/m;
+            Color color = ColorFromHSV(hue*360, saturation, value);
+            Vector2 center = {
+                i*cell_width + cell_width/2,
+                h - h*2/3*t,
+            };
+            float radius = cell_width*5*sqrtf(t);
+            Vector2 position = {
+                .x = center.x - radius,
+                .y = center.y - radius,
+            };
+            DrawTextureEx(texture, position, 0, 2*radius, color);
+        }
+        EndShaderMode();
+
     } else {
         const char *label;
         Color color;
