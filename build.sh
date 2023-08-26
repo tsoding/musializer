@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -xe
 
 CFLAGS="-Wall -Wextra -ggdb `pkg-config --cflags raylib`"
 LIBS="`pkg-config --libs raylib` `pkg-config --libs glfw3` -lm -ldl -lpthread"
