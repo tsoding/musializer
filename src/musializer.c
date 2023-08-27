@@ -32,14 +32,14 @@ bool reload_libplug(void)
 
     libplug = dlopen(libplug_file_name, RTLD_NOW);
     if (libplug == NULL) {
-        fprintf(stderr, "ERROR: could not load %s: %s", libplug_file_name, dlerror());
+        fprintf(stderr, "ERROR: could not load %s: %s\n", libplug_file_name, dlerror());
         return false;
     }
 
     #define PLUG(name, ...) \
         name = dlsym(libplug, #name); \
         if (name == NULL) { \
-            fprintf(stderr, "ERROR: could not find %s symbol in %s: %s", \
+            fprintf(stderr, "ERROR: could not find %s symbol in %s: %s\n", \
                     #name, libplug_file_name, dlerror()); \
             return false; \
         }
