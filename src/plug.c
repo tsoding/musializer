@@ -102,26 +102,9 @@ void plug_post_reload(Plug *prev)
 
 void plug_update(void)
 {
-    if (IsMusicReady(plug->music)) {
-        UpdateMusicStream(plug->music);
-    }
-
-    if (IsKeyPressed(KEY_SPACE)) {
-        if (IsMusicReady(plug->music)) {
-            if (IsMusicStreamPlaying(plug->music)) {
-                PauseMusicStream(plug->music);
-            } else {
-                ResumeMusicStream(plug->music);
-            }
-        }
-    }
-
-    if (IsKeyPressed(KEY_Q)) {
-        if (IsMusicReady(plug->music)) {
-            StopMusicStream(plug->music);
-            PlayMusicStream(plug->music);
-        }
-    }
+    int w = GetRenderWidth();
+    int h = GetRenderHeight();
+    float dt = GetFrameTime();
 
     if (IsFileDropped()) {
         FilePathList droppedFiles = LoadDroppedFiles();
@@ -151,16 +134,27 @@ void plug_update(void)
         UnloadDroppedFiles(droppedFiles);
     }
 
-    int w = GetRenderWidth();
-    int h = GetRenderHeight();
-    float dt = GetFrameTime();
-
     BeginDrawing();
     ClearBackground(CLITERAL(Color) {
         0x15, 0x15, 0x15, 0xFF
     });
 
     if (IsMusicReady(plug->music)) {
+        UpdateMusicStream(plug->music);
+
+        if (IsKeyPressed(KEY_SPACE)) {
+            if (IsMusicStreamPlaying(plug->music)) {
+                PauseMusicStream(plug->music);
+            } else {
+                ResumeMusicStream(plug->music);
+            }
+        }
+
+        if (IsKeyPressed(KEY_Q)) {
+            StopMusicStream(plug->music);
+            PlayMusicStream(plug->music);
+        }
+
         // Apply the Hann Window on the Input - https://en.wikipedia.org/wiki/Hann_function
         for (size_t i = 0; i < N; ++i) {
             float t = (float)i/(N - 1);
@@ -304,5 +298,6 @@ void plug_update(void)
         };
         DrawTextEx(plug->font, label, position, plug->font.baseSize, 0, color);
     }
+
     EndDrawing();
 }
