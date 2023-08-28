@@ -1,6 +1,6 @@
 # Musializer
 
-**THIS SOFTWARE IS UNFINISHED!!! Don't have any high expectations.**
+**THIS SOFTWARE IS UNFINISHED!!! Don't have any high expectations. Read [CONTRIBUTING.md](CONTRIBUTING.md) if you have a strong irresistable desire to contribute something here.**
 
 *Music by [@nu11](https://soundcloud.com/nu11_ft) from [https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022](https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022) at 20:38*
 
