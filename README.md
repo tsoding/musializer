@@ -1,5 +1,7 @@
 # Musializer
 
+**THIS SOFTWARE IS UNFINISHED!!! Don't have any high expectations.**
+
 *Music by [@nu11](https://soundcloud.com/nu11_ft) from [https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022](https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022) at 7:15*
 
 https://github.com/tsoding/musializer/assets/165283/b8932f2c-d9b3-4862-8dd0-35e1da409243
