@@ -10,6 +10,8 @@
 #include <raylib.h>
 #include <rlgl.h>
 
+#define GLSL_VERSION 120
+
 #define N (1<<13)
 #define FONT_SIZE 69
 
@@ -78,7 +80,13 @@ void plug_init(void)
     memset(plug, 0, sizeof(*plug));
 
     plug->font = LoadFontEx("./fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
-    plug->circle = LoadShader(NULL, "./shaders/circle.fs");
+    // TODO: Maybe we should try to keep compiling different versions of shaders
+    // until one of them works?
+    //
+    // If the shader can not be compiled maybe we could fallback to software rendering
+    // of the texture of a fuzzy circle? The shader does not really do anything particularly
+    // special.
+    plug->circle = LoadShader(NULL, TextFormat("./shaders/glsl%d/circle.fs", GLSL_VERSION));
     plug->circle_radius_location = GetShaderLocation(plug->circle, "radius");
     plug->circle_power_location = GetShaderLocation(plug->circle, "power");
 }
@@ -98,7 +106,7 @@ void plug_post_reload(Plug *prev)
         AttachAudioStreamProcessor(plug->music.stream, callback);
     }
     UnloadShader(plug->circle);
-    plug->circle = LoadShader(NULL, "./shaders/circle.fs");
+    plug->circle = LoadShader(NULL, TextFormat("./shaders/glsl%d/circle.fs", GLSL_VERSION));
     plug->circle_radius_location = GetShaderLocation(plug->circle, "radius");
     plug->circle_power_location = GetShaderLocation(plug->circle, "power");
 }
