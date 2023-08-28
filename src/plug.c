@@ -3,8 +3,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <complex.h>
+
 #include "plug.h"
 
+#include <raylib.h>
 #include <rlgl.h>
 
 #define N (1<<13)
