@@ -350,6 +350,8 @@ void plug_update(void)
                 plug->wave = LoadWave(plug->file_path);
                 plug->wave_cursor = 0;
                 plug->wave_samples = LoadWaveSamples(plug->wave);
+                // TODO: set the rendering output path based on the input path
+                // Basically output into the same folder
                 plug->ffmpeg = ffmpeg_start_rendering(plug->screen.texture.width, plug->screen.texture.height, RENDER_FPS, plug->file_path);
                 plug->rendering = true;
             }
@@ -381,6 +383,7 @@ void plug_update(void)
             plug->rendering = false;
             fft_clean();
         } else {
+            // TODO: indicate the rendering progress
             const char *label = "Rendering video...";
             Color color = WHITE;
 
