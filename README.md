@@ -12,17 +12,18 @@ https://github.com/tsoding/musializer/assets/165283/c97f8deb-52fb-422d-bcd7-964f
 
 ## Quick Start
 
+**Only Linux is supported for now. Windows soon.**
+
 Dependencies:
 - [raylib](https://www.raylib.com/) and all its transitive dependencies.
-
-*Only Linux is supported for now. Windows soon.*
+- [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. (it is called as a child process)
 
 ```console
 $ ./build.sh
 $ ./build/musializer
 ```
 
-Keep in mind that the application needs [./resources/](./resources/) to be present in the folder if was ran from.
+Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
 
 ## Hot Reloading
 
