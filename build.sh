@@ -13,3 +13,4 @@ else
     clang $CFLAGS  -o ./build/musializer ./src/plug.c  ./src/ffmpeg_linux.c ./src/musializer.c $LIBS -L./build/
 fi
 
+cp -r ./resources/ ./build/

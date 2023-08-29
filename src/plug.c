@@ -254,14 +254,14 @@ void plug_init(void)
     assert(plug != NULL && "Buy more RAM lol");
     memset(plug, 0, sizeof(*plug));
 
-    plug->font = LoadFontEx("./fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
+    plug->font = LoadFontEx("./resources/fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
     // TODO: Maybe we should try to keep compiling different versions of shaders
     // until one of them works?
     //
     // If the shader can not be compiled maybe we could fallback to software rendering
     // of the texture of a fuzzy circle? The shader does not really do anything particularly
     // special.
-    plug->circle = LoadShader(NULL, TextFormat("./shaders/glsl%d/circle.fs", GLSL_VERSION));
+    plug->circle = LoadShader(NULL, TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION));
     plug->circle_radius_location = GetShaderLocation(plug->circle, "radius");
     plug->circle_power_location = GetShaderLocation(plug->circle, "power");
     plug->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
@@ -282,7 +282,7 @@ void plug_post_reload(Plug *prev)
         AttachAudioStreamProcessor(plug->music.stream, callback);
     }
     UnloadShader(plug->circle);
-    plug->circle = LoadShader(NULL, TextFormat("./shaders/glsl%d/circle.fs", GLSL_VERSION));
+    plug->circle = LoadShader(NULL, TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION));
     plug->circle_radius_location = GetShaderLocation(plug->circle, "radius");
     plug->circle_power_location = GetShaderLocation(plug->circle, "power");
 }
