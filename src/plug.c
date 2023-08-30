@@ -11,7 +11,7 @@
 #include <raylib.h>
 #include <rlgl.h>
 
-#define GLSL_VERSION 120
+#define GLSL_VERSION 330
 
 #define N (1<<13)
 #define FONT_SIZE 69
