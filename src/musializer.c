@@ -8,11 +8,7 @@
 
 #include <raylib.h>
 
-#include <dlfcn.h>
-
 #include "plug.h"
-
-#define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
 
 const char *libplug_file_name = "libplug.so";
 void *libplug = NULL;
@@ -26,6 +22,7 @@ LIST_OF_PLUGS
 #undef PLUG
 
 #ifdef HOTRELOAD
+#include <dlfcn.h>
 bool reload_libplug(void)
 {
     if (libplug != NULL) dlclose(libplug);
