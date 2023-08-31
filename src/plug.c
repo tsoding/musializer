@@ -414,7 +414,7 @@ void plug_update(void)
             EndTextureMode();
 
             Image image = LoadImageFromTexture(plug->screen.texture);
-            ffmpeg_send_frame(plug->ffmpeg, image.data, image.width, image.height);
+            ffmpeg_send_frame_flipped(plug->ffmpeg, image.data, image.width, image.height);
             UnloadImage(image);
         }
     }

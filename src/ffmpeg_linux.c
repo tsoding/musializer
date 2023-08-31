@@ -77,7 +77,7 @@ void ffmpeg_end_rendering(int pipe)
     wait(NULL);
 }
 
-void ffmpeg_send_frame(int pipe, void *data, size_t width, size_t height)
+void ffmpeg_send_frame_flipped(int pipe, void *data, size_t width, size_t height)
 {
     for (size_t y = height; y > 0; --y) {
         write(pipe, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width);
