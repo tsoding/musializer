@@ -11,13 +11,13 @@
 #include <raylib.h>
 #include <rlgl.h>
 
-#define GLSL_VERSION 120
+#define GLSL_VERSION 330
 
 #define N (1<<13)
 #define FONT_SIZE 69
 
 #define RENDER_FPS 60
-#define RENDER_FACTOR 60
+#define RENDER_FACTOR 120
 #define RENDER_WIDTH (16*RENDER_FACTOR)
 #define RENDER_HEIGHT (9*RENDER_FACTOR)
 
@@ -414,7 +414,7 @@ void plug_update(void)
             EndTextureMode();
 
             Image image = LoadImageFromTexture(plug->screen.texture);
-            ffmpeg_send_frame(plug->ffmpeg, image.data, image.width, image.height);
+            ffmpeg_send_frame_flipped(plug->ffmpeg, image.data, image.width, image.height);
             UnloadImage(image);
         }
     }

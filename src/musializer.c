@@ -9,32 +9,34 @@
 
 #include <raylib.h>
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <link.h>
-#include <dlfcn.h>
-#ifdef __linux__
-#include <sys/inotify.h>
-#endif
-
 #include "plug.h"
 
-#define ARRAY_LEN(xs) sizeof(xs)/sizeof(xs[0])
-
 const char *libplug_file_name = "libplug.so";
-struct link_map *libplug_info = NULL;
 void *libplug = NULL;
 
-int libplug_watch_fd = -1;
-int libplug_watch_wd = -1;
-
 #ifdef HOTRELOAD
+#include <dlfcn.h>
 #define PLUG(name, ...) name##_t *name = NULL;
 #else
 #define PLUG(name, ...) name##_t name;
 #endif
 LIST_OF_PLUGS
 #undef PLUG
+
+#ifdef AUTORELOAD
+#ifndef __linux__
+#error "ERROR: autoreloading is not supported on your system"
+#endif
+
+#include <unistd.h>
+#include <link.h>
+#include <sys/inotify.h>
+
+struct link_map *libplug_info = NULL;
+int libplug_watch_fd = -1;
+int libplug_watch_wd = -1;
+#endif
+
 
 #ifdef HOTRELOAD
 bool reload_libplug(void)
@@ -71,9 +73,6 @@ bool reload_libplug(void)
 #endif
 
 #ifdef AUTORELOAD
-#ifndef __linux__
-#error "ERROR: autoreloading is not supported on your system"
-#endif
 bool reload_watch(void) {
     if (libplug_watch_fd < 0) libplug_watch_fd = inotify_init1(IN_NONBLOCK);
     if (libplug_watch_fd < 0) {

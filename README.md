@@ -8,7 +8,7 @@ The project aims to make a tool for creating beautiful music visualizations and 
 
 *Music by [@nu11](https://soundcloud.com/nu11_ft) from [https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022](https://soundcloud.com/nu11_ft/nu11-wip-works-2016-2022) at 20:38*
 
-https://github.com/tsoding/musializer/assets/165283/c97f8deb-52fb-422d-bcd7-964f9c2cfc78
+https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338fa19af071
 
 ## Quick Start
 

@@ -32,7 +32,7 @@ int ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *
             return -1;
         }
         close(pipefd[WRITE_END]);
-        
+
         char resolution[64];
         snprintf(resolution, sizeof(resolution), "%zux%zu", width, height);
         char framerate[64];
@@ -51,7 +51,10 @@ int ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *
             "-i", sound_file_path,
 
             "-c:v", "libx264",
+            "-vb", "2500k",
             "-c:a", "aac",
+            "-ab", "200k",
+            "-pix_fmt", "yuv420p",
             "output.mp4",
 
             NULL
@@ -74,7 +77,7 @@ void ffmpeg_end_rendering(int pipe)
     wait(NULL);
 }
 
-void ffmpeg_send_frame(int pipe, void *data, size_t width, size_t height)
+void ffmpeg_send_frame_flipped(int pipe, void *data, size_t width, size_t height)
 {
     for (size_t y = height; y > 0; --y) {
         write(pipe, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width);
