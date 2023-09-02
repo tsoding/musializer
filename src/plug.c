@@ -350,6 +350,7 @@ void plug_update(void)
                 StopMusicStream(p->music);
 
                 fft_clean();
+                // TODO: LoadWave is pretty slow on big files
                 p->wave = LoadWave(p->file_path);
                 p->wave_cursor = 0;
                 p->wave_samples = LoadWaveSamples(p->wave);
@@ -399,7 +400,11 @@ void plug_update(void)
             };
             DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
         } else {
-            if (p->wave_cursor >= p->wave.frameCount && fft_settled()) {
+            if ((p->wave_cursor >= p->wave.frameCount && fft_settled()) || IsKeyPressed(KEY_ESCAPE)) {
+                // TODO: ffmpeg processes frames slower than we generate them
+                // So when we cancel the rendering ffmpeg is still going and blocking the UI
+                // We need to do something about that. For example inform the user that
+                // we are finalizing the rendering or something.
                 ffmpeg_end_rendering(p->ffmpeg);
                 SetTraceLogLevel(LOG_INFO);
                 UnloadWave(p->wave);
@@ -408,7 +413,7 @@ void plug_update(void)
                 fft_clean();
                 PlayMusicStream(p->music);
             } else {
-                // TODO: indicate the rendering progress
+                // Label
                 const char *label = "Rendering video...";
                 Color color = WHITE;
 
@@ -419,6 +424,29 @@ void plug_update(void)
                 };
                 DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
 
+                // Progress bar
+                float bar_width = w*2/3;
+                float bar_height = p->font.baseSize*0.25;
+                float bar_progress = (float)p->wave_cursor/p->wave.frameCount;
+                float bar_padding_top = p->font.baseSize*0.5;
+                if (bar_progress > 1) bar_progress = 1;
+                Rectangle bar_filling = {
+                    .x = w/2 - bar_width/2,
+                    .y = h/2 + p->font.baseSize/2 + bar_padding_top,
+                    .width = bar_width*bar_progress,
+                    .height = bar_height,
+                };
+                DrawRectangleRec(bar_filling, WHITE);
+
+                Rectangle bar_box = {
+                    .x = w/2 - bar_width/2,
+                    .y = h/2 + p->font.baseSize/2 + bar_padding_top,
+                    .width = bar_width,
+                    .height = bar_height,
+                };
+                DrawRectangleLinesEx(bar_box, 2, WHITE);
+
+                // Rendering
                 size_t chunk_size = p->wave.sampleRate/RENDER_FPS;
                 // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
                 float (*fs)[p->wave.channels] = (void*)p->wave_samples;
