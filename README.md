@@ -33,9 +33,25 @@ Keep in mind that the application needs [./resources/](./resources/) to be prese
 
 ### Windows
 
-Windows support is at very early stage right now. Since I don't have a convenient Windows Development Environment, I'm cross compiling Musializer with [MinGW](https://www.mingw-w64.org/). See [./build_windows_mingw.sh](./build_windows_mingw.sh) for more information.
+PS = PowerShell
+$ = MSYS MingW64 window
 
-*More documentation regarding Windows build is comming soon. For now use your hacking skills to figure it out.*
+1. Download [MSYS2](https://www.msys2.org/)
+2. Exit the application it opens (it's the wrong one)
+3. Open PowerShell, cause it's funner
+4. `PS cd C:\msys64\` or where ever you installed MSYS
+5. `PS .\mingw64.exe`
+6. `$ pacman -S --needed base-devel mingw-w64-x86_64-toolchain`
+   -  if the previous command didn't work, try running `$ pacman -Sy msys2-keyring; pacman -Syu` to update keys, and then try running the command above again
+7. `PS mv .\mingw64\bin\windres.exe .\mingw64\bin\x86_64-w64-mingw32-windres.exe` for some stupid ass reason, in MSYS, windres.exe doesn't have the prefix
+8. `$ cd {musializer root}`
+   -  if you don't have Musializer cloned yet, you can do `PS git clone https://github.com/tsoding/musializer.git`
+   - Also remember to have [RayLib 4.5.0](https://github.com/raysan5/raylib/releases/download/4.5.0/raylib-4.5.0_win64_mingw-w64.zip) in the same directory but in its folder
+9. `$ ./build_windows_mingw.sh`
+10. ???
+11. Profit!
+
+Also, a side note, inside the MSYS, Ctrl+Ins = copy and Shift+Ins = paste
 
 ## Hot Reloading
 
