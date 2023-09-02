@@ -2,6 +2,8 @@
 
 **THIS SOFTWARE IS UNFINISHED!!! Don't have any high expectations. Read [CONTRIBUTING.md](CONTRIBUTING.md) if you have a strong irresistable desire to contribute something here.**
 
+![logo](./logo/logo.svg)
+
 The project aims to make a tool for creating beautiful music visualizations and rendering high quality videos of them.
 
 ## Demo
