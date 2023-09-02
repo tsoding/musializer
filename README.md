@@ -16,10 +16,12 @@ Dependencies:
 - [raylib](https://www.raylib.com/) and all its transitive dependencies.
 - [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. (it is called as a child process)
 
+The project provides a bunch of build shell scripts that have the following naming scheme `build_<platform>_<compiler>.sh`. Pick the appropriate one.
+
 ### POSIX
 
 ```console
-$ ./build_posix.sh
+$ ./build_posix_clang.sh
 $ ./build/musializer
 ```
 
