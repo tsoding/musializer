@@ -60,7 +60,7 @@ int main(void)
     InitAudioDevice();
 
     plug_init();
-    while (!WindowShouldClose()) {
+    while (!(WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE))) {
         if (IsKeyPressed(KEY_R)) {
             void *state = plug_pre_reload();
             if (!reload_libplug()) return 1;

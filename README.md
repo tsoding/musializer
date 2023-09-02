@@ -10,26 +10,34 @@ The project aims to make a tool for creating beautiful music visualizations and 
 
 https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338fa19af071
 
-## Quick Start
-
-**Only Linux is supported for now. Windows soon.**
+## Build
 
 Dependencies:
 - [raylib](https://www.raylib.com/) and all its transitive dependencies.
 - [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. (it is called as a child process)
 
+### POSIX
+
 ```console
-$ ./build.sh
+$ ./build_posix.sh
 $ ./build/musializer
 ```
 
 Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
 
+### Windows
+
+Windows support is at very early stage right now. Since I don't have a convenient Windows Development Environment, I'm cross compiling Musializer with [MinGW](https://www.mingw-w64.org/). See [./build_windows_mingw.sh](./build_windows_mingw.sh) for more information.
+
+*More documentation regarding Windows build is comming soon. For now use your hacking skills to figure it out.*
+
 ## Hot Reloading
+
+**Only on Linux for now**
 
 ```console
 $ export HOTRELOAD=1
-$ ./build.sh
+$ ./build_posix.sh
 $ ./build/musializer
 ```
 

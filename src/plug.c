@@ -16,8 +16,8 @@
 #define N (1<<13)
 #define FONT_SIZE 69
 
-#define RENDER_FPS 60
-#define RENDER_FACTOR 120
+#define RENDER_FPS 30
+#define RENDER_FACTOR 60
 #define RENDER_WIDTH (16*RENDER_FACTOR)
 #define RENDER_HEIGHT (9*RENDER_FACTOR)
 
@@ -35,7 +35,7 @@ typedef struct {
     Wave wave;
     float *wave_samples;
     size_t wave_cursor;
-    int ffmpeg;
+    FFMPEG *ffmpeg;
 } Plug;
 
 Plug *plug = NULL;
@@ -354,6 +354,7 @@ void plug_update(void)
                 // Basically output into the same folder
                 plug->ffmpeg = ffmpeg_start_rendering(plug->screen.texture.width, plug->screen.texture.height, RENDER_FPS, plug->file_path);
                 plug->rendering = true;
+                SetTraceLogLevel(LOG_NONE);
             }
 
             size_t m = fft_analyze(GetFrameTime());
@@ -376,46 +377,68 @@ void plug_update(void)
             DrawTextEx(plug->font, label, position, plug->font.baseSize, 0, color);
         }
     } else {
-        if (plug->wave_cursor >= plug->wave.frameCount && fft_settled()) {
-            ffmpeg_end_rendering(plug->ffmpeg);
-            UnloadWave(plug->wave);
-            UnloadWaveSamples(plug->wave_samples);
-            plug->rendering = false;
-            fft_clean();
-        } else {
-            // TODO: indicate the rendering progress
-            const char *label = "Rendering video...";
-            Color color = WHITE;
+        if (plug->ffmpeg == NULL) {
+            if (IsKeyPressed(KEY_ESCAPE)) {
+                SetTraceLogLevel(LOG_INFO);
+                UnloadWave(plug->wave);
+                UnloadWaveSamples(plug->wave_samples);
+                plug->rendering = false;
+                fft_clean();
+                PlayMusicStream(plug->music);                
+            }
 
+            const char *label = "Failed to start FFmpeg (press ESC)";
+            Color color = RED;
             Vector2 size = MeasureTextEx(plug->font, label, plug->font.baseSize, 0);
             Vector2 position = {
                 w/2 - size.x/2,
                 h/2 - size.y/2,
             };
             DrawTextEx(plug->font, label, position, plug->font.baseSize, 0, color);
+        } else {
+            if (plug->wave_cursor >= plug->wave.frameCount && fft_settled()) {
+                ffmpeg_end_rendering(plug->ffmpeg);
+                SetTraceLogLevel(LOG_INFO);
+                UnloadWave(plug->wave);
+                UnloadWaveSamples(plug->wave_samples);
+                plug->rendering = false;
+                fft_clean();
+                PlayMusicStream(plug->music);
+            } else {
+                // TODO: indicate the rendering progress
+                const char *label = "Rendering video...";
+                Color color = WHITE;
 
-            size_t chunk_size = plug->wave.sampleRate/RENDER_FPS;
-            // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
-            float (*fs)[plug->wave.channels] = (void*)plug->wave_samples;
-            for (size_t i = 0; i < chunk_size; ++i) {
-                if (plug->wave_cursor < plug->wave.frameCount) {
-                    fft_push(fs[plug->wave_cursor][0]);
-                } else {
-                    fft_push(0);
+                Vector2 size = MeasureTextEx(plug->font, label, plug->font.baseSize, 0);
+                Vector2 position = {
+                    w/2 - size.x/2,
+                    h/2 - size.y/2,
+                };
+                DrawTextEx(plug->font, label, position, plug->font.baseSize, 0, color);
+
+                size_t chunk_size = plug->wave.sampleRate/RENDER_FPS;
+                // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
+                float (*fs)[plug->wave.channels] = (void*)plug->wave_samples;
+                for (size_t i = 0; i < chunk_size; ++i) {
+                    if (plug->wave_cursor < plug->wave.frameCount) {
+                        fft_push(fs[plug->wave_cursor][0]);
+                    } else {
+                        fft_push(0);
+                    }
+                    plug->wave_cursor += 1;
                 }
-                plug->wave_cursor += 1;
+
+                size_t m = fft_analyze(1.0f/RENDER_FPS);
+
+                BeginTextureMode(plug->screen);
+                ClearBackground(CLITERAL(Color) {0x15, 0x15, 0x15, 0xFF});
+                fft_render(plug->screen.texture.width, plug->screen.texture.height, m);
+                EndTextureMode();
+
+                Image image = LoadImageFromTexture(plug->screen.texture);
+                ffmpeg_send_frame_flipped(plug->ffmpeg, image.data, image.width, image.height);
+                UnloadImage(image);
             }
-
-            size_t m = fft_analyze(1.0f/RENDER_FPS);
-
-            BeginTextureMode(plug->screen);
-            ClearBackground(CLITERAL(Color) {0x15, 0x15, 0x15, 0xFF});
-            fft_render(plug->screen.texture.width, plug->screen.texture.height, m);
-            EndTextureMode();
-
-            Image image = LoadImageFromTexture(plug->screen.texture);
-            ffmpeg_send_frame_flipped(plug->ffmpeg, image.data, image.width, image.height);
-            UnloadImage(image);
         }
     }
 
