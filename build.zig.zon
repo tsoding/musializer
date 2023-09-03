@@ -1,0 +1,11 @@
+.{
+    .name = "musializer",
+    .version = "0.0.1",
+
+    .dependencies = .{
+        .raylib = .{
+            .url = "https://github.com/marler8997/raylib/archive/3ae45b8615d4832cb651ea7e45dd1e71887bea28.tar.gz",
+            .hash = "12207c1e1847b1913bdc5f6aefc5024facc6a77921383aa8f8a500d81031893d75b7",
+        },
+    },
+}
