@@ -127,7 +127,7 @@ bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
 bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
 {
     for (size_t y = height; y > 0; --y) {
-        // TODO: write may not write the entire raw. we may want to repeat the call.
+        // TODO: write() may not necessarily write the entire row. We may want to repeat the call.
         if (write(ffmpeg->pipe, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width) < 0) {
             TraceLog(LOG_ERROR, "FFMPEG: failed to write into ffmpeg pipe: %s", strerror(errno));
             return false;
