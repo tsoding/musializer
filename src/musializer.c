@@ -8,6 +8,10 @@
 
 #include <raylib.h>
 
+#ifndef _WIN32
+#include <signal.h>
+#endif // _WIN32
+
 #include "plug.h"
 
 const char *libplug_file_name = "libplug.so";
@@ -51,6 +55,12 @@ bool reload_libplug(void)
 
 int main(void)
 {
+#ifndef _WIN32
+    struct sigaction act = {0};
+    act.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &act, NULL);
+#endif // _WIN32
+
     if (!reload_libplug()) return 1;
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);

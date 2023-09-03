@@ -391,27 +391,38 @@ void plug_update(void)
                 PlayMusicStream(p->music);
             }
 
-            const char *label = "Failed to start FFmpeg (press ESC)";
+            const char *label = "FFmpeg Failure: Check the Logs";
             Color color = RED;
-            Vector2 size = MeasureTextEx(p->font, label, p->font.baseSize, 0);
+            int fontSize = p->font.baseSize;
+            Vector2 size = MeasureTextEx(p->font, label, fontSize, 0);
             Vector2 position = {
                 w/2 - size.x/2,
                 h/2 - size.y/2,
             };
-            DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
+            DrawTextEx(p->font, label, position, fontSize, 0, color);
+
+            label = "(Press ESC to Continue)";
+            fontSize = p->font.baseSize*2/3;
+            size = MeasureTextEx(p->font, label, fontSize, 0);
+            position.x = w/2 - size.x/2,
+            position.y = h/2 - size.y/2 + fontSize,
+            DrawTextEx(p->font, label, position, fontSize, 0, color);
         } else {
             if ((p->wave_cursor >= p->wave.frameCount && fft_settled()) || IsKeyPressed(KEY_ESCAPE)) {
                 // TODO: ffmpeg processes frames slower than we generate them
                 // So when we cancel the rendering ffmpeg is still going and blocking the UI
                 // We need to do something about that. For example inform the user that
                 // we are finalizing the rendering or something.
-                ffmpeg_end_rendering(p->ffmpeg);
-                SetTraceLogLevel(LOG_INFO);
-                UnloadWave(p->wave);
-                UnloadWaveSamples(p->wave_samples);
-                p->rendering = false;
-                fft_clean();
-                PlayMusicStream(p->music);
+                if (!ffmpeg_end_rendering(p->ffmpeg)) {
+                    p->ffmpeg = NULL;
+                } else {
+                    SetTraceLogLevel(LOG_INFO);
+                    UnloadWave(p->wave);
+                    UnloadWaveSamples(p->wave_samples);
+                    p->rendering = false;
+                    fft_clean();
+                    PlayMusicStream(p->music);
+                }
             } else {
                 // Label
                 const char *label = "Rendering video...";
@@ -467,7 +478,14 @@ void plug_update(void)
                 EndTextureMode();
 
                 Image image = LoadImageFromTexture(p->screen.texture);
-                ffmpeg_send_frame_flipped(p->ffmpeg, image.data, image.width, image.height);
+                if (!ffmpeg_send_frame_flipped(p->ffmpeg, image.data, image.width, image.height)) {
+                    // NOTE: we don't check the result of ffmpeg_end_rendering here because we
+                    // don't care at this point: writing a frame failed, so something went completely
+                    // wrong. So let's just show to the user the "FFmpeg Failure" screen. ffmpeg_end_rendering
+                    // should log any additional errors anyway.
+                    ffmpeg_end_rendering(p->ffmpeg);
+                    p->ffmpeg = NULL;
+                }
                 UnloadImage(image);
             }
         }

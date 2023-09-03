@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -100,19 +101,15 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     return ffmpeg;
 }
 
-void ffmpeg_send_frame(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
-{
-    WriteFile(ffmpeg->hPipeWrite, data, sizeof(uint32_t)*width*height, NULL, NULL);
-}
-
-void ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
+bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
 {
     for (size_t y = height; y > 0; --y) {
         WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, NULL, NULL);
     }
+    return true;
 }
 
-void ffmpeg_end_rendering(FFMPEG *ffmpeg)
+bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
 {
     FlushFileBuffers(ffmpeg->hPipeWrite);
     CloseHandle(ffmpeg->hPipeWrite);
@@ -124,23 +121,25 @@ void ffmpeg_end_rendering(FFMPEG *ffmpeg)
 
     if (result == WAIT_FAILED) {
         fprintf(stderr, "ERROR: could not wait on child process: %s\n", GetLastErrorAsString());
-        return;
+        return false;
     }
 
     DWORD exit_status;
     if (GetExitCodeProcess(ffmpeg->hProcess, &exit_status) == 0) {
         fprintf(stderr, "ERROR: could not get process exit code: %lu\n", GetLastError());
-        return;
+        return false;
     }
 
     if (exit_status != 0) {
         fprintf(stderr, "ERROR: command exited with exit code %lu\n", exit_status);
-        return;
+        return false;
     }
 
     CloseHandle(ffmpeg->hProcess);
 
     free(ffmpeg);
+
+    return true;
 }
 
 // TODO: where can we find this symbol for the Windows build?
