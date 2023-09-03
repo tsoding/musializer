@@ -2,8 +2,43 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+// NOTE: We can't include raylib.h in here cause it collides with windows.h. So we just copy pasted log related declarations.
+
+// Function specifiers in case library is build/used as a shared library (Windows)
+// NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
+#if defined(_WIN32)
+    #if defined(BUILD_LIBTYPE_SHARED)
+        #if defined(__TINYC__)
+            #define __declspec(x) __attribute__((x))
+        #endif
+        #define RLAPI __declspec(dllexport)     // We are building the library as a Win32 shared library (.dll)
+    #elif defined(USE_LIBTYPE_SHARED)
+        #define RLAPI __declspec(dllimport)     // We are using the library as a Win32 shared library (.dll)
+    #endif
+#endif
+
+#ifndef RLAPI
+    #define RLAPI       // Functions defined as 'extern' by default (implicit specifiers)
+#endif
+
+// Trace log level
+// NOTE: Organized by priority level
+typedef enum {
+    LOG_ALL = 0,        // Display all logs
+    LOG_TRACE,          // Trace logging, intended for internal use only
+    LOG_DEBUG,          // Debug logging, used for internal debugging, it should be disabled on release builds
+    LOG_INFO,           // Info logging, used for program execution info
+    LOG_WARNING,        // Warning logging, used on recoverable failures
+    LOG_ERROR,          // Error logging, used on unrecoverable failures
+    LOG_FATAL,          // Fatal logging, used to abort program: exit(EXIT_FAILURE)
+    LOG_NONE            // Disable logging
+} TraceLogLevel;
+
+RLAPI void TraceLog(int logLevel, const char *text, ...);
 
 typedef struct {
     HANDLE hProcess;
@@ -42,12 +77,16 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     saAttr.bInheritHandle = TRUE;
 
     if (!CreatePipe(&pipe_read, &pipe_write, &saAttr, 0)) {
-        fprintf(stderr, "ERROR: Could not create pipe: %s\n", GetLastErrorAsString());
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: Could not create pipe: %s", error);
+        LocalFree(error);
         return NULL;
     }
 
     if (!SetHandleInformation(pipe_write, HANDLE_FLAG_INHERIT, 0)) {
-        fprintf(stderr, "ERROR: Could not SetHandleInformation: %s\n", GetLastErrorAsString());
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: Could not mark write pipe as non-inheritable: %s", error);
+        LocalFree(error);
         return NULL;
     }
 
@@ -59,8 +98,19 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     // NOTE: theoretically setting NULL to std handles should not be a problem
     // https://docs.microsoft.com/en-us/windows/console/getstdhandle?redirectedfrom=MSDN#attachdetach-behavior
     siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    // TODO: check for errors in GetStdHandle
+    if (siStartInfo.hStdError == INVALID_HANDLE_VALUE) {
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: Could get standard error handle for the child: %s", error);
+        LocalFree(error);
+        return NULL;
+    }
     siStartInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (siStartInfo.hStdOutput == INVALID_HANDLE_VALUE) {
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: Could get standard output handle for the child: %s", error);
+        LocalFree(error);
+        return NULL;
+    }
     siStartInfo.hStdInput = pipe_read;
     siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
 
@@ -72,22 +122,14 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     char cmd_buffer[1024*2];
     snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -c:a aac -pix_fmt yuv420p output.mp4", (int)width, (int)height, (int)fps, sound_file_path);
 
-    BOOL bSuccess =
-        CreateProcess(
-            NULL,
-            cmd_buffer,
-            NULL,
-            NULL,
-            TRUE,
-            0,
-            NULL,
-            NULL,
-            &siStartInfo,
-            &piProcInfo
-        );
+    if (!CreateProcess(NULL, cmd_buffer, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo)) {
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: Could not create child process: %s", error);
+        LocalFree(error);
 
-    if (!bSuccess) {
-        fprintf(stderr, "ERROR: Could not create child process: %s\n", GetLastErrorAsString());
+        CloseHandle(pipe_write);
+        CloseHandle(pipe_read);
+
         return NULL;
     }
 
@@ -104,40 +146,50 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
 bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
 {
     for (size_t y = height; y > 0; --y) {
-        WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, NULL, NULL);
+        // TODO: handle ERROR_IO_PENDING
+        if (!WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, NULL, NULL)) {
+            LPSTR error = GetLastErrorAsString();
+            TraceLog(LOG_ERROR, "FFMPEG: failed to write into ffmpeg pipe: %s", error);
+            LocalFree(error);
+            return false;
+        }
     }
     return true;
 }
 
 bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
 {
-    FlushFileBuffers(ffmpeg->hPipeWrite);
-    CloseHandle(ffmpeg->hPipeWrite);
+    HANDLE hPipeWrite = ffmpeg->hPipeWrite;
+    HANDLE hProcess = ffmpeg->hProcess;
+    free(ffmpeg);
 
-    DWORD result = WaitForSingleObject(
-                       ffmpeg->hProcess, // HANDLE hHandle,
-                       INFINITE // DWORD  dwMilliseconds
-                   );
+    FlushFileBuffers(hPipeWrite);
+    CloseHandle(hPipeWrite);
 
-    if (result == WAIT_FAILED) {
-        fprintf(stderr, "ERROR: could not wait on child process: %s\n", GetLastErrorAsString());
+    if (WaitForSingleObject(hProcess, INFINITE) == WAIT_FAILED) {
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: could not wait on child process: %s", error);
+        LocalFree(error);
+        CloseHandle(hProcess);
         return false;
     }
 
     DWORD exit_status;
-    if (GetExitCodeProcess(ffmpeg->hProcess, &exit_status) == 0) {
-        fprintf(stderr, "ERROR: could not get process exit code: %lu\n", GetLastError());
+    if (GetExitCodeProcess(hProcess, &exit_status) == 0) {
+        LPSTR error = GetLastErrorAsString();
+        TraceLog(LOG_ERROR, "FFMPEG: could not get process exit code: %s", error);
+        LocalFree(error);
+        CloseHandle(hProcess);
         return false;
     }
 
     if (exit_status != 0) {
-        fprintf(stderr, "ERROR: command exited with exit code %lu\n", exit_status);
+        TraceLog(LOG_ERROR, "FFMPEG: command exited with exit code %lu", exit_status);
+        CloseHandle(hProcess);
         return false;
     }
 
-    CloseHandle(ffmpeg->hProcess);
-
-    free(ffmpeg);
+    CloseHandle(hProcess);
 
     return true;
 }
