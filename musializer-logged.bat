@@ -1,0 +1,1 @@
+musializer.exe > log.txt
