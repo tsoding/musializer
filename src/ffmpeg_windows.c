@@ -90,7 +90,7 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     // TODO: use String_Builder in here
     // TODO: sanitize user input through sound_file_path
     char cmd_buffer[1024*2];
-    snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -c:a aac -pix_fmt yuv420p output.mp4", (int)width, (int)height, (int)fps, sound_file_path);
+    snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -vb 2500k -c:a aac -ab 200k -pix_fmt yuv420p output.mp4", (int)width, (int)height, (int)fps, sound_file_path);
 
     if (!CreateProcess(NULL, cmd_buffer, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo)) {
         TraceLog(LOG_ERROR, "FFMPEG: Could not create child process. System Error Code: %d", GetLastError());
