@@ -45,28 +45,6 @@ typedef struct {
     HANDLE hPipeWrite;
 } FFMPEG;
 
-static LPSTR GetLastErrorAsString(void)
-{
-    // https://stackoverflow.com/questions/1387064/how-to-get-the-error-message-from-the-error-code-returned-by-getlasterror
-
-    DWORD errorMessageId = GetLastError();
-    assert(errorMessageId != 0);
-
-    LPSTR messageBuffer = NULL;
-
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, // DWORD   dwFlags,
-        NULL, // LPCVOID lpSource,
-        errorMessageId, // DWORD   dwMessageId,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // DWORD   dwLanguageId,
-        (LPSTR) &messageBuffer, // LPTSTR  lpBuffer,
-        0, // DWORD   nSize,
-        NULL // va_list *Arguments
-    );
-
-    return messageBuffer;
-}
-
 FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *sound_file_path)
 {
     HANDLE pipe_read;
@@ -77,16 +55,12 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     saAttr.bInheritHandle = TRUE;
 
     if (!CreatePipe(&pipe_read, &pipe_write, &saAttr, 0)) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: Could not create pipe: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: Could not create pipe. System Error Code: %d", GetLastError());
         return NULL;
     }
 
     if (!SetHandleInformation(pipe_write, HANDLE_FLAG_INHERIT, 0)) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: Could not mark write pipe as non-inheritable: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: Could not mark write pipe as non-inheritable. System Error Code: %d", GetLastError());
         return NULL;
     }
 
@@ -99,16 +73,12 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     // https://docs.microsoft.com/en-us/windows/console/getstdhandle?redirectedfrom=MSDN#attachdetach-behavior
     siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     if (siStartInfo.hStdError == INVALID_HANDLE_VALUE) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: Could get standard error handle for the child: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: Could get standard error handle for the child. System Error Code: %d", GetLastError());
         return NULL;
     }
     siStartInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
     if (siStartInfo.hStdOutput == INVALID_HANDLE_VALUE) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: Could get standard output handle for the child: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: Could get standard output handle for the child. System Error Code: %d", GetLastError());
         return NULL;
     }
     siStartInfo.hStdInput = pipe_read;
@@ -123,9 +93,7 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -c:a aac -pix_fmt yuv420p output.mp4", (int)width, (int)height, (int)fps, sound_file_path);
 
     if (!CreateProcess(NULL, cmd_buffer, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo)) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: Could not create child process: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: Could not create child process. System Error Code: %d", GetLastError());
 
         CloseHandle(pipe_write);
         CloseHandle(pipe_read);
@@ -148,9 +116,7 @@ bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t 
     for (size_t y = height; y > 0; --y) {
         // TODO: handle ERROR_IO_PENDING
         if (!WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, NULL, NULL)) {
-            LPSTR error = GetLastErrorAsString();
-            TraceLog(LOG_ERROR, "FFMPEG: failed to write into ffmpeg pipe: %s", error);
-            LocalFree(error);
+            TraceLog(LOG_ERROR, "FFMPEG: failed to write into ffmpeg pipe. System Error Code: %d", GetLastError());
             return false;
         }
     }
@@ -167,18 +133,14 @@ bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
     CloseHandle(hPipeWrite);
 
     if (WaitForSingleObject(hProcess, INFINITE) == WAIT_FAILED) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: could not wait on child process: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: could not wait on child process. System Error Code: %d", GetLastError());
         CloseHandle(hProcess);
         return false;
     }
 
     DWORD exit_status;
     if (GetExitCodeProcess(hProcess, &exit_status) == 0) {
-        LPSTR error = GetLastErrorAsString();
-        TraceLog(LOG_ERROR, "FFMPEG: could not get process exit code: %s", error);
-        LocalFree(error);
+        TraceLog(LOG_ERROR, "FFMPEG: could not get process exit code. System Error Code: %d", GetLastError());
         CloseHandle(hProcess);
         return false;
     }
