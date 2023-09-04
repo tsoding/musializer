@@ -310,10 +310,6 @@ void plug_update(void)
 
             if (IsMusicReady(p->music)) {
                 p->error = false;
-                printf("music.frameCount = %u\n", p->music.frameCount);
-                printf("music.stream.sampleRate = %u\n", p->music.stream.sampleRate);
-                printf("music.stream.sampleSize = %u\n", p->music.stream.sampleSize);
-                printf("music.stream.channels = %u\n", p->music.stream.channels);
                 SetMusicVolume(p->music, 0.5f);
                 AttachAudioStreamProcessor(p->music.stream, callback);
                 PlayMusicStream(p->music);
