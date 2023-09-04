@@ -323,8 +323,8 @@ void plug_update(void)
     BeginDrawing();
     ClearBackground(GetColor(0x151515FF));
 
-    if (!p->rendering) {
-        if (IsMusicReady(p->music)) {
+    if (!p->rendering) { // We are in the Preview Mode
+        if (IsMusicReady(p->music)) { // The music is loaded and ready
             UpdateMusicStream(p->music);
 
             if (IsKeyPressed(KEY_SPACE)) {
@@ -357,7 +357,7 @@ void plug_update(void)
 
             size_t m = fft_analyze(GetFrameTime());
             fft_render(GetRenderWidth(), GetRenderHeight(), m);
-        } else {
+        } else { // We are waiting for the user to Drag&Drop the Music
             const char *label;
             Color color;
             if (p->error) {
@@ -374,7 +374,7 @@ void plug_update(void)
             };
             DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
         }
-    } else {
+    } else { // We are in the Rendering Mode
         if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
             if (IsKeyPressed(KEY_ESCAPE)) {
                 SetTraceLogLevel(LOG_INFO);
