@@ -65,8 +65,6 @@ int main(void)
     sigaction(SIGPIPE, &act, NULL);
 #endif // _WIN32
 
-    // TODO: redirect the logs to a file
-
     if (!reload_libplug()) return 1;
 
     Image logo = LoadImage("./resources/logo/logo-256.png");
