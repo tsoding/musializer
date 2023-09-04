@@ -50,9 +50,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.50000001"
-     inkscape:cx="-10.901384"
-     inkscape:cy="231.49223"
+     inkscape:zoom="0.7071068"
+     inkscape:cx="183.57576"
+     inkscape:cy="63.139444"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -99,12 +99,12 @@
        sodipodi:nodetypes="scsss" />
     <path
        style="opacity:1;vector-effect:none;fill:#c7c7c7;fill-opacity:1;stroke:none;stroke-width:2.76062799;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-       d="m 98.522049,156.73425 a 9.2766892,25.948894 23.485173 0 0 -0.651771,26.18691 9.2766892,25.948894 23.485173 0 0 18.926832,-21.7807 9.2766892,25.948894 23.485173 0 0 0.65178,-26.18692 9.2766892,25.948894 23.485173 0 0 -18.926841,21.78071 z"
+       d="m 98.786632,157.26342 a 9.2766892,25.948894 23.485173 0 0 -0.651771,26.18691 9.2766892,25.948894 23.485173 0 0 18.926829,-21.7807 9.2766892,25.948894 23.485173 0 0 0.65178,-26.18692 9.2766892,25.948894 23.485173 0 0 -18.926838,21.78071 z"
        id="path817"
        inkscape:connector-curvature="0" />
     <path
        style="opacity:1;vector-effect:none;fill:#c7c7c7;fill-opacity:1;stroke:none;stroke-width:1.80498505;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-       d="m 73.528136,168.04703 a 18.986041,5.420119 38.29557 0 1 11.206277,15.87994 18.986041,5.420119 38.29557 0 1 -18.467439,-7.80354 18.986041,5.420119 38.29557 0 1 -11.206301,-15.87993 18.986041,5.420119 38.29557 0 1 18.467463,7.80353 z"
+       d="M 72.932823,170.56058 A 18.986041,5.420119 38.29557 0 1 84.1391,186.44052 18.986041,5.420119 38.29557 0 1 65.671661,178.63698 18.986041,5.420119 38.29557 0 1 54.46536,162.75705 a 18.986041,5.420119 38.29557 0 1 18.467463,7.80353 z"
        id="path817-3"
        inkscape:connector-curvature="0" />
   </g>
