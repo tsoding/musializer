@@ -377,7 +377,7 @@ void plug_update(void)
             DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
         }
     } else {
-        if (p->ffmpeg == NULL) {
+        if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
             if (IsKeyPressed(KEY_ESCAPE)) {
                 SetTraceLogLevel(LOG_INFO);
                 UnloadWave(p->wave);
@@ -403,13 +403,18 @@ void plug_update(void)
             position.x = w/2 - size.x/2,
             position.y = h/2 - size.y/2 + fontSize,
             DrawTextEx(p->font, label, position, fontSize, 0, color);
-        } else {
-            if ((p->wave_cursor >= p->wave.frameCount && fft_settled()) || IsKeyPressed(KEY_ESCAPE)) {
+        } else { // FFmpeg process is going
+            if ((p->wave_cursor >= p->wave.frameCount && fft_settled()) || IsKeyPressed(KEY_ESCAPE)) { // Rendering is finished or cancelled
                 // TODO: ffmpeg processes frames slower than we generate them
                 // So when we cancel the rendering ffmpeg is still going and blocking the UI
                 // We need to do something about that. For example inform the user that
                 // we are finalizing the rendering or something.
                 if (!ffmpeg_end_rendering(p->ffmpeg)) {
+                    // NOTE: Ending FFmpeg process has failed, let's mark ffmpeg handle as NULL
+                    // which will be interpreted as "FFmpeg Failure" on the next frame.
+                    //
+                    // It should be safe to set ffmpeg to NULL even if ffmpeg_end_rendering() failed
+                    // cause it should deallocate all the resources even in case of a failure.
                     p->ffmpeg = NULL;
                 } else {
                     SetTraceLogLevel(LOG_INFO);
@@ -419,7 +424,7 @@ void plug_update(void)
                     fft_clean();
                     PlayMusicStream(p->music);
                 }
-            } else {
+            } else { // Rendering is going...
                 // Label
                 const char *label = "Rendering video...";
                 Color color = WHITE;
