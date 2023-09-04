@@ -321,9 +321,7 @@ void plug_update(void)
     }
 
     BeginDrawing();
-    ClearBackground(CLITERAL(Color) {
-        0x15, 0x15, 0x15, 0xFF
-    });
+    ClearBackground(GetColor(0x151515FF));
 
     if (!p->rendering) {
         if (IsMusicReady(p->music)) {
@@ -474,7 +472,7 @@ void plug_update(void)
                 size_t m = fft_analyze(1.0f/RENDER_FPS);
 
                 BeginTextureMode(p->screen);
-                ClearBackground(CLITERAL(Color) {0x15, 0x15, 0x15, 0xFF});
+                ClearBackground(GetColor(0x151515FF));
                 fft_render(p->screen.texture.width, p->screen.texture.height, m);
                 EndTextureMode();
 
