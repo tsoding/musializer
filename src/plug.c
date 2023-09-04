@@ -14,6 +14,7 @@
 #define GLSL_VERSION 330
 
 #define N (1<<13)
+#define MAX_CHANNELS 8
 #define FONT_SIZE 69
 
 #define RENDER_FPS 30
@@ -40,12 +41,13 @@ typedef struct {
     FFMPEG *ffmpeg;
 
     // FFT Analyzer
-    float in_raw[N];
+    float in_raw[MAX_CHANNELS][N];
     float in_win[N];
     float complex out_raw[N];
     float out_log[N];
     float out_smooth[N];
     float out_smear[N];
+    size_t channel_count;
 } Plug;
 
 Plug *p = NULL;
@@ -101,15 +103,30 @@ static inline float amp(float complex z)
 
 size_t fft_analyze(float dt)
 {
-    // Apply the Hann Window on the Input - https://en.wikipedia.org/wiki/Hann_function
-    for (size_t i = 0; i < N; ++i) {
-        float t = (float)i/(N - 1);
-        float hann = 0.5 - 0.5*cosf(2*PI*t);
-        p->in_win[i] = p->in_raw[i]*hann;
+    float complex out_chan[p->channel_count][N];
+
+    for (size_t c = 0; c < p->channel_count; c++)
+    {
+        // Apply the Hann Window on the Input - https://en.wikipedia.org/wiki/Hann_function
+        for (size_t i = 0; i < N; ++i) {
+            float t = (float)i/(N - 1);
+            float hann = 0.5 - 0.5*cosf(2*PI*t);
+            p->in_win[i] = p->in_raw[c][i]*hann;
+        }
+
+        // FFT
+        fft(p->in_win, 1, out_chan[c], N);
     }
 
-    // FFT
-    fft(p->in_win, 1, p->out_raw, N);
+    for (size_t i = 0; i < N; i++)
+    {
+        p->out_raw[i] = 0;
+        for (size_t c = 0; c < p->channel_count; c++)
+        {
+            p->out_raw[i] += out_chan[c][i];
+        }
+        p->out_raw[i] /= p->channel_count;
+    }
 
     // "Squash" into the Logarithmic Scale
     float step = 1.06;
@@ -235,19 +252,24 @@ void fft_render(size_t w, size_t h, size_t m)
 
 }
 
-void fft_push(float frame)
+void fft_push(float frame, size_t channel)
 {
-    memmove(p->in_raw, p->in_raw + 1, (N - 1)*sizeof(p->in_raw[0]));
-    p->in_raw[N-1] = frame;
+    memmove(p->in_raw[channel], p->in_raw[channel] + 1, (N - 1)*sizeof(p->in_raw[channel][0]));
+    p->in_raw[channel][N-1] = frame;
 }
 
 void callback(void *bufferData, unsigned int frames)
 {
+    p->channel_count = p->music.stream.channels > MAX_CHANNELS ? MAX_CHANNELS : p->music.stream.channels;
+
     // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
-    float (*fs)[2] = bufferData;
+    float (*fs)[p->channel_count] = bufferData;
 
     for (size_t i = 0; i < frames; ++i) {
-        fft_push(fs[i][0]);
+        for (size_t c = 0; c < p->channel_count; c++)
+        {
+            fft_push(fs[i][c], c);
+        }
     }
 }
 
@@ -459,14 +481,20 @@ void plug_update(void)
 
                 // Rendering
                 size_t chunk_size = p->wave.sampleRate/RENDER_FPS;
+                p->channel_count = p->wave.channels > MAX_CHANNELS ? MAX_CHANNELS : p->wave.channels;
                 // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
                 float (*fs)[p->wave.channels] = (void*)p->wave_samples;
                 for (size_t i = 0; i < chunk_size; ++i) {
-                    if (p->wave_cursor < p->wave.frameCount) {
-                        fft_push(fs[p->wave_cursor][0]);
-                    } else {
-                        fft_push(0);
+                    for (size_t c = 0; c < p->channel_count; c++)
+                    {
+                        if (p->wave_cursor < p->wave.frameCount) {
+                            fft_push(fs[p->wave_cursor][c], c);
+                        } else {
+                            fft_push(0, c);
+                        }
                     }
+                    
+
                     p->wave_cursor += 1;
                 }
 
