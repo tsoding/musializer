@@ -1,7 +1,8 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
-- Fixed crash on Windows 7 https://github.com/tsoding/musializer/pull/14
+- Fixed crash on Windows 7 when rendering the video
+  https://github.com/tsoding/musializer/pull/14
 
 Windows Alpha Release 1
 ----------------------------------------------------------------------
