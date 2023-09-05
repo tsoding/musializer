@@ -1,6 +1,8 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
+- Fixed crash on Windows 7 https://github.com/tsoding/musializer/pull/14
+
 Windows Alpha Release 1
 ----------------------------------------------------------------------
 Hello! This is the first ever Alpha Release of Musializer on Windows!
