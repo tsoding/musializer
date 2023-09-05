@@ -113,9 +113,11 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
 
 bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t height)
 {
+    DWORD written;
+
     for (size_t y = height; y > 0; --y) {
         // TODO: handle ERROR_IO_PENDING
-        if (!WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, NULL, NULL)) {
+        if (!WriteFile(ffmpeg->hPipeWrite, (uint32_t*)data + (y - 1)*width, sizeof(uint32_t)*width, &written, NULL)) {
             TraceLog(LOG_ERROR, "FFMPEG: failed to write into ffmpeg pipe. System Error Code: %d", GetLastError());
             return false;
         }
