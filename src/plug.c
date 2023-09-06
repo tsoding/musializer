@@ -7,6 +7,7 @@
 
 #include "plug.h"
 #include "ffmpeg.h"
+#include "separate_translation_unit_for_miniaudio.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -46,6 +47,10 @@ typedef struct {
     float out_log[N];
     float out_smooth[N];
     float out_smear[N];
+
+    // Microphone
+    bool recording;
+    void *microphone;
 } Plug;
 
 Plug *p = NULL;
@@ -268,6 +273,8 @@ void plug_init(void)
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
+
+    p->microphone = init_audio_devices(callback);
 }
 
 Plug *plug_pre_reload(void)
@@ -295,36 +302,14 @@ void plug_update(void)
     int w = GetRenderWidth();
     int h = GetRenderHeight();
 
-    if (IsFileDropped()) {
-        FilePathList droppedFiles = LoadDroppedFiles();
-        if (droppedFiles.count > 0) {
-            free(p->file_path);
-            p->file_path = strdup(droppedFiles.paths[0]);
-
-            if (IsMusicReady(p->music)) {
-                StopMusicStream(p->music);
-                UnloadMusicStream(p->music);
-            }
-
-            p->music = LoadMusicStream(p->file_path);
-
-            if (IsMusicReady(p->music)) {
-                p->error = false;
-                SetMusicVolume(p->music, 0.5f);
-                AttachAudioStreamProcessor(p->music.stream, callback);
-                PlayMusicStream(p->music);
-            } else {
-                p->error = true;
-            }
-        }
-        UnloadDroppedFiles(droppedFiles);
-    }
-
     BeginDrawing();
     ClearBackground(GetColor(0x151515FF));
 
     if (!p->rendering) { // We are in the Preview Mode
-        if (IsMusicReady(p->music)) { // The music is loaded and ready
+        if (p->recording) {
+            size_t m = fft_analyze(GetFrameTime());
+            fft_render(GetRenderWidth(), GetRenderHeight(), m);
+        } else if (IsMusicReady(p->music)) { // The music is loaded and ready
             UpdateMusicStream(p->music);
 
             if (IsKeyPressed(KEY_SPACE)) {
@@ -358,6 +343,36 @@ void plug_update(void)
             size_t m = fft_analyze(GetFrameTime());
             fft_render(GetRenderWidth(), GetRenderHeight(), m);
         } else { // We are waiting for the user to Drag&Drop the Music
+            if (IsFileDropped()) {
+                FilePathList droppedFiles = LoadDroppedFiles();
+                if (droppedFiles.count > 0) {
+                    free(p->file_path);
+                    p->file_path = strdup(droppedFiles.paths[0]);
+            
+                    if (IsMusicReady(p->music)) {
+                        StopMusicStream(p->music);
+                        UnloadMusicStream(p->music);
+                    }
+            
+                    p->music = LoadMusicStream(p->file_path);
+            
+                    if (IsMusicReady(p->music)) {
+                        p->error = false;
+                        SetMusicVolume(p->music, 0.5f);
+                        AttachAudioStreamProcessor(p->music.stream, callback);
+                        PlayMusicStream(p->music);
+                    } else {
+                        p->error = true;
+                    }
+                }
+                UnloadDroppedFiles(droppedFiles);
+            }
+
+            if (IsKeyPressed(KEY_M)) {
+                start_the_device(p->microphone);
+                p->recording = true;
+            }
+
             const char *label;
             Color color;
             if (p->error) {
