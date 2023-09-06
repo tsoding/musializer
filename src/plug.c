@@ -49,7 +49,7 @@ typedef struct {
     float out_smear[N];
 
     // Microphone
-    bool recording;
+    bool capturing;
     void *microphone;
 } Plug;
 
@@ -304,20 +304,20 @@ void plug_update(void)
     ClearBackground(GetColor(0x151515FF));
 
     if (!p->rendering) { // We are in the Preview Mode
-        // TODO: there is no visual indication whether we are in the recording or previewing mode
-        if (p->recording) {
+        // TODO: there is no visual indication whether we are in the capturing or playing mode
+        if (p->capturing) {
             if (p->microphone != NULL) {
-                if (IsKeyPressed(KEY_ESCAPE)) {
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) {
                     uninit_capture_device(p->microphone);
                     p->microphone = NULL;
-                    p->recording = false;
+                    p->capturing = false;
                 }
 
                 size_t m = fft_analyze(GetFrameTime());
                 fft_render(GetRenderWidth(), GetRenderHeight(), m);
             } else {
                 if (IsKeyPressed(KEY_ESCAPE)) {
-                    p->recording = false;
+                    p->capturing = false;
                 }
 
                 const char *label = "Capture Device Error: Check the Logs";
@@ -372,7 +372,7 @@ void plug_update(void)
                         p->microphone = NULL;
                     }
                 }
-                p->recording = true;
+                p->capturing = true;
             }
 
             if (IsMusicReady(p->music)) { // The music is loaded and ready
