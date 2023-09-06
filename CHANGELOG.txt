@@ -1,6 +1,9 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
+- You can now visualize microphone input. Just press M when the app
+  awaits you to Drag&Drop the file.
+
 - Fixed crash on Windows 7 when rendering the video
   https://github.com/tsoding/musializer/pull/14
 
