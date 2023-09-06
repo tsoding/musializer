@@ -30,7 +30,7 @@ int main(void)
     if (!reload_libplug()) return 1;
 
     Image logo = LoadImage("./resources/logo/logo-256.png");
-    SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     size_t factor = 60;
     InitWindow(factor*16, factor*9, "Musializer");
     SetWindowIcon(logo);
