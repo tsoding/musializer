@@ -304,6 +304,7 @@ void plug_update(void)
     ClearBackground(GetColor(0x151515FF));
 
     if (!p->rendering) { // We are in the Preview Mode
+        // TODO: there is no visual indication whether we are in the recording or previewing mode
         if (p->recording) {
             if (p->microphone != NULL) {
                 if (IsKeyPressed(KEY_ESCAPE)) {
@@ -336,40 +337,7 @@ void plug_update(void)
                 position.y = h/2 - size.y/2 + fontSize,
                 DrawTextEx(p->font, label, position, fontSize, 0, color);
             }
-        } else if (IsMusicReady(p->music)) { // The music is loaded and ready
-            UpdateMusicStream(p->music);
-
-            if (IsKeyPressed(KEY_SPACE)) {
-                if (IsMusicStreamPlaying(p->music)) {
-                    PauseMusicStream(p->music);
-                } else {
-                    ResumeMusicStream(p->music);
-                }
-            }
-
-            if (IsKeyPressed(KEY_Q)) {
-                StopMusicStream(p->music);
-                PlayMusicStream(p->music);
-            }
-
-            if (IsKeyPressed(KEY_F)) {
-                StopMusicStream(p->music);
-
-                fft_clean();
-                // TODO: LoadWave is pretty slow on big files
-                p->wave = LoadWave(p->file_path);
-                p->wave_cursor = 0;
-                p->wave_samples = LoadWaveSamples(p->wave);
-                // TODO: set the rendering output path based on the input path
-                // Basically output into the same folder
-                p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, p->file_path);
-                p->rendering = true;
-                SetTraceLogLevel(LOG_WARNING);
-            }
-
-            size_t m = fft_analyze(GetFrameTime());
-            fft_render(GetRenderWidth(), GetRenderHeight(), m);
-        } else { // We are waiting for the user to Drag&Drop the Music
+        } else {
             if (IsFileDropped()) {
                 FilePathList droppedFiles = LoadDroppedFiles();
                 if (droppedFiles.count > 0) {
@@ -407,21 +375,56 @@ void plug_update(void)
                 p->recording = true;
             }
 
-            const char *label;
-            Color color;
-            if (p->error) {
-                label = "Could not load file";
-                color = RED;
-            } else {
-                label = "Drag&Drop Music Here";
-                color = WHITE;
+            if (IsMusicReady(p->music)) { // The music is loaded and ready
+                UpdateMusicStream(p->music);
+
+                if (IsKeyPressed(KEY_SPACE)) {
+                    if (IsMusicStreamPlaying(p->music)) {
+                        PauseMusicStream(p->music);
+                    } else {
+                        ResumeMusicStream(p->music);
+                    }
+                }
+
+                if (IsKeyPressed(KEY_Q)) {
+                    StopMusicStream(p->music);
+                    PlayMusicStream(p->music);
+                }
+
+                if (IsKeyPressed(KEY_F)) {
+                    StopMusicStream(p->music);
+
+                    fft_clean();
+                    // TODO: LoadWave is pretty slow on big files
+                    p->wave = LoadWave(p->file_path);
+                    p->wave_cursor = 0;
+                    p->wave_samples = LoadWaveSamples(p->wave);
+                    // TODO: set the rendering output path based on the input path
+                    // Basically output into the same folder
+                    p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, p->file_path);
+                    p->rendering = true;
+                    SetTraceLogLevel(LOG_WARNING);
+                }
+
+                size_t m = fft_analyze(GetFrameTime());
+                fft_render(GetRenderWidth(), GetRenderHeight(), m);
+            } else { // We are waiting for the user to Drag&Drop the Music
+                const char *label;
+                Color color;
+                if (p->error) {
+                    label = "Could not load file";
+                    color = RED;
+                } else {
+                    label = "Drag&Drop Music Here";
+                    color = WHITE;
+                }
+                Vector2 size = MeasureTextEx(p->font, label, p->font.baseSize, 0);
+                Vector2 position = {
+                    w/2 - size.x/2,
+                    h/2 - size.y/2,
+                };
+                DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
             }
-            Vector2 size = MeasureTextEx(p->font, label, p->font.baseSize, 0);
-            Vector2 position = {
-                w/2 - size.x/2,
-                h/2 - size.y/2,
-            };
-            DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
         }
     } else { // We are in the Rendering Mode
         if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
