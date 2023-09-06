@@ -35,10 +35,11 @@ int main(void)
     InitWindow(factor*16, factor*9, "Musializer");
     SetWindowIcon(logo);
     SetTargetFPS(60);
+    SetExitKey(KEY_NULL);
     InitAudioDevice();
 
     plug_init();
-    while (!(WindowShouldClose() && !IsKeyPressed(KEY_ESCAPE))) {
+    while (!WindowShouldClose()) {
         if (IsKeyPressed(KEY_R)) {
             void *state = plug_pre_reload();
             if (!reload_libplug()) return 1;
