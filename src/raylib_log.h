@@ -1,4 +1,4 @@
-// NOTE: In case you can include the entire raylib.h (for instance when you also want to include windows.h)
+// NOTE: In case you can't include the entire raylib.h (for instance when you also want to include windows.h)
 // but still need its logging capabilities, just include this raylib_log.h file.
 // TODO: maybe we should implement our own logging interface that let's you just plug raylib's logging?
 
