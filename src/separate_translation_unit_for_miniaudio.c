@@ -1,8 +1,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "miniaudio.h"
+
 #include "separate_translation_unit_for_miniaudio.h"
+
+#include "miniaudio.h"
+#include "raylib_log.h"
 
 ma_encoder_config encoderConfig;
 
@@ -27,7 +30,7 @@ void *init_audio_devices(user_callback2_t *user_callback)
     assert(device != NULL && "Buy MORE RAM lol!!");
     ma_result result = ma_device_init(NULL, &deviceConfig, device);
     if (result != MA_SUCCESS) {
-        fprintf(stderr, "Failed to initialize capture device.\n");
+        TraceLog(LOG_ERROR, "MINIAUDIO: Failed to initialize capture device: %s", ma_result_description(result));
         return NULL;
     }
 
@@ -39,7 +42,7 @@ bool start_the_device(void *device)
     ma_result result = ma_device_start(device);
     if (result != MA_SUCCESS) {
         ma_device_uninit(device);
-        printf("Failed to start device.\n");
+        TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s", ma_result_description(result));
         return false;
     }
 
