@@ -4,6 +4,7 @@
 #include <math.h>
 #include <string.h>
 #include <complex.h>
+#include "sfd.h"
 
 #include "plug.h"
 #include "ffmpeg.h"
@@ -295,6 +296,34 @@ void plug_post_reload(Plug *pp)
     p->circle_power_location = GetShaderLocation(p->circle, "power");
 }
 
+void plug_load_music_from_dialog(){
+    sfd_Options options = {
+        .path = NULL,
+        .title = "Choose a music file"
+    };
+    const char *file_path = sfd_open_dialog(&options);
+    if (file_path != NULL) {
+        free(p->file_path);
+        p->file_path = strdup(file_path);
+
+        if (IsMusicReady(p->music)) {
+            StopMusicStream(p->music);
+            UnloadMusicStream(p->music);
+        }
+
+        p->music = LoadMusicStream(p->file_path);
+
+        if (IsMusicReady(p->music)) {
+            p->error = false;
+            SetMusicVolume(p->music, 0.5f);
+            AttachAudioStreamProcessor(p->music.stream, callback);
+            PlayMusicStream(p->music);
+        } else {
+            p->error = true;
+        }
+    }
+}
+
 void plug_update(void)
 {
     int w = GetRenderWidth();
@@ -367,10 +396,16 @@ void plug_update(void)
                 SetTraceLogLevel(LOG_WARNING);
             }
 
+            if(IsKeyPressed(KEY_O)){
+                plug_load_music_from_dialog();
+            }
+
             size_t m = fft_analyze(GetFrameTime());
             fft_render(GetRenderWidth(), GetRenderHeight(), m);
         } else { // We are waiting for the user to Drag&Drop the Music
-            if (IsFileDropped()) {
+            if (IsKeyPressed(KEY_O)){ //Open files to choose the music
+                plug_load_music_from_dialog();
+            } else if (IsFileDropped()) {
                 FilePathList droppedFiles = LoadDroppedFiles();
                 if (droppedFiles.count > 0) {
                     free(p->file_path);
