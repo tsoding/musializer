@@ -38,7 +38,7 @@ Keep in mind that the application needs [./resources/](./resources/) to be prese
 
 Windows support is at very early stage right now. Since I don't have a convenient Windows Development Environment, I'm cross compiling Musializer with [MinGW](https://www.mingw-w64.org/). See [./build_windows_mingw.sh](./build_windows_mingw.sh) for more information.
 
-*More documentation regarding Windows build is comming soon. For now use your hacking skills to figure it out.*
+*More documentation regarding Windows build is coming soon. For now use your hacking skills to figure it out.*
 
 ## Hot Reloading
 
