@@ -1,15 +1,15 @@
 # Musializer
 
-> [!WARNING]
-> This software is unfinished. Keep your expectations low.
-
-*Please, read [CONTRIBUTING.md](CONTRIBUTING.md) before making a PR.*
-
 <p align=center>
   <img src="./resources/logo/logo-256.png">
 </p>
 
+> [!WARNING]
+> This software is unfinished. Keep your expectations low.
+
 The project aims to make a tool for creating beautiful music visualizations and rendering high quality videos of them.
+
+*Please, read [CONTRIBUTING.md](CONTRIBUTING.md) before making a PR.*
 
 ## Demo
 
