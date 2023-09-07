@@ -2,9 +2,8 @@
 
 > [!WARNING]
 > This software is unfinished. Keep your expectations low.
-> Please, read [CONTRIBUTING.md](CONTRIBUTING.md) before making a PR.
 
-[CONTRIBUTING.md](CONTRIBUTING.md)
+*Please, read [CONTRIBUTING.md](CONTRIBUTING.md) before making a PR.*
 
 <p align=center>
   <img src="./resources/logo/logo-256.png">
