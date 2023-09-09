@@ -34,6 +34,7 @@
 #    define WIN32_LEAN_AND_MEAN
 #    include <windows.h>
 #    include <direct.h>
+#    include <shellapi.h>
 #else
 #    include <sys/types.h>
 #    include <sys/wait.h>
@@ -60,9 +61,18 @@ typedef struct {
     size_t capacity;
 } Nob_File_Paths;
 
+typedef enum {
+    NOB_FILE_REGULAR = 0,
+    NOB_FILE_DIRECTORY,
+    NOB_FILE_SYMLINK,
+    NOB_FILE_OTHER,
+} Nob_File_Type;
+
 bool nob_mkdir_if_not_exists(const char *path);
 bool nob_copy_file(const char *src_path, const char *dst_path);
 bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
+bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children);
+Nob_File_Type nob_get_file_type(const char *path);
 
 #define nob_return_defer(value) do { result = (value); goto defer; } while(0)
 
@@ -161,7 +171,11 @@ void nob_cmd_append_null(Nob_Cmd *cmd, ...);
 
 // Log the command
 void nob_cmd_log(Nob_Cmd cmd);
+
+// Run command asynchronously
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd);
+
+// Run command synchronously
 bool nob_cmd_run_sync(Nob_Cmd cmd);
 
 #ifndef NOB_TEMP_CAPACITY
@@ -258,7 +272,7 @@ bool nob_mkdir_if_not_exists(const char *path)
 
 bool nob_copy_file(const char *src_path, const char *dst_path)
 {
-    nob_log(NOB_INFO, "Copying %s -> %s", src_path, dst_path);
+    nob_log(NOB_INFO, "copying %s -> %s", src_path, dst_path);
 #ifdef _WIN32
     if (!CopyFile(src_path, dst_path, FALSE)) {
         nob_log(NOB_ERROR, "Could not copy file: %lu", GetLastError());
@@ -530,25 +544,47 @@ defer:
     return result;
 }
 
-bool nob_copy_directory_recursively(const char *src_path, const char *dst_path)
+Nob_File_Type nob_get_file_type(const char *path)
 {
 #ifdef _WIN32
-    NOB_ASSERT(0 && "TODO: not implemented");
-#else
+    DWORD attr = GetFileAttributesA(path);
+    if (attr == INVALID_FILE_ATTRIBUTES) {
+        nob_log(NOB_ERROR, "Could not get file attributes of %s: %lu", path, GetLastError());
+        return -1;
+    }
+
+    if (attr & FILE_ATTRIBUTE_DIRECTORY) return NOB_FILE_DIRECTORY;
+    // TODO: detect symlinks on Windows (whatever that means on Windows anyway)
+    return NOB_FILE_REGULAR;
+#else // _WIN32
+    struct stat statbuf;
+    if (stat(path, &statbuf) < 0) {
+        nob_log(NOB_ERROR, "Could not get stat of %s: %s", path, strerror(errno));
+        return -1;
+    }
+
+    switch (statbuf.st_mode & S_IFMT) {
+        case S_IFDIR:  return NOB_FILE_DIRECTORY;
+        case S_IFREG:  return NOB_FILE_REGULAR;
+        case S_IFLNK:  return NOB_FILE_SYMLINK;
+        default:       return NOB_FILE_OTHER;
+    }
+#endif // _WIN32
+}
+
+bool nob_copy_directory_recursively(const char *src_path, const char *dst_path)
+{
     bool result = true;
     Nob_File_Paths children = {0};
     Nob_String_Builder src_sb = {0};
     Nob_String_Builder dst_sb = {0};
     size_t temp_checkpoint = nob_temp_save();
 
-    struct stat src_stat;
-    if (stat(src_path, &src_stat) < 0) {
-        nob_log(NOB_ERROR, "Could not get stat of %s: %s", src_path, strerror(errno));
-        nob_return_defer(false);
-    }
+    Nob_File_Type type = nob_get_file_type(src_path);
+    if (type < 0) return false;
 
-    switch (src_stat.st_mode & S_IFMT) {
-        case S_IFDIR: {
+    switch (type) {
+        case NOB_FILE_DIRECTORY: {
             if (!nob_mkdir_if_not_exists(dst_path)) nob_return_defer(false);
             if (!nob_read_entire_dir(src_path, &children)) nob_return_defer(false);
 
@@ -574,20 +610,22 @@ bool nob_copy_directory_recursively(const char *src_path, const char *dst_path)
             }
         } break;
 
-        case S_IFREG: {
+        case NOB_FILE_REGULAR: {
             if (!nob_copy_file(src_path, dst_path)) {
                 nob_return_defer(false);
             }
         } break;
 
-        case S_IFLNK: {
+        case NOB_FILE_SYMLINK: {
             nob_log(NOB_WARNING, "TODO: Copying symlinks is not supported yet");
         } break;
 
-        default: {
+        case NOB_FILE_OTHER: {
             nob_log(NOB_ERROR, "Unsupported type of file %s", src_path);
             nob_return_defer(false);
-        }
+        } break;
+
+        default: NOB_ASSERT(0 && "unreachable");
     }
 
 defer:
@@ -596,7 +634,6 @@ defer:
     nob_da_free(dst_sb);
     nob_da_free(children);
     return result;
-#endif
 }
 
 char *nob_temp_strdup(const char *cstr)

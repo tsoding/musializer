@@ -67,6 +67,7 @@ void link_libraries(Nob_Cmd *cmd, Target target)
 bool build_musializer_executable(const char *output_path, Target target)
 {
     Nob_Cmd cmd = {0};
+
     target_compiler(&cmd, target);
     cflags(&cmd, target);
     nob_cmd_append(&cmd, "-o", "./build/musializer");
@@ -83,31 +84,60 @@ int main(int argc, char **argv)
 {
     const char *program = nob_shift_args(&argc, &argv);
 
+    if (argc <= 0) {
+        nob_log(NOB_INFO, "Usage: %s <subcommand>", program);
+        nob_log(NOB_INFO, "Subcommands:");
+        nob_log(NOB_INFO, "    build");
+        nob_log(NOB_INFO, "    logo");
+        nob_log(NOB_ERROR, "No subcommand is provided");
+        return 1;
+    }
+
+    const char *subcommand = nob_shift_args(&argc, &argv);
+
+    if (strcmp(subcommand, "build") == 0) {
 #ifdef _WIN32
-    Target target = TARGET_WIN32;
+        Target target = TARGET_WIN32;
 #else
-    Target target = TARGET_LINUX;
+        Target target = TARGET_LINUX;
 #endif
 
-    if (argc > 0) {
-        const char *subcmd = nob_shift_args(&argc, &argv);
-        if (strcmp(subcmd, "win32") == 0) {
-            target = TARGET_WIN32;
-        } else if (strcmp(subcmd, "linux") == 0) {
-            target = TARGET_LINUX;
-        } else {
-            fprintf(stderr, "[ERROR] unknown subcommand %s\n", subcmd);
-            return 1;
+        if (argc > 0) {
+            const char *subcmd = nob_shift_args(&argc, &argv);
+            if (strcmp(subcmd, "win32") == 0) {
+                target = TARGET_WIN32;
+            } else if (strcmp(subcmd, "linux") == 0) {
+                target = TARGET_LINUX;
+            } else {
+                fprintf(stderr, "[ERROR] unknown subcommand %s\n", subcmd);
+                return 1;
+            }
         }
-    }
 
-    nob_log(NOB_INFO, "TARGET: %s", target_show(target));
-    if (!nob_mkdir_if_not_exists("build")) return 1;
-    build_musializer_executable("./build/musializer", target);
-    if (target == TARGET_WIN32) {
-        if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
+        nob_log(NOB_INFO, "TARGET: %s", target_show(target));
+        if (!nob_mkdir_if_not_exists("build")) return 1;
+        build_musializer_executable("./build/musializer", target);
+        if (target == TARGET_WIN32) {
+            if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
+        }
+        if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
+    } else if (strcmp(subcommand, "logo") == 0) {
+        Nob_Cmd cmd = {0};
+        nob_cmd_append(&cmd, "convert");
+        nob_cmd_append(&cmd, "-background", "None");
+        nob_cmd_append(&cmd, "./resources/logo/logo.svg");
+        nob_cmd_append(&cmd, "-resize", "256");
+
+        nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
+        nob_cmd_log(cmd);
+        if (!nob_cmd_run_sync(cmd)) return 1;
+
+        cmd.count -= 1;
+
+        nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
+        nob_cmd_log(cmd);
+        if (!nob_cmd_run_sync(cmd)) return 1;
     }
-    if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
 
     return 0;
 }
