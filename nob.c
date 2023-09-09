@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 
     nob_log(NOB_INFO, "TARGET: %s", target_show(target));
     if (!nob_mkdir_if_not_exists("build")) return 1;
-    if (!build_musializer_executable("./build/musializer", target)) return 1;
+    build_musializer_executable("./build/musializer", target);
     if (target == TARGET_WIN32) {
         if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
     }

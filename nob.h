@@ -54,9 +54,17 @@ void nob_log(Nob_Log_Level level, const char *fmt, ...);
 // argument from the beginning.
 char *nob_shift_args(int *argc, char ***argv);
 
+typedef struct {
+    const char **items;
+    size_t count;
+    size_t capacity;
+} Nob_File_Paths;
+
 bool nob_mkdir_if_not_exists(const char *path);
 bool nob_copy_file(const char *src_path, const char *dst_path);
 bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
+
+#define nob_return_defer(value) do { result = (value); goto defer; } while(0)
 
 // Initial capacity of a dynamic array
 #define NOB_DA_INIT_CAP 256
@@ -72,6 +80,8 @@ bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
                                                                                          \
         (da)->items[(da)->count++] = (item);                                             \
     } while (0)
+
+#define nob_da_free(da) NOB_FREE((da).items)
 
 // Append several items to a dynamic array
 #define nob_da_append_many(da, new_items, new_items_count)                                  \
@@ -154,9 +164,77 @@ void nob_cmd_log(Nob_Cmd cmd);
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd);
 bool nob_cmd_run_sync(Nob_Cmd cmd);
 
+#ifndef NOB_TEMP_CAPACITY
+#define NOB_TEMP_CAPACITY (8*1024*1024)
+#endif // NOB_TEMP_CAPACITY
+char *nob_temp_strdup(const char *cstr);
+void *nob_temp_alloc(size_t size);
+void nob_temp_reset(void);
+size_t nob_temp_save(void);
+void nob_temp_rewind(size_t checkpoint);
+
+// minirent.h HEADER BEGIN ////////////////////////////////////////
+// Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining
+// a copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to
+// the following conditions:
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+// ============================================================
+//
+// minirent — 0.0.1 — A subset of dirent interface for Windows.
+//
+// https://github.com/tsoding/minirent
+//
+// ============================================================
+//
+// ChangeLog (https://semver.org/ is implied)
+//
+//    0.0.2 Automatically include dirent.h on non-Windows
+//          platforms
+//    0.0.1 First Official Release
+
+#ifndef _WIN32
+#include <dirent.h>
+#else // _WIN32
+
+#define WIN32_LEAN_AND_MEAN
+#include "windows.h"
+
+struct dirent
+{
+    char d_name[MAX_PATH+1];
+};
+
+typedef struct DIR DIR;
+
+DIR *opendir(const char *dirpath);
+struct dirent *readdir(DIR *dirp);
+int closedir(DIR *dirp);
+#endif // _WIN32
+// minirent.h HEADER END ////////////////////////////////////////
+
 #endif // NOB_H_
 
 #ifdef NOB_IMPLEMENTATION
+
+static size_t nob_temp_size = 0;
+static char nob_temp[NOB_TEMP_CAPACITY] = {0};
 
 bool nob_mkdir_if_not_exists(const char *path)
 {
@@ -198,22 +276,19 @@ bool nob_copy_file(const char *src_path, const char *dst_path)
     src_fd = open(src_path, O_RDONLY);
     if (src_fd < 0) {
         nob_log(NOB_ERROR, "Could not open file %s: %s", src_path, strerror(errno));
-        result = false;
-        goto defer;
+        nob_return_defer(false);
     }
 
     struct stat src_stat;
     if (fstat(src_fd, &src_stat) < 0) {
         nob_log(NOB_ERROR, "Could not get mode of file %s: %s", src_path, strerror(errno));
-        result = false;
-        goto defer;
+        nob_return_defer(false);
     }
 
     dst_fd = open(dst_path, O_CREAT | O_TRUNC | O_WRONLY, src_stat.st_mode);
     if (dst_fd < 0) {
         nob_log(NOB_ERROR, "Could not create file %s: %s", dst_path, strerror(errno));
-        result = false;
-        goto defer;
+        nob_return_defer(false);
     }
 
     for (;;) {
@@ -221,16 +296,14 @@ bool nob_copy_file(const char *src_path, const char *dst_path)
         if (n == 0) break;
         if (n < 0) {
             nob_log(NOB_ERROR, "Could not read from file %s: %s", src_path, strerror(errno));
-            result = false;
-            goto defer;
+            nob_return_defer(false);
         }
         char *buf2 = buf;
         while (n > 0) {
             ssize_t m = write(dst_fd, buf2, n);
             if (m < 0) {
                 nob_log(NOB_ERROR, "Could not write to file %s: %s", dst_path, strerror(errno));
-                result = false;
-                goto defer;
+                nob_return_defer(false);
             }
             n    -= m;
             buf2 += m;
@@ -429,9 +502,219 @@ void nob_log(Nob_Log_Level level, const char *fmt, ...)
     fprintf(stderr, "\n");
 }
 
+bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children)
+{
+    bool result = true;
+    DIR *dir = NULL;
+
+    dir = opendir(parent);
+    if (dir == NULL) {
+        nob_log(NOB_ERROR, "Could not open directory %s: %s", parent, strerror(errno));
+        nob_return_defer(false);
+    }
+
+    errno = 0;
+    struct dirent *ent = readdir(dir);
+    while (ent != NULL) {
+        nob_da_append(children, nob_temp_strdup(ent->d_name));
+        ent = readdir(dir);
+    }
+
+    if (errno != 0) {
+        nob_log(NOB_ERROR, "Could not read directory %s: %s", parent, strerror(errno));
+        nob_return_defer(false);
+    }
+
+defer:
+    if (dir) closedir(dir);
+    return result;
+}
+
 bool nob_copy_directory_recursively(const char *src_path, const char *dst_path)
 {
-    NOB_ASSERT(0 && "not implemented");
+#ifdef _WIN32
+    NOB_ASSERT(0 && "TODO: not implemented");
+#else
+    bool result = true;
+    Nob_File_Paths children = {0};
+    Nob_String_Builder src_sb = {0};
+    Nob_String_Builder dst_sb = {0};
+    size_t temp_checkpoint = nob_temp_save();
+
+    struct stat src_stat;
+    if (stat(src_path, &src_stat) < 0) {
+        nob_log(NOB_ERROR, "Could not get stat of %s: %s", src_path, strerror(errno));
+        nob_return_defer(false);
+    }
+
+    switch (src_stat.st_mode & S_IFMT) {
+        case S_IFDIR: {
+            if (!nob_mkdir_if_not_exists(dst_path)) nob_return_defer(false);
+            if (!nob_read_entire_dir(src_path, &children)) nob_return_defer(false);
+
+            for (size_t i = 0; i < children.count; ++i) {
+                if (strcmp(children.items[i], ".") == 0) continue;
+                if (strcmp(children.items[i], "..") == 0) continue;
+
+                src_sb.count = 0;
+                nob_sb_append_cstr(&src_sb, src_path);
+                nob_sb_append_cstr(&src_sb, "/");
+                nob_sb_append_cstr(&src_sb, children.items[i]);
+                nob_sb_append_null(&src_sb);
+
+                dst_sb.count = 0;
+                nob_sb_append_cstr(&dst_sb, dst_path);
+                nob_sb_append_cstr(&dst_sb, "/");
+                nob_sb_append_cstr(&dst_sb, children.items[i]);
+                nob_sb_append_null(&dst_sb);
+
+                if (!nob_copy_directory_recursively(src_sb.items, dst_sb.items)) {
+                    nob_return_defer(false);
+                }
+            }
+        } break;
+
+        case S_IFREG: {
+            if (!nob_copy_file(src_path, dst_path)) {
+                nob_return_defer(false);
+            }
+        } break;
+
+        case S_IFLNK: {
+            nob_log(NOB_WARNING, "TODO: Copying symlinks is not supported yet");
+        } break;
+
+        default: {
+            nob_log(NOB_ERROR, "Unsupported type of file %s", src_path);
+            nob_return_defer(false);
+        }
+    }
+
+defer:
+    nob_temp_rewind(temp_checkpoint);
+    nob_da_free(src_sb);
+    nob_da_free(dst_sb);
+    nob_da_free(children);
+    return result;
+#endif
 }
+
+char *nob_temp_strdup(const char *cstr)
+{
+    size_t n = strlen(cstr);
+    char *result = nob_temp_alloc(n + 1);
+    NOB_ASSERT(result != NULL && "Increase NOB_TEMP_CAPACITY");
+    memcpy(result, cstr, n);
+    result[n] = '\0';
+    return result;
+}
+
+void *nob_temp_alloc(size_t size)
+{
+    if (nob_temp_size + size > NOB_TEMP_CAPACITY) return NULL;
+    void *result = &nob_temp[nob_temp_size];
+    nob_temp_size += size;
+    return result;
+}
+
+void nob_temp_reset(void)
+{
+    nob_temp_size = 0;
+}
+
+size_t nob_temp_save(void)
+{
+    return nob_temp_size;
+}
+
+void nob_temp_rewind(size_t checkpoint)
+{
+    nob_temp_size = checkpoint;
+}
+
+// minirent.h SOURCE BEGIN ////////////////////////////////////////
+#ifdef _WIN32
+struct DIR
+{
+    HANDLE hFind;
+    WIN32_FIND_DATA data;
+    struct dirent *dirent;
+};
+
+DIR *opendir(const char *dirpath)
+{
+    assert(dirpath);
+
+    char buffer[MAX_PATH];
+    snprintf(buffer, MAX_PATH, "%s\\*", dirpath);
+
+    DIR *dir = (DIR*)calloc(1, sizeof(DIR));
+
+    dir->hFind = FindFirstFile(buffer, &dir->data);
+    if (dir->hFind == INVALID_HANDLE_VALUE) {
+        // TODO: opendir should set errno accordingly on FindFirstFile fail
+        // https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
+        errno = ENOSYS;
+        goto fail;
+    }
+
+    return dir;
+
+fail:
+    if (dir) {
+        free(dir);
+    }
+
+    return NULL;
+}
+
+struct dirent *readdir(DIR *dirp)
+{
+    assert(dirp);
+
+    if (dirp->dirent == NULL) {
+        dirp->dirent = (struct dirent*)calloc(1, sizeof(struct dirent));
+    } else {
+        if(!FindNextFile(dirp->hFind, &dirp->data)) {
+            if (GetLastError() != ERROR_NO_MORE_FILES) {
+                // TODO: readdir should set errno accordingly on FindNextFile fail
+                // https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
+                errno = ENOSYS;
+            }
+
+            return NULL;
+        }
+    }
+
+    memset(dirp->dirent->d_name, 0, sizeof(dirp->dirent->d_name));
+
+    strncpy(
+        dirp->dirent->d_name,
+        dirp->data.cFileName,
+        sizeof(dirp->dirent->d_name) - 1);
+
+    return dirp->dirent;
+}
+
+int closedir(DIR *dirp)
+{
+    assert(dirp);
+
+    if(!FindClose(dirp->hFind)) {
+        // TODO: closedir should set errno accordingly on FindClose fail
+        // https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
+        errno = ENOSYS;
+        return -1;
+    }
+
+    if (dirp->dirent) {
+        free(dirp->dirent);
+    }
+    free(dirp);
+
+    return 0;
+}
+#endif // _WIN32
+// minirent.h SOURCE END ////////////////////////////////////////
 
 #endif
