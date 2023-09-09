@@ -166,6 +166,11 @@ void nob_cmd_append_null(Nob_Cmd *cmd, ...);
 // Wrapper around nob_cmd_append_null that does not require NULL at the end.
 #define nob_cmd_append(cmd, ...) nob_cmd_append_null(cmd, __VA_ARGS__, NULL)
 
+Nob_Cmd nob_cmd_inline_null(void *first, ...);
+#define nob_cmd_inline(...) nob_cmd_inline_null(NULL, __VA_ARGS__, NULL)
+// TODO: NOB_CMD leaks the command
+#define NOB_CMD(...) nob_cmd_run_sync(nob_cmd_inline(__VA_ARGS__))
+
 // Free all the memory allocated by command arguments
 #define nob_cmd_free(cmd) NOB_FREE(cmd.items)
 
@@ -186,6 +191,80 @@ void *nob_temp_alloc(size_t size);
 void nob_temp_reset(void);
 size_t nob_temp_save(void);
 void nob_temp_rewind(size_t checkpoint);
+
+int is_path1_modified_after_path2(const char *path1, const char *path2);
+bool nob_rename(const char *old_path, const char *new_path);
+
+// TODO: add MinGW support for Go Rebuild Urself™ Technology
+#ifndef NOB_REBUILD_URSELF
+#  if _WIN32
+#    if defined(__GNUC__)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("gcc", "-o", binary_path, source_path)
+#    elif defined(__clang__)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("clang", "-o", binary_path, source_path)
+#    elif defined(_MSC_VER)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("cl.exe", source_path)
+#    endif
+#  else
+#    define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("cc", "-o", binary_path, source_path)
+#  endif
+#endif
+
+// Go Rebuild Urself™ Technology
+//
+//   How to use it:
+//     int main(int argc, char** argv) {
+//         GO_REBUILD_URSELF(argc, argv);
+//         // actual work
+//         return 0;
+//     }
+//
+//   After your added this macro every time you run ./nobuild it will detect
+//   that you modified its original source code and will try to rebuild itself
+//   before doing any actual work. So you only need to bootstrap your build system
+//   once.
+//
+//   The modification is detected by comparing the last modified times of the executable
+//   and its source code. The same way the make utility usually does it.
+//
+//   The rebuilding is done by using the REBUILD_URSELF macro which you can redefine
+//   if you need a special way of bootstraping your build system. (which I personally
+//   do not recommend since the whole idea of nobuild is to keep the process of bootstrapping
+//   as simple as possible and doing all of the actual work inside of the nobuild)
+//
+#define NOB_GO_REBUILD_URSELF(argc, argv)                                                    \
+    do {                                                                                     \
+        const char *source_path = __FILE__;                                                  \
+        assert(argc >= 1);                                                                   \
+        const char *binary_path = argv[0];                                                   \
+                                                                                             \
+        int rebuild_is_needed = nob_is_path1_modified_after_path2(source_path, binary_path); \
+        if (rebuild_is_needed < 0) exit(1);                                                  \
+        if (rebuild_is_needed) {                                                             \
+            Nob_String_Builder sb = {0};                                                     \
+            nob_sb_append_cstr(&sb, binary_path);                                            \
+            nob_sb_append_cstr(&sb, ".old");                                                 \
+            nob_sb_append_null(&sb);                                                         \
+                                                                                             \
+            if (!nob_rename(binary_path, sb.items)) exit(1);                                 \
+            if (!NOB_REBUILD_URSELF(binary_path, source_path)) {                             \
+                nob_rename(sb.items, binary_path);                                           \
+                exit(1);                                                                     \
+            }                                                                                \
+                                                                                             \
+            Nob_Cmd cmd = {0};                                                               \
+            nob_da_append_many(&cmd, argv, argc);                                            \
+            nob_cmd_log(cmd);                                                                \
+            if (!nob_cmd_run_sync(cmd)) {                                                    \
+                nob_rename(sb.items, binary_path);                                           \
+                exit(1);                                                                     \
+            }                                                                                \
+                                                                                             \
+            exit(0);                                                                         \
+        }                                                                                    \
+    } while(0)
+// The implementation idea is stolen from https://github.com/zhiayang/nabs
+
 
 // minirent.h HEADER BEGIN ////////////////////////////////////////
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
@@ -259,7 +338,7 @@ bool nob_mkdir_if_not_exists(const char *path)
 #endif
     if (result < 0) {
         if (errno == EEXIST) {
-            nob_log(NOB_WARNING, "directory `%s` already exists", path);
+            nob_log(NOB_INFO, "directory `%s` already exists", path);
             return true;
         }
         nob_log(NOB_ERROR, "could not create directory `%s`: %s", path, strerror(errno));
@@ -667,6 +746,88 @@ size_t nob_temp_save(void)
 void nob_temp_rewind(size_t checkpoint)
 {
     nob_temp_size = checkpoint;
+}
+
+int nob_is_path1_modified_after_path2(const char *path1, const char *path2)
+{
+#ifdef _WIN32
+    FILETIME path1_time, path2_time;
+
+    HANDLE path1_fd = CreateFile(path1, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+    if (path1_fd == INVALID_HANDLE_VALUE) {
+        nob_log(NOB_ERROR, "Could not open file %s: %lu", path1, GetLastError());
+        return -1;
+    }
+    if (!GetFileTime(path1_fd, NULL, NULL, &path1_time)) {
+        nob_log(NOB_ERROR, "Could not get time of %s: %lu", path1, GetLastError());
+        return -1;
+    }
+    CloseHandle(path1_fd);
+
+    HANDLE path2_fd = CreateFile(path2, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+    if (path2_fd == INVALID_HANDLE_VALUE) {
+        nob_log(NOB_ERROR, "Could not open file %s: %lu", path2, GetLastError());
+        return -1;
+    }
+    if (!GetFileTime(path2_fd, NULL, NULL, &path2_time)) {
+        nob_log(NOB_ERROR, "Could not get time of %s: %lu", path2, GetLastError());
+        return -1;
+    }
+    CloseHandle(path2_fd);
+
+    return CompareFileTime(&path1_time, &path2_time) == 1;
+#else
+    struct stat statbuf = {0};
+
+    if (stat(path1, &statbuf) < 0) {
+        nob_log(NOB_ERROR, "Could not stat %s: %s\n", path1, strerror(errno));
+        return -1;
+    }
+    int path1_time = statbuf.st_mtime;
+
+    if (stat(path2, &statbuf) < 0) {
+        nob_log(NOB_ERROR, "could not stat %s: %s\n", path2, strerror(errno));
+        return -1;
+    }
+    int path2_time = statbuf.st_mtime;
+
+    return path1_time > path2_time;
+#endif
+}
+
+bool nob_rename(const char *old_path, const char *new_path)
+{
+    nob_log(NOB_INFO, "renaming %s -> %s", old_path, new_path);
+#ifdef _WIN32
+    if (!MoveFileEx(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) {
+        nob_log(NOB_ERROR, "could not rename %s to %s: %lu", old_path, new_path, GetLastError());
+        return false;
+    }
+#else
+    if (rename(old_path, new_path) < 0) {
+        nob_log(NOB_ERROR, "could not rename %s to %s: %s", old_path, new_path, strerror(errno));
+        return false;
+    }
+#endif // _WIN32
+    return true;
+}
+
+Nob_Cmd nob_cmd_inline_null(void *first, ...)
+{
+    Nob_Cmd cmd = {0};
+
+    va_list args;
+    va_start(args, first);
+
+    const char *arg = va_arg(args, const char*);
+    while (arg != NULL) {
+        nob_da_append(&cmd, arg);
+        arg = va_arg(args, const char*);
+    }
+
+    va_end(args);
+
+    return cmd;
 }
 
 // minirent.h SOURCE BEGIN ////////////////////////////////////////
