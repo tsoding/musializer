@@ -174,9 +174,6 @@ Nob_Cmd nob_cmd_inline_null(void *first, ...);
 // Free all the memory allocated by command arguments
 #define nob_cmd_free(cmd) NOB_FREE(cmd.items)
 
-// Log the command
-void nob_cmd_log(Nob_Cmd cmd);
-
 // Run command asynchronously
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd);
 
@@ -254,7 +251,6 @@ bool nob_rename(const char *old_path, const char *new_path);
                                                                                              \
             Nob_Cmd cmd = {0};                                                               \
             nob_da_append_many(&cmd, argv, argc);                                            \
-            nob_cmd_log(cmd);                                                                \
             if (!nob_cmd_run_sync(cmd)) {                                                    \
                 nob_rename(sb.items, binary_path);                                           \
                 exit(1);                                                                     \
@@ -440,17 +436,14 @@ void nob_cmd_append_null(Nob_Cmd *cmd, ...)
     va_end(args);
 }
 
-void nob_cmd_log(Nob_Cmd cmd)
+Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 {
     Nob_String_Builder sb = {0};
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
     nob_log(NOB_INFO, "CMD: %s", sb.items);
     nob_sb_free(sb);
-}
 
-Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
-{
 #ifdef _WIN32
     // https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 

@@ -74,7 +74,6 @@ bool build_musializer_executable(const char *output_path, Target target)
     musializer_src(&cmd, target);
     link_libraries(&cmd, target);
 
-    nob_cmd_log(cmd);
     bool result = nob_cmd_run_sync(cmd);
     nob_cmd_free(cmd);
     return result;
@@ -131,13 +130,11 @@ int main(int argc, char **argv)
         nob_cmd_append(&cmd, "-resize", "256");
 
         nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
-        nob_cmd_log(cmd);
         if (!nob_cmd_run_sync(cmd)) return 1;
 
         cmd.count -= 1;
 
         nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
-        nob_cmd_log(cmd);
         if (!nob_cmd_run_sync(cmd)) return 1;
     }
     return 0;
