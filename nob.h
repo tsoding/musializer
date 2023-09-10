@@ -257,14 +257,13 @@ int nob_is_path1_modified_after_path2(const char *path1, const char *path2);
         if (rebuild_is_needed) {                                                             \
             Nob_String_Builder sb = {0};                                                     \
             nob_sb_append_cstr(&sb, binary_path);                                            \
-            nob_sb_append_cstr(&sb, ".old");                                                 \
+            nob_sb_append_cstr(&sb, ".new");                                                 \
             nob_sb_append_null(&sb);                                                         \
                                                                                              \
-            if (!nob_rename(binary_path, sb.items)) exit(1);                                 \
-            if (!NOB_REBUILD_URSELF(binary_path, source_path)) {                             \
-                nob_rename(sb.items, binary_path);                                           \
+            if (!NOB_REBUILD_URSELF(sb.items, source_path)) {                                \
                 exit(1);                                                                     \
             }                                                                                \
+            if (!nob_rename(sb.items, binary_path)) exit(1);                                 \
                                                                                              \
             Nob_Cmd cmd = {0};                                                               \
             nob_da_append_many(&cmd, argv, argc);                                            \
