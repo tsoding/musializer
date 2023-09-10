@@ -43,6 +43,9 @@
 #    include <fcntl.h>
 #endif
 
+#define NOB_ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
+#define NOB_ARRAY_GET(array, index) (NOB_ASSERT(index >= 0), NOB_ASSERT(index < NOB_ARRAY_LEN(array)), array[index])
+
 typedef enum {
     NOB_INFO,
     NOB_WARNING,
