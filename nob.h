@@ -451,11 +451,13 @@ void nob_cmd_append_null(Nob_Cmd *cmd, ...)
 
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 {
-    Nob_String_Builder sb = {0};
-    nob_cmd_render(cmd, &sb);
-    nob_sb_append_null(&sb);
-    nob_log(NOB_INFO, "CMD: %s", sb.items);
-    nob_sb_free(sb);
+    {
+        Nob_String_Builder sb = {0};
+        nob_cmd_render(cmd, &sb);
+        nob_sb_append_null(&sb);
+        nob_log(NOB_INFO, "CMD: %s", sb.items);
+        nob_sb_free(sb);
+    }
 
 #ifdef _WIN32
     // https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
