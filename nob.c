@@ -98,91 +98,6 @@ bool dump_config_to_file(const char *path, Config config)
     return true;
 }
 
-typedef struct {
-    size_t count;
-    const char *data;
-} String_View;
-
-String_View sv_chop_by_delim(String_View *sv, char delim);
-String_View sv_trim(String_View sv);
-bool sv_eq(String_View a, String_View b);
-String_View sv_from_cstr(const char *cstr);
-String_View sv_from_parts(const char *data, size_t count);
-
-// printf macros for String_View
-#define SV_Fmt "%.*s"
-#define SV_Arg(sv) (int) (sv).count, (sv).data
-// USAGE:
-//   String_View name = ...;
-//   printf("Name: "SV_Fmt"\n", SV_Arg(name));
-
-String_View sv_chop_by_delim(String_View *sv, char delim)
-{
-    size_t i = 0;
-    while (i < sv->count && sv->data[i] != delim) {
-        i += 1;
-    }
-
-    String_View result = sv_from_parts(sv->data, i);
-
-    if (i < sv->count) {
-        sv->count -= i + 1;
-        sv->data  += i + 1;
-    } else {
-        sv->count -= i;
-        sv->data  += i;
-    }
-
-    return result;
-}
-
-String_View sv_from_parts(const char *data, size_t count)
-{
-    String_View sv;
-    sv.count = count;
-    sv.data = data;
-    return sv;
-}
-
-String_View sv_trim_left(String_View sv)
-{
-    size_t i = 0;
-    while (i < sv.count && isspace(sv.data[i])) {
-        i += 1;
-    }
-
-    return sv_from_parts(sv.data + i, sv.count - i);
-}
-
-String_View sv_trim_right(String_View sv)
-{
-    size_t i = 0;
-    while (i < sv.count && isspace(sv.data[sv.count - 1 - i])) {
-        i += 1;
-    }
-
-    return sv_from_parts(sv.data, sv.count - i);
-}
-
-String_View sv_trim(String_View sv)
-{
-    return sv_trim_right(sv_trim_left(sv));
-}
-
-String_View sv_from_cstr(const char *cstr)
-{
-    return sv_from_parts(cstr, strlen(cstr));
-}
-
-bool sv_eq(String_View a, String_View b)
-{
-    if (a.count != b.count) {
-        return false;
-    } else {
-        return memcmp(a.data, b.data, a.count) == 0;
-    }
-}
-
 bool load_config_from_file(const char *path, Config *config)
 {
     bool result = true;
@@ -190,20 +105,20 @@ bool load_config_from_file(const char *path, Config *config)
 
     if (!nob_read_entire_file(path, &sb)) nob_return_defer(false);
 
-    String_View content = {
+    Nob_String_View content = {
         .data = sb.items,
         .count = sb.count,
     };
 
     for (size_t row = 0; content.count > 0; ++row) {
-        String_View line = sv_chop_by_delim(&content, '\n');
-        String_View key = sv_trim(sv_chop_by_delim(&line, '='));
-        String_View value = sv_trim(line);
+        Nob_String_View line = nob_sv_chop_by_delim(&content, '\n');
+        Nob_String_View key = nob_sv_trim(nob_sv_chop_by_delim(&line, '='));
+        Nob_String_View value = nob_sv_trim(line);
 
-        if (sv_eq(key, sv_from_cstr("target"))) {
+        if (nob_sv_eq(key, nob_sv_from_cstr("target"))) {
             bool found = false;
             for (size_t t = 0; !found && t < COUNT_TARGETS; ++t) {
-                if (sv_eq(value, sv_from_cstr(target_names[t]))) {
+                if (nob_sv_eq(value, nob_sv_from_cstr(target_names[t]))) {
                     config->target = t;
                     found = true;
                 }
@@ -212,10 +127,10 @@ bool load_config_from_file(const char *path, Config *config)
                 nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row, SV_Arg(value));
                 nob_return_defer(false);
             }
-        } else if (sv_eq(key, sv_from_cstr("hotreload"))) {
-            if (sv_eq(value, sv_from_cstr("true"))) {
+        } else if (nob_sv_eq(key, nob_sv_from_cstr("hotreload"))) {
+            if (nob_sv_eq(value, nob_sv_from_cstr("true"))) {
                 config->hotreload = true;
-            } else if (sv_eq(value, sv_from_cstr("false"))) {
+            } else if (nob_sv_eq(value, nob_sv_from_cstr("false"))) {
                 config->hotreload = false;
             } else {
                 nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row, SV_Arg(value));
@@ -426,7 +341,10 @@ int main(int argc, char **argv)
 
     if (strcmp(subcommand, "build") == 0) {
         Config config = {0};
-        if (!load_config_from_file("./build/build.conf", &config)) return 1;
+        if (!load_config_from_file("./build/build.conf", &config)) {
+            nob_log(NOB_ERROR, "You may want to probably call `%s config` first", program);
+            return 1;
+        }
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");

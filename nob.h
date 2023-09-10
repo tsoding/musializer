@@ -274,6 +274,28 @@ int nob_is_path1_modified_after_path2(const char *path1, const char *path2);
     } while(0)
 // The implementation idea is stolen from https://github.com/zhiayang/nabs
 
+typedef struct {
+    size_t count;
+    const char *data;
+} Nob_String_View;
+
+Nob_String_View nob_sv_chop_by_delim(Nob_String_View *sv, char delim);
+Nob_String_View nob_sv_trim(Nob_String_View sv);
+bool nob_sv_eq(Nob_String_View a, Nob_String_View b);
+Nob_String_View nob_sv_from_cstr(const char *cstr);
+Nob_String_View nob_sv_from_parts(const char *data, size_t count);
+
+// printf macros for String_View
+#ifndef SV_Fmt
+#define SV_Fmt "%.*s"
+#endif // SV_Fmt
+#ifndef SV_Arg
+#define SV_Arg(sv) (int) (sv).count, (sv).data
+#endif // SV_Arg
+// USAGE:
+//   String_View name = ...;
+//   printf("Name: "SV_Fmt"\n", SV_Arg(name));
+
 
 // minirent.h HEADER BEGIN ////////////////////////////////////////
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
@@ -642,11 +664,11 @@ bool nob_write_entire_file(const char *path, void *data, size_t size)
     }
 
     //           len
-    //           v 
+    //           v
     // aaaaaaaaaa
     //     ^
     //     data
-    
+
     char *buf = data;
     while (size > 0) {
         size_t n = fwrite(buf, 1, size, f);
@@ -896,6 +918,73 @@ defer:
     NOB_FREE(buf);
     if (f) fclose(f);
     return result;
+}
+
+Nob_String_View nob_sv_chop_by_delim(Nob_String_View *sv, char delim)
+{
+    size_t i = 0;
+    while (i < sv->count && sv->data[i] != delim) {
+        i += 1;
+    }
+
+    Nob_String_View result = nob_sv_from_parts(sv->data, i);
+
+    if (i < sv->count) {
+        sv->count -= i + 1;
+        sv->data  += i + 1;
+    } else {
+        sv->count -= i;
+        sv->data  += i;
+    }
+
+    return result;
+}
+
+Nob_String_View nob_sv_from_parts(const char *data, size_t count)
+{
+    Nob_String_View sv;
+    sv.count = count;
+    sv.data = data;
+    return sv;
+}
+
+Nob_String_View nob_sv_trim_left(Nob_String_View sv)
+{
+    size_t i = 0;
+    while (i < sv.count && isspace(sv.data[i])) {
+        i += 1;
+    }
+
+    return nob_sv_from_parts(sv.data + i, sv.count - i);
+}
+
+Nob_String_View nob_sv_trim_right(Nob_String_View sv)
+{
+    size_t i = 0;
+    while (i < sv.count && isspace(sv.data[sv.count - 1 - i])) {
+        i += 1;
+    }
+
+    return nob_sv_from_parts(sv.data, sv.count - i);
+}
+
+Nob_String_View nob_sv_trim(Nob_String_View sv)
+{
+    return nob_sv_trim_right(nob_sv_trim_left(sv));
+}
+
+Nob_String_View nob_sv_from_cstr(const char *cstr)
+{
+    return nob_sv_from_parts(cstr, strlen(cstr));
+}
+
+bool nob_sv_eq(Nob_String_View a, Nob_String_View b)
+{
+    if (a.count != b.count) {
+        return false;
+    } else {
+        return memcmp(a.data, b.data, a.count) == 0;
+    }
 }
 
 // minirent.h SOURCE BEGIN ////////////////////////////////////////
