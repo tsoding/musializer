@@ -10,73 +10,195 @@
 #include "nob.h"
 
 typedef enum {
-    TARGET_LINUX,
+    TARGET_POSIX,
     TARGET_WIN32,
+    COUNT_TARGETS
 } Target;
 
-const char *target_show(Target target)
-{
-    if (target == TARGET_LINUX) return "TARGET_LINUX";
-    if (target == TARGET_WIN32) return "TARGET_WIN32";
-    NOB_ASSERT(0 && "unreachable");
-    return "(unknown)";
-}
+const char *target_names[] = {
+    [TARGET_POSIX]     = "posix",
+    [TARGET_WIN32]     = "win32",
+};
+static_assert(2 == COUNT_TARGETS, "Amount of targets have changed");
 
-void target_compiler(Nob_Cmd *cmd, Target target)
+void cc(Nob_Cmd *cmd, Target target)
 {
-    if (target == TARGET_WIN32) {
-        nob_cmd_append(cmd, "x86_64-w64-mingw32-gcc");
-    } else {
-        nob_cmd_append(cmd, "clang");
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "clang");
+            break;
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "x86_64-w64-mingw32-gcc");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
     }
 }
 
-void cflags(Nob_Cmd *cmd, Target target)
+void common_cflags(Nob_Cmd *cmd, Target target)
 {
-    nob_cmd_append(cmd, "-Wall", "-Wextra", "-ggdb");
-    if (target == TARGET_WIN32) {
-        nob_cmd_append(cmd, "-I./raylib-4.5.0_win64_mingw-w64/include");
-    } else {
-        nob_cmd_append(cmd, "-I/home/streamer/opt/raylib/include");
+    switch (target) {
+        case TARGET_POSIX:
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "-Wall", "-Wextra", "-ggdb");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
     }
 }
 
-void musializer_src(Nob_Cmd *cmd, Target target)
+void raylib_cflags(Nob_Cmd *cmd, Target target)
+{
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "-I./raylib/raylib-4.5.0_linux_amd64/include/");
+            break;
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "-I./raylib/raylib-4.5.0_win64_mingw-w64/include");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
+    }
+}
+
+void full_musializer_source(Nob_Cmd *cmd, Target target)
 {
     nob_cmd_append(cmd, "./src/musializer.c");
     nob_cmd_append(cmd, "./src/plug.c");
     nob_cmd_append(cmd, "./src/separate_translation_unit_for_miniaudio.c");
-    if (target == TARGET_WIN32) {
-        nob_cmd_append(cmd, "./src/ffmpeg_windows.c");
-    } else {
-        nob_cmd_append(cmd, "./src/ffmpeg_linux.c");
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "./src/ffmpeg_linux.c");
+            break;
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "./src/ffmpeg_windows.c");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
     }
 }
 
-void link_libraries(Nob_Cmd *cmd, Target target)
+void hotreloaded_musializer_source(Nob_Cmd *cmd, Target target)
 {
-    if (target == TARGET_WIN32) {
-        nob_cmd_append(cmd, "-L./raylib-4.5.0_win64_mingw-w64/lib/");
-        nob_cmd_append(cmd, "-lraylib", "-lwinmm", "-lgdi32", "-static");
-    } else {
-        nob_cmd_append(cmd, "-L/home/streamer/opt/raylib/lib/");
-        nob_cmd_append(cmd, "-lraylib", "-lm", "-ldl", "-lpthread");
+    nob_cmd_append(cmd, "./src/musializer.c");
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "./src/hotreload_linux.c");
+            break;
+        case TARGET_WIN32:
+            NOB_ASSERT(0 && "Unreachable. Hotreloading on Windows is not supported yet");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
     }
 }
 
-bool build_musializer_executable(const char *output_path, Target target)
+void plug_dll_source(Nob_Cmd *cmd, Target target)
 {
+    nob_cmd_append(cmd, "./src/plug.c");
+    nob_cmd_append(cmd, "./src/separate_translation_unit_for_miniaudio.c");
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "./src/ffmpeg_linux.c");
+            break;
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "./src/ffmpeg_windows.c");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
+    }
+}
+
+void link_libraries_static(Nob_Cmd *cmd, Target target)
+{
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "-L./raylib/raylib-4.5.0_linux_amd64/lib/", "-l:libraylib.a");
+            nob_cmd_append(cmd, "-lm", "-ldl", "-lpthread");
+            break;
+        case TARGET_WIN32:
+            nob_cmd_append(cmd, "-L./raylib/raylib-4.5.0_win64_mingw-w64/lib/", "-lraylib");
+            nob_cmd_append(cmd, "-lwinmm", "-lgdi32", "-static");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
+    }
+}
+
+void link_libraries_dynamic(Nob_Cmd *cmd, Target target)
+{
+    switch (target) {
+        case TARGET_POSIX:
+            nob_cmd_append(cmd, "-L./raylib/raylib-4.5.0_linux_amd64/lib/", "-l:libraylib.so");
+            nob_cmd_append(cmd, "-lm", "-ldl", "-lpthread");
+            break;
+        case TARGET_WIN32:
+            NOB_ASSERT(0 && "Unreachable. Hotreloading on Windows is not supported yet");
+            break;
+        default: NOB_ASSERT(0 && "unreachable");
+    }
+}
+
+bool build_musializer_executable(const char *output_path, Target target, bool hotreload)
+{
+    bool result = true;
     Nob_Cmd cmd = {0};
 
-    target_compiler(&cmd, target);
-    cflags(&cmd, target);
-    nob_cmd_append(&cmd, "-o", "./build/musializer");
-    musializer_src(&cmd, target);
-    link_libraries(&cmd, target);
+    switch (target) {
+        case TARGET_POSIX: {
+            if (hotreload) {
+                cc(&cmd, target);
+                common_cflags(&cmd, target);
+                raylib_cflags(&cmd, target);
+                nob_cmd_append(&cmd, "-fPIC", "-shared");
+                nob_cmd_append(&cmd, "-o", "./build/libplug.so");
+                plug_dll_source(&cmd, target);
+                link_libraries_dynamic(&cmd, target);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 
-    bool result = nob_cmd_run_sync(cmd);
+                cmd.count = 0;
+
+                cc(&cmd, target);
+                common_cflags(&cmd, target);
+                raylib_cflags(&cmd, target);
+                nob_cmd_append(&cmd, "-DHOTRELOAD");
+                nob_cmd_append(&cmd, "-o", "./build/musializer");
+                hotreloaded_musializer_source(&cmd, target);
+                link_libraries_dynamic(&cmd, target);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+            } else {
+                cc(&cmd, target);
+                common_cflags(&cmd, target);
+                raylib_cflags(&cmd, target);
+                nob_cmd_append(&cmd, "-o", "./build/musializer");
+                full_musializer_source(&cmd, target);
+                link_libraries_static(&cmd, target);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+            }
+        } break;
+
+        case TARGET_WIN32: {
+            if (hotreload) {
+                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, target));
+                return false;
+            }
+
+            cc(&cmd, target);
+            common_cflags(&cmd, target);
+            raylib_cflags(&cmd, target);
+            nob_cmd_append(&cmd, "-o", "./build/musializer");
+            full_musializer_source(&cmd, target);
+            link_libraries_static(&cmd, target);
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+        } break;
+
+        default: NOB_ASSERT(0 && "unreachable");
+    }
+
+defer:
     nob_cmd_free(cmd);
     return result;
+}
+
+void log_available_targets(Nob_Log_Level level)
+{
+    nob_log(level, "Available targets:");
+    for (size_t i = 0; i < COUNT_TARGETS; ++i) {
+        nob_log(level, "    %s", target_names[i]);
+    }
 }
 
 int main(int argc, char **argv)
@@ -86,11 +208,11 @@ int main(int argc, char **argv)
     const char *program = nob_shift_args(&argc, &argv);
 
     if (argc <= 0) {
-        nob_log(NOB_INFO, "Usage: %s <subcommand>", program);
-        nob_log(NOB_INFO, "Subcommands:");
-        nob_log(NOB_INFO, "    build");
-        nob_log(NOB_INFO, "    logo");
         nob_log(NOB_ERROR, "No subcommand is provided");
+        nob_log(NOB_ERROR, "Usage: %s <subcommand>", program);
+        nob_log(NOB_ERROR, "Subcommands:");
+        nob_log(NOB_ERROR, "    build");
+        nob_log(NOB_ERROR, "    logo");
         return 1;
     }
 
@@ -100,24 +222,48 @@ int main(int argc, char **argv)
 #ifdef _WIN32
         Target target = TARGET_WIN32;
 #else
-        Target target = TARGET_LINUX;
+        Target target = TARGET_POSIX;
 #endif
+        bool hotreload = false;
 
-        if (argc > 0) {
-            const char *subcmd = nob_shift_args(&argc, &argv);
-            if (strcmp(subcmd, "win32") == 0) {
-                target = TARGET_WIN32;
-            } else if (strcmp(subcmd, "linux") == 0) {
-                target = TARGET_LINUX;
+        while (argc > 0) {
+            const char *flag = nob_shift_args(&argc, &argv);
+            if (strcmp(flag, "-t") == 0) {
+                if (argc <= 0) {
+                    nob_log(NOB_ERROR, "No value is provided for flag %s", flag);
+                    log_available_targets(NOB_ERROR);
+                    return 1;
+                }
+
+                const char *value = nob_shift_args(&argc, &argv);
+
+                bool found = false;
+                for (size_t i = 0; !found && i < COUNT_TARGETS; ++i) {
+                    if (strcmp(target_names[i], value) == 0) {
+                        target = i;
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    nob_log(NOB_ERROR, "Unknown target %s", value);
+                    log_available_targets(NOB_ERROR);
+                    return 1;
+                }
+            } else if (strcmp("-h", flag) == 0) {
+                hotreload = true;
             } else {
-                fprintf(stderr, "[ERROR] unknown subcommand %s\n", subcmd);
+                nob_log(NOB_ERROR, "Unknown flag %s", flag);
                 return 1;
             }
         }
 
-        nob_log(NOB_INFO, "TARGET: %s", target_show(target));
+        nob_log(NOB_INFO, "------------------------------");
+        nob_log(NOB_INFO, "Target: %s", NOB_ARRAY_GET(target_names, target));
+        nob_log(NOB_INFO, "Hotreload: %s", hotreload ? "ENABLED" : "DISABLED");
+        nob_log(NOB_INFO, "------------------------------");
         if (!nob_mkdir_if_not_exists("build")) return 1;
-        build_musializer_executable("./build/musializer", target);
+        if (!build_musializer_executable("./build/musializer", target, hotreload)) return 1;
         if (target == TARGET_WIN32) {
             if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
         }
