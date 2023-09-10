@@ -263,11 +263,7 @@ int nob_is_path1_modified_after_path2(const char *path1, const char *path2);
                                                                                              \
             Nob_Cmd cmd = {0};                                                               \
             nob_da_append_many(&cmd, argv, argc);                                            \
-            if (!nob_cmd_run_sync(cmd)) {                                                    \
-                nob_rename(sb.items, binary_path);                                           \
-                exit(1);                                                                     \
-            }                                                                                \
-                                                                                             \
+            if (!nob_cmd_run_sync(cmd)) exit(1);                                             \
             exit(0);                                                                         \
         }                                                                                    \
     } while(0)
