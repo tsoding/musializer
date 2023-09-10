@@ -37,6 +37,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 #ifdef _WIN32
 #    define WIN32_LEAN_AND_MEAN
@@ -52,7 +53,8 @@
 #endif
 
 #define NOB_ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
-#define NOB_ARRAY_GET(array, index) (NOB_ASSERT(index >= 0), NOB_ASSERT(index < NOB_ARRAY_LEN(array)), array[index])
+#define NOB_ARRAY_GET(array, index) \
+    (NOB_ASSERT(index >= 0), NOB_ASSERT(index < NOB_ARRAY_LEN(array)), array[index])
 
 typedef enum {
     NOB_INFO,
@@ -83,6 +85,7 @@ bool nob_mkdir_if_not_exists(const char *path);
 bool nob_copy_file(const char *src_path, const char *dst_path);
 bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
 bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children);
+bool nob_write_entire_file(const char *path, void *data, size_t size);
 Nob_File_Type nob_get_file_type(const char *path);
 
 #define nob_return_defer(value) do { result = (value); goto defer; } while(0)
@@ -126,6 +129,8 @@ typedef struct {
     size_t count;
     size_t capacity;
 } Nob_String_Builder;
+
+bool nob_read_entire_file(const char *path, Nob_String_Builder *sb);
 
 // Append a sized buffer to a string builder
 #define nob_sb_append_buf(sb, buf, size) nob_da_append_many(sb, buf, size)
@@ -624,6 +629,38 @@ defer:
     return result;
 }
 
+bool nob_write_entire_file(const char *path, void *data, size_t size)
+{
+    bool result = true;
+
+    FILE *f = fopen(path, "wb");
+    if (f == NULL) {
+        nob_log(NOB_ERROR, "Could not open file %s for writing: %s\n", path, strerror(errno));
+        nob_return_defer(false);
+    }
+
+    //           len
+    //           v 
+    // aaaaaaaaaa
+    //     ^
+    //     data
+    
+    char *buf = data;
+    while (size > 0) {
+        size_t n = fwrite(buf, 1, size, f);
+        if (ferror(f)) {
+            nob_log(NOB_ERROR, "Could not write into file %s: %s\n", path, strerror(errno));
+            nob_return_defer(false);
+        }
+        size -= n;
+        buf  += n;
+    }
+
+defer:
+    if (f) fclose(f);
+    return result;
+}
+
 Nob_File_Type nob_get_file_type(const char *path)
 {
 #ifdef _WIN32
@@ -829,6 +866,34 @@ Nob_Cmd nob_cmd_inline_null(void *first, ...)
     va_end(args);
 
     return cmd;
+}
+
+bool nob_read_entire_file(const char *path, Nob_String_Builder *sb)
+{
+    bool result = true;
+    size_t buf_size = 32*1024;
+    char *buf = NOB_REALLOC(NULL, buf_size);
+    NOB_ASSERT(buf != NULL && "Buy more RAM lool!!");
+    FILE *f = fopen(path, "rb");
+    if (f == NULL) {
+        nob_log(NOB_ERROR, "Could not open %s for reading: %s", path, strerror(errno));
+        nob_return_defer(false);
+    }
+
+    size_t n = fread(buf, 1, buf_size, f);
+    while (n > 0) {
+        nob_sb_append_buf(sb, buf, n);
+        n = fread(buf, 1, buf_size, f);
+    }
+    if (ferror(f)) {
+        nob_log(NOB_ERROR, "Could not read %s: %s\n", path, strerror(errno));
+        nob_return_defer(false);
+    }
+
+defer:
+    NOB_FREE(buf);
+    if (f) fclose(f);
+    return result;
 }
 
 // minirent.h SOURCE BEGIN ////////////////////////////////////////

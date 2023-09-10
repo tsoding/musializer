@@ -21,6 +21,217 @@ const char *target_names[] = {
 };
 static_assert(2 == COUNT_TARGETS, "Amount of targets have changed");
 
+void log_available_targets(Nob_Log_Level level)
+{
+    nob_log(level, "Available targets:");
+    for (size_t i = 0; i < COUNT_TARGETS; ++i) {
+        nob_log(level, "    %s", target_names[i]);
+    }
+}
+
+typedef struct {
+    Target target;
+    bool hotreload;
+} Config;
+
+bool parse_config_from_args(int argc, char **argv, Config *config)
+{
+    memset(config, 0, sizeof(Config));
+#ifdef _WIN32
+    config->target = TARGET_WIN32;
+#else
+    config->target = TARGET_POSIX;
+#endif
+
+    while (argc > 0) {
+        const char *flag = nob_shift_args(&argc, &argv);
+        if (strcmp(flag, "-t") == 0) {
+            if (argc <= 0) {
+                nob_log(NOB_ERROR, "No value is provided for flag %s", flag);
+                log_available_targets(NOB_ERROR);
+                return false;
+            }
+
+            const char *value = nob_shift_args(&argc, &argv);
+
+            bool found = false;
+            for (size_t i = 0; !found && i < COUNT_TARGETS; ++i) {
+                if (strcmp(target_names[i], value) == 0) {
+                    config->target = i;
+                    found = true;
+                }
+            }
+
+            if (!found) {
+                nob_log(NOB_ERROR, "Unknown target %s", value);
+                log_available_targets(NOB_ERROR);
+                return false;
+            }
+        } else if (strcmp("-h", flag) == 0) {
+            config->hotreload = true;
+        } else {
+            nob_log(NOB_ERROR, "Unknown flag %s", flag);
+            return false;
+        }
+    }
+    return true;
+}
+
+void log_config(Config config)
+{
+    nob_log(NOB_INFO, "Target: %s", NOB_ARRAY_GET(target_names, config.target));
+    nob_log(NOB_INFO, "Hotreload: %s", config.hotreload ? "ENABLED" : "DISABLED");
+}
+
+bool dump_config_to_file(const char *path, Config config)
+{
+    char line[256];
+
+    Nob_String_Builder sb = {0};
+
+    snprintf(line, sizeof(line), "target = %s\n", NOB_ARRAY_GET(target_names, config.target));
+    nob_sb_append_cstr(&sb, line);
+    snprintf(line, sizeof(line), "hotreload = %s\n", config.hotreload ? "true" : "false");
+    nob_sb_append_cstr(&sb, line);
+
+    if (!nob_write_entire_file(path, sb.items, sb.count)) return false;
+    return true;
+}
+
+typedef struct {
+    size_t count;
+    const char *data;
+} String_View;
+
+String_View sv_chop_by_delim(String_View *sv, char delim);
+String_View sv_trim(String_View sv);
+bool sv_eq(String_View a, String_View b);
+String_View sv_from_cstr(const char *cstr);
+String_View sv_from_parts(const char *data, size_t count);
+
+// printf macros for String_View
+#define SV_Fmt "%.*s"
+#define SV_Arg(sv) (int) (sv).count, (sv).data
+// USAGE:
+//   String_View name = ...;
+//   printf("Name: "SV_Fmt"\n", SV_Arg(name));
+
+String_View sv_chop_by_delim(String_View *sv, char delim)
+{
+    size_t i = 0;
+    while (i < sv->count && sv->data[i] != delim) {
+        i += 1;
+    }
+
+    String_View result = sv_from_parts(sv->data, i);
+
+    if (i < sv->count) {
+        sv->count -= i + 1;
+        sv->data  += i + 1;
+    } else {
+        sv->count -= i;
+        sv->data  += i;
+    }
+
+    return result;
+}
+
+String_View sv_from_parts(const char *data, size_t count)
+{
+    String_View sv;
+    sv.count = count;
+    sv.data = data;
+    return sv;
+}
+
+String_View sv_trim_left(String_View sv)
+{
+    size_t i = 0;
+    while (i < sv.count && isspace(sv.data[i])) {
+        i += 1;
+    }
+
+    return sv_from_parts(sv.data + i, sv.count - i);
+}
+
+String_View sv_trim_right(String_View sv)
+{
+    size_t i = 0;
+    while (i < sv.count && isspace(sv.data[sv.count - 1 - i])) {
+        i += 1;
+    }
+
+    return sv_from_parts(sv.data, sv.count - i);
+}
+
+String_View sv_trim(String_View sv)
+{
+    return sv_trim_right(sv_trim_left(sv));
+}
+
+String_View sv_from_cstr(const char *cstr)
+{
+    return sv_from_parts(cstr, strlen(cstr));
+}
+
+bool sv_eq(String_View a, String_View b)
+{
+    if (a.count != b.count) {
+        return false;
+    } else {
+        return memcmp(a.data, b.data, a.count) == 0;
+    }
+}
+
+bool load_config_from_file(const char *path, Config *config)
+{
+    bool result = true;
+    Nob_String_Builder sb = {0};
+
+    if (!nob_read_entire_file(path, &sb)) nob_return_defer(false);
+
+    String_View content = {
+        .data = sb.items,
+        .count = sb.count,
+    };
+
+    for (size_t row = 0; content.count > 0; ++row) {
+        String_View line = sv_chop_by_delim(&content, '\n');
+        String_View key = sv_trim(sv_chop_by_delim(&line, '='));
+        String_View value = sv_trim(line);
+
+        if (sv_eq(key, sv_from_cstr("target"))) {
+            bool found = false;
+            for (size_t t = 0; !found && t < COUNT_TARGETS; ++t) {
+                if (sv_eq(value, sv_from_cstr(target_names[t]))) {
+                    config->target = t;
+                    found = true;
+                }
+            }
+            if (!found) {
+                nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row, SV_Arg(value));
+                nob_return_defer(false);
+            }
+        } else if (sv_eq(key, sv_from_cstr("hotreload"))) {
+            if (sv_eq(value, sv_from_cstr("true"))) {
+                config->hotreload = true;
+            } else if (sv_eq(value, sv_from_cstr("false"))) {
+                config->hotreload = false;
+            } else {
+                nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row, SV_Arg(value));
+                nob_return_defer(false);
+            }
+        } else {
+            nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row, SV_Arg(key));
+            nob_return_defer(false);
+        }
+    }
+
+defer:
+    nob_sb_free(sb);
+    return result;
+}
+
 void cc(Nob_Cmd *cmd, Target target)
 {
     switch (target) {
@@ -132,56 +343,56 @@ void link_libraries_dynamic(Nob_Cmd *cmd, Target target)
     }
 }
 
-bool build_musializer_executable(const char *output_path, Target target, bool hotreload)
+bool build_musializer_executable(const char *output_path, Config config)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
 
-    switch (target) {
+    switch (config.target) {
         case TARGET_POSIX: {
-            if (hotreload) {
-                cc(&cmd, target);
-                common_cflags(&cmd, target);
-                raylib_cflags(&cmd, target);
+            if (config.hotreload) {
+                cc(&cmd, config.target);
+                common_cflags(&cmd, config.target);
+                raylib_cflags(&cmd, config.target);
                 nob_cmd_append(&cmd, "-fPIC", "-shared");
                 nob_cmd_append(&cmd, "-o", "./build/libplug.so");
-                plug_dll_source(&cmd, target);
-                link_libraries_dynamic(&cmd, target);
+                plug_dll_source(&cmd, config.target);
+                link_libraries_dynamic(&cmd, config.target);
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 
                 cmd.count = 0;
 
-                cc(&cmd, target);
-                common_cflags(&cmd, target);
-                raylib_cflags(&cmd, target);
+                cc(&cmd, config.target);
+                common_cflags(&cmd, config.target);
+                raylib_cflags(&cmd, config.target);
                 nob_cmd_append(&cmd, "-DHOTRELOAD");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
-                hotreloaded_musializer_source(&cmd, target);
-                link_libraries_dynamic(&cmd, target);
+                hotreloaded_musializer_source(&cmd, config.target);
+                link_libraries_dynamic(&cmd, config.target);
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             } else {
-                cc(&cmd, target);
-                common_cflags(&cmd, target);
-                raylib_cflags(&cmd, target);
+                cc(&cmd, config.target);
+                common_cflags(&cmd, config.target);
+                raylib_cflags(&cmd, config.target);
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
-                full_musializer_source(&cmd, target);
-                link_libraries_static(&cmd, target);
+                full_musializer_source(&cmd, config.target);
+                link_libraries_static(&cmd, config.target);
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             }
         } break;
 
         case TARGET_WIN32: {
-            if (hotreload) {
-                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, target));
+            if (config.hotreload) {
+                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
                 return false;
             }
 
-            cc(&cmd, target);
-            common_cflags(&cmd, target);
-            raylib_cflags(&cmd, target);
+            cc(&cmd, config.target);
+            common_cflags(&cmd, config.target);
+            raylib_cflags(&cmd, config.target);
             nob_cmd_append(&cmd, "-o", "./build/musializer");
-            full_musializer_source(&cmd, target);
-            link_libraries_static(&cmd, target);
+            full_musializer_source(&cmd, config.target);
+            link_libraries_static(&cmd, config.target);
             if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
         } break;
 
@@ -191,14 +402,6 @@ bool build_musializer_executable(const char *output_path, Target target, bool ho
 defer:
     nob_cmd_free(cmd);
     return result;
-}
-
-void log_available_targets(Nob_Log_Level level)
-{
-    nob_log(level, "Available targets:");
-    for (size_t i = 0; i < COUNT_TARGETS; ++i) {
-        nob_log(level, "    %s", target_names[i]);
-    }
 }
 
 int main(int argc, char **argv)
@@ -212,62 +415,33 @@ int main(int argc, char **argv)
         nob_log(NOB_ERROR, "Usage: %s <subcommand>", program);
         nob_log(NOB_ERROR, "Subcommands:");
         nob_log(NOB_ERROR, "    build");
+        nob_log(NOB_ERROR, "    config");
         nob_log(NOB_ERROR, "    logo");
         return 1;
     }
 
     const char *subcommand = nob_shift_args(&argc, &argv);
 
+    if (!nob_mkdir_if_not_exists("build")) return 1;
+
     if (strcmp(subcommand, "build") == 0) {
-#ifdef _WIN32
-        Target target = TARGET_WIN32;
-#else
-        Target target = TARGET_POSIX;
-#endif
-        bool hotreload = false;
-
-        while (argc > 0) {
-            const char *flag = nob_shift_args(&argc, &argv);
-            if (strcmp(flag, "-t") == 0) {
-                if (argc <= 0) {
-                    nob_log(NOB_ERROR, "No value is provided for flag %s", flag);
-                    log_available_targets(NOB_ERROR);
-                    return 1;
-                }
-
-                const char *value = nob_shift_args(&argc, &argv);
-
-                bool found = false;
-                for (size_t i = 0; !found && i < COUNT_TARGETS; ++i) {
-                    if (strcmp(target_names[i], value) == 0) {
-                        target = i;
-                        found = true;
-                    }
-                }
-
-                if (!found) {
-                    nob_log(NOB_ERROR, "Unknown target %s", value);
-                    log_available_targets(NOB_ERROR);
-                    return 1;
-                }
-            } else if (strcmp("-h", flag) == 0) {
-                hotreload = true;
-            } else {
-                nob_log(NOB_ERROR, "Unknown flag %s", flag);
-                return 1;
-            }
-        }
-
+        Config config = {0};
+        if (!load_config_from_file("./build/build.conf", &config)) return 1;
         nob_log(NOB_INFO, "------------------------------");
-        nob_log(NOB_INFO, "Target: %s", NOB_ARRAY_GET(target_names, target));
-        nob_log(NOB_INFO, "Hotreload: %s", hotreload ? "ENABLED" : "DISABLED");
+        log_config(config);
         nob_log(NOB_INFO, "------------------------------");
-        if (!nob_mkdir_if_not_exists("build")) return 1;
-        if (!build_musializer_executable("./build/musializer", target, hotreload)) return 1;
-        if (target == TARGET_WIN32) {
+        if (!build_musializer_executable("./build/musializer", config)) return 1;
+        if (config.target == TARGET_WIN32) {
             if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
         }
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
+    } else if (strcmp(subcommand, "config") == 0) {
+        Config config = {0};
+        if (!parse_config_from_args(argc, argv, &config)) return 1;
+        nob_log(NOB_INFO, "------------------------------");
+        log_config(config);
+        nob_log(NOB_INFO, "------------------------------");
+        if (!dump_config_to_file("./build/build.conf", config)) return 1;
     } else if (strcmp(subcommand, "logo") == 0) {
         Nob_Cmd cmd = {0};
         nob_cmd_append(&cmd, "convert");
