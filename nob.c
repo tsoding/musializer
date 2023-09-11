@@ -89,13 +89,14 @@ bool dump_config_to_file(const char *path, Config config)
 
     Nob_String_Builder sb = {0};
 
+    nob_log(NOB_INFO, "Saving configuration to %s", path);
+
     snprintf(line, sizeof(line), "target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target));
     nob_sb_append_cstr(&sb, line);
     snprintf(line, sizeof(line), "hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false");
     nob_sb_append_cstr(&sb, line);
 
     if (!nob_write_entire_file(path, sb.items, sb.count)) return false;
-    nob_log(NOB_INFO, "Saved configuration to %s", path);
     return true;
 }
 
@@ -103,6 +104,8 @@ bool load_config_from_file(const char *path, Config *config)
 {
     bool result = true;
     Nob_String_Builder sb = {0};
+
+    nob_log(NOB_INFO, "Loading configuration from %s", path);
 
     if (!nob_read_entire_file(path, &sb)) nob_return_defer(false);
 
@@ -127,7 +130,8 @@ bool load_config_from_file(const char *path, Config *config)
                 }
             }
             if (!found) {
-                nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row, SV_Arg(value));
+                nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row + 1, SV_Arg(value));
+                log_available_targets(NOB_ERROR);
                 nob_return_defer(false);
             }
         } else if (nob_sv_eq(key, nob_sv_from_cstr("hotreload"))) {
@@ -136,16 +140,15 @@ bool load_config_from_file(const char *path, Config *config)
             } else if (nob_sv_eq(value, nob_sv_from_cstr("false"))) {
                 config->hotreload = false;
             } else {
-                nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row, SV_Arg(value));
+                nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row + 1, SV_Arg(value));
+                nob_log(NOB_ERROR, "Expected `true` or `false`");
                 nob_return_defer(false);
             }
         } else {
-            nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row, SV_Arg(key));
+            nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row + 1, SV_Arg(key));
             nob_return_defer(false);
         }
     }
-
-    nob_log(NOB_INFO, "Loaded configuration from %s", path);
 
 defer:
     nob_sb_free(sb);
