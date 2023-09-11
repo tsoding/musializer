@@ -95,6 +95,7 @@ bool dump_config_to_file(const char *path, Config config)
     nob_sb_append_cstr(&sb, line);
 
     if (!nob_write_entire_file(path, sb.items, sb.count)) return false;
+    nob_log(NOB_INFO, "Saved configuration to %s", path);
     return true;
 }
 
@@ -141,6 +142,8 @@ bool load_config_from_file(const char *path, Config *config)
             nob_return_defer(false);
         }
     }
+
+    nob_log(NOB_INFO, "Loaded configuration from %s", path);
 
 defer:
     nob_sb_free(sb);
