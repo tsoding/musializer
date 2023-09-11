@@ -112,7 +112,9 @@ bool load_config_from_file(const char *path, Config *config)
     };
 
     for (size_t row = 0; content.count > 0; ++row) {
-        Nob_String_View line = nob_sv_chop_by_delim(&content, '\n');
+        Nob_String_View line = nob_sv_trim(nob_sv_chop_by_delim(&content, '\n'));
+        if (line.count == 0) continue;
+
         Nob_String_View key = nob_sv_trim(nob_sv_chop_by_delim(&line, '='));
         Nob_String_View value = nob_sv_trim(line);
 
@@ -339,7 +341,6 @@ int main(int argc, char **argv)
     }
 
     const char *subcommand = nob_shift_args(&argc, &argv);
-
 
     if (strcmp(subcommand, "build") == 0) {
         Config config = {0};
