@@ -89,9 +89,9 @@ bool dump_config_to_file(const char *path, Config config)
 
     Nob_String_Builder sb = {0};
 
-    snprintf(line, sizeof(line), "target = %s\n", NOB_ARRAY_GET(target_names, config.target));
+    snprintf(line, sizeof(line), "target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target));
     nob_sb_append_cstr(&sb, line);
-    snprintf(line, sizeof(line), "hotreload = %s\n", config.hotreload ? "true" : "false");
+    snprintf(line, sizeof(line), "hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false");
     nob_sb_append_cstr(&sb, line);
 
     if (!nob_write_entire_file(path, sb.items, sb.count)) return false;
