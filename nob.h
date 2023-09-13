@@ -213,7 +213,7 @@ void nob_temp_rewind(size_t checkpoint);
 
 int is_path1_modified_after_path2(const char *path1, const char *path2);
 bool nob_rename(const char *old_path, const char *new_path);
-int nob_is_path1_modified_after_path2(const char *path1, const char *path2);
+int nob_needs_rebuild(const char *path1, const char *path2);
 
 // TODO: add MinGW support for Go Rebuild Urself™ Technology
 #ifndef NOB_REBUILD_URSELF
@@ -258,7 +258,7 @@ int nob_is_path1_modified_after_path2(const char *path1, const char *path2);
         assert(argc >= 1);                                                                   \
         const char *binary_path = argv[0];                                                   \
                                                                                              \
-        int rebuild_is_needed = nob_is_path1_modified_after_path2(source_path, binary_path); \
+        int rebuild_is_needed = nob_needs_rebuild(source_path, binary_path);                 \
         if (rebuild_is_needed < 0) exit(1);                                                  \
         if (rebuild_is_needed) {                                                             \
             Nob_String_Builder sb = {0};                                                     \
@@ -539,6 +539,8 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 
 bool nob_proc_wait(Nob_Proc proc)
 {
+    if (proc == NOB_INVALID_PROC) return false;
+
 #ifdef _WIN32
     DWORD result = WaitForSingleObject(
                        proc,    // HANDLE hHandle,
@@ -816,50 +818,54 @@ void nob_temp_rewind(size_t checkpoint)
     nob_temp_size = checkpoint;
 }
 
-int nob_is_path1_modified_after_path2(const char *path1, const char *path2)
+int nob_needs_rebuild(const char *input_path, const char *output_path)
 {
 #ifdef _WIN32
-    FILETIME path1_time, path2_time;
+    FILETIME input_path_time, output_path_time;
 
-    HANDLE path1_fd = CreateFile(path1, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
-    if (path1_fd == INVALID_HANDLE_VALUE) {
-        nob_log(NOB_ERROR, "Could not open file %s: %lu", path1, GetLastError());
+    HANDLE input_path_fd = CreateFile(input_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+    if (input_path_fd == INVALID_HANDLE_VALUE) {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND) return 1;
+        nob_log(NOB_ERROR, "Could not open file %s: %lu", input_path, GetLastError());
         return -1;
     }
-    if (!GetFileTime(path1_fd, NULL, NULL, &path1_time)) {
-        nob_log(NOB_ERROR, "Could not get time of %s: %lu", path1, GetLastError());
+    if (!GetFileTime(input_path_fd, NULL, NULL, &input_path_time)) {
+        if (GetLastError() == ERROR_FILE_NOT_FOUND) return 1;
+        nob_log(NOB_ERROR, "Could not get time of %s: %lu", input_path, GetLastError());
         return -1;
     }
-    CloseHandle(path1_fd);
+    CloseHandle(input_path_fd);
 
-    HANDLE path2_fd = CreateFile(path2, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
-    if (path2_fd == INVALID_HANDLE_VALUE) {
-        nob_log(NOB_ERROR, "Could not open file %s: %lu", path2, GetLastError());
+    HANDLE output_path_fd = CreateFile(output_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+    if (output_path_fd == INVALID_HANDLE_VALUE) {
+        nob_log(NOB_ERROR, "Could not open file %s: %lu", output_path, GetLastError());
         return -1;
     }
-    if (!GetFileTime(path2_fd, NULL, NULL, &path2_time)) {
-        nob_log(NOB_ERROR, "Could not get time of %s: %lu", path2, GetLastError());
+    if (!GetFileTime(output_path_fd, NULL, NULL, &output_path_time)) {
+        nob_log(NOB_ERROR, "Could not get time of %s: %lu", output_path, GetLastError());
         return -1;
     }
-    CloseHandle(path2_fd);
+    CloseHandle(output_path_fd);
 
-    return CompareFileTime(&path1_time, &path2_time) == 1;
+    return CompareFileTime(&input_path_time, &output_path_time) == 1;
 #else
     struct stat statbuf = {0};
 
-    if (stat(path1, &statbuf) < 0) {
-        nob_log(NOB_ERROR, "Could not stat %s: %s\n", path1, strerror(errno));
+    if (stat(input_path, &statbuf) < 0) {
+        if (errno == ENOENT) return 1;
+        nob_log(NOB_WARNING, "Could not stat %s: %s", input_path, strerror(errno));
         return -1;
     }
-    int path1_time = statbuf.st_mtime;
+    int input_path_time = statbuf.st_mtime;
 
-    if (stat(path2, &statbuf) < 0) {
-        nob_log(NOB_ERROR, "could not stat %s: %s\n", path2, strerror(errno));
+    if (stat(output_path, &statbuf) < 0) {
+        if (errno == ENOENT) return 1;
+        nob_log(NOB_WARNING, "could not stat %s: %s", output_path, strerror(errno));
         return -1;
     }
-    int path2_time = statbuf.st_mtime;
+    int output_path_time = statbuf.st_mtime;
 
-    return path1_time > path2_time;
+    return input_path_time > output_path_time;
 #endif
 }
 

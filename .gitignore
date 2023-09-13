@@ -2,4 +2,6 @@ build/
 music/
 *.mp4
 nob
+nob.old
 nob.exe
+nob.exe.old
