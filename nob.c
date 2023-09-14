@@ -227,7 +227,7 @@ bool build_musializer(const char *output_path, Config config)
 
         case TARGET_WIN32: {
             if (config.hotreload) {
-                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
+                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on Windows yet");
                 nob_return_defer(false);
             }
 
@@ -290,7 +290,7 @@ bool build_raylib(Config config)
         const char *input_path = nob_temp_sprintf("./raylib/raylib-4.5.0/src/%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
 
-        if (nob_needs_rebuild(input_path, output_path)) {
+        if (nob_needs_rebuild(output_path, input_path)) {
             needs_rebuild = true;
             cmd.count = 0;
             switch (config.target) {
