@@ -157,6 +157,7 @@ bool nob_read_entire_file(const char *path, Nob_String_Builder *sb);
 #define nob_sb_free(sb) NOB_FREE((sb).items)
 
 // Process handle
+// TODO: NOB_INVALID_PROC could be actually the same for both platforms
 #ifdef _WIN32
 typedef HANDLE Nob_Proc;
 #define NOB_INVALID_PROC NULL
@@ -164,6 +165,12 @@ typedef HANDLE Nob_Proc;
 typedef int Nob_Proc;
 #define NOB_INVALID_PROC -1
 #endif // _WIN32
+
+typedef struct {
+    Nob_Proc *items;
+    size_t count;
+    size_t capacity;
+} Nob_Procs;
 
 // Wait until the process has finished
 bool nob_proc_wait(Nob_Proc proc);
@@ -207,6 +214,7 @@ bool nob_cmd_run_sync(Nob_Cmd cmd);
 #endif // NOB_TEMP_CAPACITY
 char *nob_temp_strdup(const char *cstr);
 void *nob_temp_alloc(size_t size);
+char *nob_temp_sprintf(const char *format, ...);
 void nob_temp_reset(void);
 size_t nob_temp_save(void);
 void nob_temp_rewind(size_t checkpoint);
@@ -800,6 +808,24 @@ void *nob_temp_alloc(size_t size)
     if (nob_temp_size + size > NOB_TEMP_CAPACITY) return NULL;
     void *result = &nob_temp[nob_temp_size];
     nob_temp_size += size;
+    return result;
+}
+
+char *nob_temp_sprintf(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int n = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+
+    NOB_ASSERT(n >= 0);
+    char *result = nob_temp_alloc(n + 1);
+    NOB_ASSERT(result != NULL && "Extend the size of the temporary allocator");
+    // TODO: use proper arenas for the temporary allocator;
+    va_start(args, format);
+    vsnprintf(result, n + 1, format, args);
+    va_end(args);
+
     return result;
 }
 

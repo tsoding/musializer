@@ -201,7 +201,7 @@ bool build_musializer(const char *output_path, Config config)
                                      "./src/separate_translation_unit_for_miniaudio.c",
                                      "./src/ffmpeg_linux.c",
                                      "./src/musializer.c");
-                nob_cmd_append(&cmd, "-L./build/raylib/", "-l:libraylib.a");
+                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.a");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             }
@@ -222,7 +222,7 @@ bool build_musializer(const char *output_path, Config config)
                                  "./src/separate_translation_unit_for_miniaudio.c",
                                  "./src/ffmpeg_windows.c",
                                  "./src/musializer.c");
-            nob_cmd_append(&cmd, "-L./build/raylib/", "-l:libraylib.a");
+            nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.a");
             nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
             nob_cmd_append(&cmd, "-static");
             if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
@@ -247,40 +247,29 @@ static const char *raylib_modules[] = {
     "utils",
 };
 
-typedef struct {
-    Nob_Proc *items;
-    size_t count;
-    size_t capacity;
-} Procs;
-
 bool build_raylib(Config config)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
-    Nob_String_Builder input_path = {0};
-    Nob_String_Builder output_path = {0};
 
     if (!nob_mkdir_if_not_exists("./build/raylib")) {
         nob_return_defer(false);
     }
 
-    Procs procs = {0};
+    Nob_Procs procs = {0};
+
+    const char *build_path = nob_temp_sprintf("./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target));
+
+    if (!nob_mkdir_if_not_exists(build_path)) {
+        nob_return_defer(false);
+    }
 
     bool needs_rebuild = false;
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-        input_path.count = 0;
-        nob_sb_append_cstr(&input_path, "./raylib/raylib-4.5.0/src/");
-        nob_sb_append_cstr(&input_path, raylib_modules[i]);
-        nob_sb_append_cstr(&input_path, ".c");
-        nob_sb_append_null(&input_path);
+        const char *input_path = nob_temp_sprintf("./raylib/raylib-4.5.0/src/%s.c", raylib_modules[i]);
+        const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
 
-        output_path.count = 0;
-        nob_sb_append_cstr(&output_path, "./build/raylib/");
-        nob_sb_append_cstr(&output_path, raylib_modules[i]);
-        nob_sb_append_cstr(&output_path, ".o");
-        nob_sb_append_null(&output_path);
-
-        if (nob_needs_rebuild(input_path.items, output_path.items)) {
+        if (nob_needs_rebuild(input_path, output_path)) {
             needs_rebuild = true;
             cmd.count = 0;
             switch (config.target) {
@@ -295,8 +284,8 @@ bool build_raylib(Config config)
             nob_cmd_append(&cmd, "-ggdb");
             nob_cmd_append(&cmd, "-DPLATFORM_DESKTOP");
             nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
-            nob_cmd_append(&cmd, "-c", input_path.items);
-            nob_cmd_append(&cmd, "-o", output_path.items);
+            nob_cmd_append(&cmd, "-c", input_path);
+            nob_cmd_append(&cmd, "-o", output_path);
 
             Nob_Proc proc = nob_cmd_run_async(cmd);
             nob_da_append(&procs, proc);
@@ -311,23 +300,26 @@ bool build_raylib(Config config)
         if (!success) nob_return_defer(false);
 
         cmd.count = 0;
-        nob_cmd_append(&cmd, "ar", "-crs", "./build/raylib/libraylib.a");
+        nob_cmd_append(&cmd, "ar", "-crs", nob_temp_sprintf("%s/libraylib.a", build_path));
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-            input_path.count = 0;
-            nob_sb_append_cstr(&input_path, "./build/raylib/");
-            nob_sb_append_cstr(&input_path, raylib_modules[i]);
-            nob_sb_append_cstr(&input_path, ".o");
-            nob_sb_append_null(&input_path);
-            nob_cmd_append(&cmd, nob_temp_strdup(input_path.items));
+            const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
+            nob_cmd_append(&cmd, input_path);
         }
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 
 defer:
-    nob_sb_free(input_path);
-    nob_sb_free(output_path);
     nob_cmd_free(cmd);
     return result;
+}
+
+void log_available_subcommands(const char *program, Nob_Log_Level level)
+{
+    nob_log(level, "Usage: %s <subcommand>", program);
+    nob_log(level, "Subcommands:");
+    nob_log(level, "    build");
+    nob_log(level, "    config");
+    nob_log(level, "    logo");
 }
 
 int main(int argc, char **argv)
@@ -338,11 +330,7 @@ int main(int argc, char **argv)
 
     if (argc <= 0) {
         nob_log(NOB_ERROR, "No subcommand is provided");
-        nob_log(NOB_ERROR, "Usage: %s <subcommand>", program);
-        nob_log(NOB_ERROR, "Subcommands:");
-        nob_log(NOB_ERROR, "    build");
-        nob_log(NOB_ERROR, "    config");
-        nob_log(NOB_ERROR, "    logo");
+        log_available_subcommands(program, NOB_ERROR);
         return 1;
     }
 
@@ -385,6 +373,9 @@ int main(int argc, char **argv)
 
         nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
         if (!nob_cmd_run_sync(cmd)) return 1;
+    } else {
+        nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
+        log_available_subcommands(program, NOB_ERROR);
     }
     return 0;
 }
