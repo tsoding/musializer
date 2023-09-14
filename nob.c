@@ -428,5 +428,7 @@ int main(int argc, char **argv)
         nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
         log_available_subcommands(program, NOB_ERROR);
     }
+    // TODO: subcommand for creating final distribution that we can ship to end users
+    // It should also supply the ffmpeg executable and stuff
     return 0;
 }
