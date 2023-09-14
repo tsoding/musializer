@@ -164,18 +164,23 @@ bool build_musializer(const char *output_path, Config config)
     switch (config.target) {
         case TARGET_POSIX: {
             if (config.hotreload) {
+                Nob_Procs procs = {0};
+
                 cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                 nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-fPIC", "-shared");
                 nob_cmd_append(&cmd, "-o", "./build/libplug.so");
-                nob_cmd_append(&cmd, "./src/plug.c",
-                                     "./src/separate_translation_unit_for_miniaudio.c",
-                                     "./src/ffmpeg_linux.c");
-                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.so");
+                nob_cmd_append(&cmd,
+                    "./src/plug.c",
+                    "./src/separate_translation_unit_for_miniaudio.c",
+                    "./src/ffmpeg_linux.c");
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
+                    "-l:libraylib.so");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+                nob_da_append(&procs, nob_cmd_run_async(cmd));
 
                 cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
@@ -183,28 +188,36 @@ bool build_musializer(const char *output_path, Config config)
                 nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-DHOTRELOAD");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
-                nob_cmd_append(&cmd, "./src/musializer.c",
-                                     "./src/hotreload_linux.c");
+                nob_cmd_append(&cmd,
+                    "./src/musializer.c",
+                    "./src/hotreload_linux.c");
                 nob_cmd_append(&cmd,
                     "-Wl,-rpath=./build/",
                     "-Wl,-rpath=./",
                     nob_temp_sprintf("-Wl,-rpath=./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
                     // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
                     nob_temp_sprintf("-Wl,-rpath=./raylib/%s", NOB_ARRAY_GET(target_names, config.target)));
-                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.so");
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
+                    "-l:libraylib.so");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+                nob_da_append(&procs, nob_cmd_run_async(cmd));
+
+                if (!nob_procs_wait(procs)) nob_return_defer(false);
             } else {
                 cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                 nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
-                nob_cmd_append(&cmd, "./src/plug.c",
-                                     "./src/separate_translation_unit_for_miniaudio.c",
-                                     "./src/ffmpeg_linux.c",
-                                     "./src/musializer.c");
-                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.a");
+                nob_cmd_append(&cmd,
+                    "./src/plug.c",
+                    "./src/separate_translation_unit_for_miniaudio.c",
+                    "./src/ffmpeg_linux.c",
+                    "./src/musializer.c");
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
+                    "-l:libraylib.a");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             }
@@ -213,7 +226,7 @@ bool build_musializer(const char *output_path, Config config)
         case TARGET_WIN32: {
             if (config.hotreload) {
                 nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-                return false;
+                nob_return_defer(false);
             }
 
             cmd.count = 0;
@@ -221,11 +234,14 @@ bool build_musializer(const char *output_path, Config config)
             nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
             nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
             nob_cmd_append(&cmd, "-o", "./build/musializer");
-            nob_cmd_append(&cmd, "./src/plug.c",
-                                 "./src/separate_translation_unit_for_miniaudio.c",
-                                 "./src/ffmpeg_windows.c",
-                                 "./src/musializer.c");
-            nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.a");
+            nob_cmd_append(&cmd,
+                "./src/plug.c",
+                "./src/separate_translation_unit_for_miniaudio.c",
+                "./src/ffmpeg_windows.c",
+                "./src/musializer.c");
+            nob_cmd_append(&cmd,
+                nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
+                "-l:libraylib.a");
             nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
             nob_cmd_append(&cmd, "-static");
             if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
@@ -296,11 +312,7 @@ bool build_raylib(Config config)
         }
     }
 
-    bool success = true;
-    for (size_t i = 0; i < procs.count; ++i) {
-        success = nob_proc_wait(procs.items[i]) && success;
-    }
-    if (!success) nob_return_defer(false);
+    if (!nob_procs_wait(procs)) nob_return_defer(false);
 
     if (needs_rebuild) {
         if (!config.hotreload) {

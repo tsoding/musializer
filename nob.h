@@ -172,6 +172,8 @@ typedef struct {
     size_t capacity;
 } Nob_Procs;
 
+bool nob_procs_wait(Nob_Procs procs);
+
 // Wait until the process has finished
 bool nob_proc_wait(Nob_Proc proc);
 
@@ -543,6 +545,15 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 
     return cpid;
 #endif
+}
+
+bool nob_procs_wait(Nob_Procs procs)
+{
+    bool success = true;
+    for (size_t i = 0; i < procs.count; ++i) {
+        success = nob_proc_wait(procs.items[i]) && success;
+    }
+    return success;
 }
 
 bool nob_proc_wait(Nob_Proc proc)
