@@ -295,7 +295,7 @@ bool build_raylib(Config config)
     if (needs_rebuild) {
         bool success = true;
         for (size_t i = 0; i < procs.count; ++i) {
-            success = success && nob_proc_wait(procs.items[i]);
+            success = nob_proc_wait(procs.items[i]) && success;
         }
         if (!success) nob_return_defer(false);
 
