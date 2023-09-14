@@ -394,19 +394,21 @@ int main(int argc, char **argv)
         nob_log(NOB_INFO, "------------------------------");
         if (!dump_config_to_file("./build/build.conf", config)) return 1;
     } else if (strcmp(subcommand, "logo") == 0) {
+        Nob_Procs procs = {0};
+
         Nob_Cmd cmd = {0};
         nob_cmd_append(&cmd, "convert");
         nob_cmd_append(&cmd, "-background", "None");
         nob_cmd_append(&cmd, "./resources/logo/logo.svg");
         nob_cmd_append(&cmd, "-resize", "256");
-
         nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
-        if (!nob_cmd_run_sync(cmd)) return 1;
+        nob_da_append(&procs, nob_cmd_run_async(cmd));
 
         cmd.count -= 1;
-
         nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
-        if (!nob_cmd_run_sync(cmd)) return 1;
+        nob_da_append(&procs, nob_cmd_run_async(cmd));
+
+        if (!nob_procs_wait(procs)) return 1;
     } else {
         nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
         log_available_subcommands(program, NOB_ERROR);
