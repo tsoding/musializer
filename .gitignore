@@ -1,6 +1,14 @@
-build/
+# Music folder for testing. Ignoring to prevent accidental copyright infringement.
 music/
+
+# Musializer output
 *.mp4
+
+# Vim
+*.swp
+
+# Nob artifacts
+build/
 nob
 nob.old
 nob.exe

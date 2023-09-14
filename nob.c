@@ -32,6 +32,7 @@ void log_available_targets(Nob_Log_Level level)
 typedef struct {
     Target target;
     bool hotreload;
+    bool help_requested;
 } Config;
 
 bool parse_config_from_args(int argc, char **argv, Config *config)
@@ -67,9 +68,10 @@ bool parse_config_from_args(int argc, char **argv, Config *config)
                 log_available_targets(NOB_ERROR);
                 return false;
             }
-        } else if (strcmp("-h", flag) == 0) {
-            // TODO: -h traditionally is used for --help. Let's replace it with something
+        } else if (strcmp("-r", flag) == 0) {
             config->hotreload = true;
+        } else if (strcmp("-h", flag) == 0 || strcmp("--help", flag) == 0) {
+            config->help_requested = true;
         } else {
             nob_log(NOB_ERROR, "Unknown flag %s", flag);
             return false;
@@ -367,7 +369,6 @@ int main(int argc, char **argv)
         log_available_subcommands(program, NOB_ERROR);
         return 1;
     }
-
     const char *subcommand = nob_shift_args(&argc, &argv);
 
     if (strcmp(subcommand, "build") == 0) {
@@ -389,6 +390,13 @@ int main(int argc, char **argv)
         if (!nob_mkdir_if_not_exists("build")) return 1;
         Config config = {0};
         if (!parse_config_from_args(argc, argv, &config)) return 1;
+        if (config.help_requested) {
+            nob_log(NOB_INFO, "Available config flags:");
+            nob_log(NOB_INFO, "    -t <target>    set build target");
+            nob_log(NOB_INFO, "    -r             enable hotreload");
+            nob_log(NOB_INFO, "    -h             print this help");
+            return 0;
+        }
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
