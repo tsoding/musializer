@@ -68,6 +68,7 @@ bool parse_config_from_args(int argc, char **argv, Config *config)
                 return false;
             }
         } else if (strcmp("-h", flag) == 0) {
+            // TODO: -h traditionally is used for --help. Let's replace it with something
             config->hotreload = true;
         } else {
             nob_log(NOB_ERROR, "Unknown flag %s", flag);
@@ -163,32 +164,34 @@ bool build_musializer(const char *output_path, Config config)
     switch (config.target) {
         case TARGET_POSIX: {
             if (config.hotreload) {
-                // TODO: build dynamic Raylib and link with it
-                nob_log(NOB_ERROR, "TODO: Hotreloading build for POSIX is temporarily disabled");
-                nob_return_defer(false);
-
                 cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0_linux_amd64/include/");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-fPIC", "-shared");
                 nob_cmd_append(&cmd, "-o", "./build/libplug.so");
                 nob_cmd_append(&cmd, "./src/plug.c",
                                      "./src/separate_translation_unit_for_miniaudio.c",
                                      "./src/ffmpeg_linux.c");
-                nob_cmd_append(&cmd, "-L./raylib/raylib-4.5.0_linux_amd64/lib/", "-l:libraylib.so");
+                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.so");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 
                 cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0_linux_amd64/include/");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-DHOTRELOAD");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
                 nob_cmd_append(&cmd, "./src/musializer.c",
                                      "./src/hotreload_linux.c");
-                nob_cmd_append(&cmd, "-L./raylib/raylib-4.5.0_linux_amd64/lib/", "-l:libraylib.so");
+                nob_cmd_append(&cmd,
+                    "-Wl,-rpath=./build/",
+                    "-Wl,-rpath=./",
+                    nob_temp_sprintf("-Wl,-rpath=./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
+                    // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
+                    nob_temp_sprintf("-Wl,-rpath=./raylib/%s", NOB_ARRAY_GET(target_names, config.target)));
+                nob_cmd_append(&cmd, nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)), "-l:libraylib.so");
                 nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             } else {
@@ -283,6 +286,7 @@ bool build_raylib(Config config)
             }
             nob_cmd_append(&cmd, "-ggdb");
             nob_cmd_append(&cmd, "-DPLATFORM_DESKTOP");
+            nob_cmd_append(&cmd, "-fPIC");
             nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
             nob_cmd_append(&cmd, "-c", input_path);
             nob_cmd_append(&cmd, "-o", output_path);
@@ -292,20 +296,38 @@ bool build_raylib(Config config)
         }
     }
 
-    if (needs_rebuild) {
-        bool success = true;
-        for (size_t i = 0; i < procs.count; ++i) {
-            success = nob_proc_wait(procs.items[i]) && success;
-        }
-        if (!success) nob_return_defer(false);
+    bool success = true;
+    for (size_t i = 0; i < procs.count; ++i) {
+        success = nob_proc_wait(procs.items[i]) && success;
+    }
+    if (!success) nob_return_defer(false);
 
-        cmd.count = 0;
-        nob_cmd_append(&cmd, "ar", "-crs", nob_temp_sprintf("%s/libraylib.a", build_path));
-        for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-            const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
-            nob_cmd_append(&cmd, input_path);
+    if (needs_rebuild) {
+        if (!config.hotreload) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "ar", "-crs", nob_temp_sprintf("%s/libraylib.a", build_path));
+            for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
+                const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
+                nob_cmd_append(&cmd, input_path);
+            }
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+        } else {
+            // TODO: if libraylib.a does not need rebuild the libraylib.so won't be rebuilt either
+            cmd.count = 0;
+            if (config.target == TARGET_POSIX) {
+                nob_cmd_append(&cmd, "clang");
+            } else {
+                nob_log(NOB_ERROR, "TODO: hotreload for windows is not supported yet");
+                nob_return_defer(false);
+            }
+            nob_cmd_append(&cmd, "-shared");
+            nob_cmd_append(&cmd, "-o", nob_temp_sprintf("%s/libraylib.so", build_path));
+            for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
+                const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
+                nob_cmd_append(&cmd, input_path);
+            }
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
         }
-        if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 
 defer:
