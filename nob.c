@@ -158,7 +158,7 @@ defer:
     return result;
 }
 
-bool build_musializer(const char *output_path, Config config)
+bool build_musializer(Config config)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
@@ -272,6 +272,7 @@ bool build_raylib(Config config)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
+    Nob_File_Paths object_files = {0};
 
     if (!nob_mkdir_if_not_exists("./build/raylib")) {
         nob_return_defer(false);
@@ -285,13 +286,13 @@ bool build_raylib(Config config)
         nob_return_defer(false);
     }
 
-    bool needs_rebuild = false;
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
         const char *input_path = nob_temp_sprintf("./raylib/raylib-4.5.0/src/%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
 
-        if (nob_needs_rebuild(output_path, input_path)) {
-            needs_rebuild = true;
+        nob_da_append(&object_files, output_path);
+
+        if (nob_needs_rebuild(output_path, &input_path, 1)) {
             cmd.count = 0;
             switch (config.target) {
                 case TARGET_POSIX:
@@ -316,17 +317,22 @@ bool build_raylib(Config config)
 
     if (!nob_procs_wait(procs)) nob_return_defer(false);
 
-    if (needs_rebuild) {
-        if (!config.hotreload) {
+    if (!config.hotreload) {
+        const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
+
+        if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
             cmd.count = 0;
-            nob_cmd_append(&cmd, "ar", "-crs", nob_temp_sprintf("%s/libraylib.a", build_path));
+            nob_cmd_append(&cmd, "ar", "-crs", libraylib_path);
             for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
                 const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
                 nob_cmd_append(&cmd, input_path);
             }
             if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-        } else {
-            // TODO: if libraylib.a does not need rebuild the libraylib.so won't be rebuilt either
+        }
+    } else {
+        const char *libraylib_path = nob_temp_sprintf("%s/libraylib.so", build_path);
+
+        if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
             cmd.count = 0;
             if (config.target == TARGET_POSIX) {
                 nob_cmd_append(&cmd, "clang");
@@ -335,7 +341,7 @@ bool build_raylib(Config config)
                 nob_return_defer(false);
             }
             nob_cmd_append(&cmd, "-shared");
-            nob_cmd_append(&cmd, "-o", nob_temp_sprintf("%s/libraylib.so", build_path));
+            nob_cmd_append(&cmd, "-o", libraylib_path);
             for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
                 const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
                 nob_cmd_append(&cmd, input_path);
@@ -346,6 +352,7 @@ bool build_raylib(Config config)
 
 defer:
     nob_cmd_free(cmd);
+    nob_da_free(object_files);
     return result;
 }
 
@@ -381,7 +388,7 @@ int main(int argc, char **argv)
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
         if (!build_raylib(config)) return 1;
-        if (!build_musializer("./build/musializer", config)) return 1;
+        if (!build_musializer(config)) return 1;
         if (config.target == TARGET_WIN32) {
             if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
         }

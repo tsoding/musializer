@@ -223,7 +223,7 @@ void nob_temp_rewind(size_t checkpoint);
 
 int is_path1_modified_after_path2(const char *path1, const char *path2);
 bool nob_rename(const char *old_path, const char *new_path);
-int nob_needs_rebuild(const char *output_path, const char *input_path);
+int nob_needs_rebuild(const char *output_path, const char **input_paths, size_t input_paths_count);
 
 // TODO: add MinGW support for Go Rebuild Urself™ Technology
 #ifndef NOB_REBUILD_URSELF
@@ -268,7 +268,7 @@ int nob_needs_rebuild(const char *output_path, const char *input_path);
         assert(argc >= 1);                                                                   \
         const char *binary_path = argv[0];                                                   \
                                                                                              \
-        int rebuild_is_needed = nob_needs_rebuild(binary_path, source_path);                 \
+        int rebuild_is_needed = nob_needs_rebuild(binary_path, &source_path, 1);             \
         if (rebuild_is_needed < 0) exit(1);                                                  \
         if (rebuild_is_needed) {                                                             \
             Nob_String_Builder sb = {0};                                                     \
@@ -855,54 +855,71 @@ void nob_temp_rewind(size_t checkpoint)
     nob_temp_size = checkpoint;
 }
 
-int nob_needs_rebuild(const char *output_path, const char *input_path)
+int nob_needs_rebuild(const char *output_path, const char **input_paths, size_t input_paths_count)
 {
 #ifdef _WIN32
-    FILETIME input_path_time, output_path_time;
-
-    HANDLE input_path_fd = CreateFile(input_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
-    if (input_path_fd == INVALID_HANDLE_VALUE) {
-        if (GetLastError() == ERROR_FILE_NOT_FOUND) return 1;
-        nob_log(NOB_ERROR, "Could not open file %s: %lu", input_path, GetLastError());
-        return -1;
-    }
-    if (!GetFileTime(input_path_fd, NULL, NULL, &input_path_time)) {
-        if (GetLastError() == ERROR_FILE_NOT_FOUND) return 1;
-        nob_log(NOB_ERROR, "Could not get time of %s: %lu", input_path, GetLastError());
-        return -1;
-    }
-    CloseHandle(input_path_fd);
+    BOOL bSuccess;
 
     HANDLE output_path_fd = CreateFile(output_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
     if (output_path_fd == INVALID_HANDLE_VALUE) {
+        // NOTE: if output does not exist it 100% must be rebuilt
+        if (GetLastError() == ERROR_FILE_NOT_FOUND) return 1;
         nob_log(NOB_ERROR, "Could not open file %s: %lu", output_path, GetLastError());
         return -1;
     }
-    if (!GetFileTime(output_path_fd, NULL, NULL, &output_path_time)) {
+    FILETIME output_path_time;
+    bSuccess = GetFileTime(output_path_fd, NULL, NULL, &output_path_time);
+    CloseHandle(output_path_fd);
+    if (!bSuccess) {
         nob_log(NOB_ERROR, "Could not get time of %s: %lu", output_path, GetLastError());
         return -1;
     }
-    CloseHandle(output_path_fd);
 
-    return CompareFileTime(&input_path_time, &output_path_time) == 1;
+    for (size_t i = 0; i < input_paths_count; ++i) {
+        const char *input_path = input_paths[i];
+        HANDLE input_path_fd = CreateFile(input_path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_READONLY, NULL);
+        if (input_path_fd == INVALID_HANDLE_VALUE) {
+            // NOTE: non-existing input is an error cause it is needed for building in the first place
+            nob_log(NOB_ERROR, "Could not open file %s: %lu", input_path, GetLastError());
+            return -1;
+        }
+        FILETIME input_path_time;
+        bSuccess = GetFileTime(input_path_fd, NULL, NULL, &input_path_time);
+        CloseHandle(input_path_fd);
+        if (!bSuccess) {
+            nob_log(NOB_ERROR, "Could not get time of %s: %lu", input_path, GetLastError());
+            return -1;
+        }
+
+        // NOTE: if even a single input_path is fresher than output_path that's 100% rebuild
+        if (CompareFileTime(&input_path_time, &output_path_time) == 1) return 1;
+    }
+
+    return 0;
 #else
     struct stat statbuf = {0};
 
-    if (stat(input_path, &statbuf) < 0) {
-        if (errno == ENOENT) return 1;
-        nob_log(NOB_WARNING, "Could not stat %s: %s", input_path, strerror(errno));
-        return -1;
-    }
-    int input_path_time = statbuf.st_mtime;
-
     if (stat(output_path, &statbuf) < 0) {
+        // NOTE: if output does not exist it 100% must be rebuilt
         if (errno == ENOENT) return 1;
-        nob_log(NOB_WARNING, "could not stat %s: %s", output_path, strerror(errno));
+        nob_log(NOB_ERROR, "could not stat %s: %s", output_path, strerror(errno));
         return -1;
     }
     int output_path_time = statbuf.st_mtime;
 
-    return input_path_time > output_path_time;
+    for (size_t i = 0; i < input_paths_count; ++i) {
+        const char *input_path = input_paths[i];
+        if (stat(input_path, &statbuf) < 0) {
+            // NOTE: non-existing input is an error cause it is needed for building in the first place
+            nob_log(NOB_ERROR, "could not stat %s: %s", input_path, strerror(errno));
+            return -1;
+        }
+        int input_path_time = statbuf.st_mtime;
+        // NOTE: if even a single input_path is fresher than output_path that's 100% rebuild
+        if (input_path_time > output_path_time) return 1;
+    }
+
+    return 0;
 #endif
 }
 
