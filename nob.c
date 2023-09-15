@@ -304,6 +304,7 @@ bool build_raylib(Config config)
                 default: NOB_ASSERT(0 && "unreachable");
             }
             nob_cmd_append(&cmd, "-ggdb");
+            nob_cmd_append(&cmd, "-Wno-implicit-function-declaration");
             nob_cmd_append(&cmd, "-DPLATFORM_DESKTOP");
             nob_cmd_append(&cmd, "-fPIC");
             nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
