@@ -534,6 +534,7 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
     }
 
     if (cpid == 0) {
+        // TODO: list of arguments must end with NULL
         if (execvp(cmd.items[0], (char * const*) cmd.items) < 0) {
             nob_log(NOB_ERROR, "Could not exec child process: %s", strerror(errno));
             exit(1);
