@@ -111,7 +111,7 @@ bool load_config_from_file(const char *path, Config *config)
 
     nob_log(NOB_INFO, "Loading configuration from %s", path);
 
-    if (!nob_read_entire_file(path, &sb)) nob_return_defer(false);
+    if (!nob_read_entire_file(path, &sb)) nob_return_defer false;
 
     Nob_String_View content = {
         .data = sb.items,
@@ -136,7 +136,7 @@ bool load_config_from_file(const char *path, Config *config)
             if (!found) {
                 nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row + 1, SV_Arg(value));
                 log_available_targets(NOB_ERROR);
-                nob_return_defer(false);
+                nob_return_defer false;
             }
         } else if (nob_sv_eq(key, nob_sv_from_cstr("hotreload"))) {
             if (nob_sv_eq(value, nob_sv_from_cstr("true"))) {
@@ -146,11 +146,11 @@ bool load_config_from_file(const char *path, Config *config)
             } else {
                 nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row + 1, SV_Arg(value));
                 nob_log(NOB_ERROR, "Expected `true` or `false`");
-                nob_return_defer(false);
+                nob_return_defer false;
             }
         } else {
             nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row + 1, SV_Arg(key));
-            nob_return_defer(false);
+            nob_return_defer false;
         }
     }
 
@@ -205,7 +205,7 @@ bool build_musializer(Config config)
                             "-l:libraylib.so");
                         nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                     nob_da_append(&procs, nob_cmd_run_async(cmd));
-                if (!nob_procs_wait(procs)) nob_return_defer(false);
+                if (!nob_procs_wait(procs)) nob_return_defer false;
             } else {
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "clang");
@@ -221,14 +221,14 @@ bool build_musializer(Config config)
                         nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
                         "-l:libraylib.a");
                     nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer false;
             }
         } break;
 
         case TARGET_WIN32: {
             if (config.hotreload) {
                 nob_log(NOB_ERROR, "TODO: hotreloading is not supported on Windows yet");
-                nob_return_defer(false);
+                nob_return_defer false;
             } else {
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "x86_64-w64-mingw32-windres");
@@ -236,7 +236,7 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "-O", "coff");
                     nob_cmd_append(&cmd, "-o", "./build/musializer.res");
                     nob_da_append(&cmd, NULL);
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer false;
 
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
@@ -255,7 +255,7 @@ bool build_musializer(Config config)
                         "-l:libraylib.a");
                     nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
                     nob_cmd_append(&cmd, "-static");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+                if (!nob_cmd_run_sync(cmd)) nob_return_defer false;
             }
         } break;
 
@@ -286,7 +286,7 @@ bool build_raylib(Config config)
     Nob_File_Paths object_files = {0};
 
     if (!nob_mkdir_if_not_exists("./build/raylib")) {
-        nob_return_defer(false);
+        nob_return_defer false;
     }
 
     Nob_Procs procs = {0};
@@ -294,7 +294,7 @@ bool build_raylib(Config config)
     const char *build_path = nob_temp_sprintf("./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target));
 
     if (!nob_mkdir_if_not_exists(build_path)) {
-        nob_return_defer(false);
+        nob_return_defer false;
     }
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
@@ -326,7 +326,7 @@ bool build_raylib(Config config)
         }
     }
 
-    if (!nob_procs_wait(procs)) nob_return_defer(false);
+    if (!nob_procs_wait(procs)) nob_return_defer false;
 
     if (!config.hotreload) {
         const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
@@ -338,7 +338,7 @@ bool build_raylib(Config config)
                 const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
                 nob_cmd_append(&cmd, input_path);
             }
-            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer false;
         }
     } else {
         const char *libraylib_path = nob_temp_sprintf("%s/libraylib.so", build_path);
@@ -349,7 +349,7 @@ bool build_raylib(Config config)
                 nob_cmd_append(&cmd, "clang");
             } else {
                 nob_log(NOB_ERROR, "TODO: hotreload for windows is not supported yet");
-                nob_return_defer(false);
+                nob_return_defer false;
             }
             nob_cmd_append(&cmd, "-shared");
             nob_cmd_append(&cmd, "-o", libraylib_path);
@@ -357,7 +357,7 @@ bool build_raylib(Config config)
                 const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
                 nob_cmd_append(&cmd, input_path);
             }
-            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer false;
         }
     }
 
