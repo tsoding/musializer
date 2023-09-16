@@ -462,6 +462,7 @@ void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render)
 {
     for (size_t i = 0; i < cmd.count; ++i) {
         const char *arg = cmd.items[i];
+        if (arg == NULL) break;
         if (i > 0) nob_sb_append_cstr(render, " ");
         if (!strchr(arg, ' ')) {
             nob_sb_append_cstr(render, arg);
@@ -489,6 +490,11 @@ void nob_cmd_append_null(Nob_Cmd *cmd, ...)
 
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 {
+    if (cmd.count < 1) {
+        nob_log(NOB_ERROR, "Could not run empty command");
+        return NOB_INVALID_PROC;
+    }
+
     Nob_String_Builder sb = {0};
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
@@ -513,6 +519,8 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
     sb.count = 0;
+    // TODO: use a more reliable rendering of the command instead of cmd_render
+    // cmd_render is for logging primarily
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
     BOOL bSuccess = CreateProcess(NULL, sb.items, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
@@ -535,6 +543,10 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
 
     if (cpid == 0) {
         // TODO: list of arguments must end with NULL
+        // - We may want to be able to modify cmd here for that.
+        // - Passing cmd by pointer may break some already existing things.
+        // - nob_cmd_append(&cmd, NULL) does not append NULL, becase nob_cmd_append
+        //   uses it as an indication of the end of varargs
         if (execvp(cmd.items[0], (char * const*) cmd.items) < 0) {
             nob_log(NOB_ERROR, "Could not exec child process: %s", strerror(errno));
             exit(1);
