@@ -189,13 +189,8 @@ typedef struct {
 // use it as a C string.
 void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render);
 
-// Append several arguments to the command. The last argument must be NULL, because this is
-// C variadics. They can't tell when the arguments stop, so we have to indicate that with
-// NULL. You should probably not use this function. Use nob_cmd_append macro instead.
-void nob_cmd_append_null(Nob_Cmd *cmd, ...);
-
-// Wrapper around nob_cmd_append_null that does not require NULL at the end.
-#define nob_cmd_append(cmd, ...) nob_cmd_append_null(cmd, __VA_ARGS__, NULL)
+#define nob_cmd_append(cmd, ...) \
+    nob_da_append_many(cmd, ((const char*[]){__VA_ARGS__}), (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
 
 Nob_Cmd nob_cmd_inline_null(void *first, ...);
 #define nob_cmd_inline(...) nob_cmd_inline_null(NULL, __VA_ARGS__, NULL)
@@ -472,20 +467,6 @@ void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render)
             nob_da_append(render, '\'');
         }
     }
-}
-
-void nob_cmd_append_null(Nob_Cmd *cmd, ...)
-{
-    va_list args;
-    va_start(args, cmd);
-
-    const char *arg = va_arg(args, const char*);
-    while (arg != NULL) {
-        nob_da_append(cmd, arg);
-        arg = va_arg(args, const char*);
-    }
-
-    va_end(args);
 }
 
 Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
