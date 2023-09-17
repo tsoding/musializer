@@ -123,7 +123,7 @@ Nob_File_Type nob_get_file_type(const char *path);
             while ((da)->count + new_items_count > (da)->capacity) {                        \
                 (da)->capacity *= 2;                                                        \
             }                                                                               \
-            (da)->items = NOB_REALLOC((da)->items, (da)->capacity*sizeof(*(da)->items));    \
+            (da)->items = NOB_REALLOC((da)->items, (da)->capacity*sizeof(*(da)->items)); \
             NOB_ASSERT((da)->items != NULL && "Buy more RAM lol");                          \
         }                                                                                   \
         memcpy((da)->items + (da)->count, new_items, new_items_count*sizeof(*(da)->items)); \
@@ -159,10 +159,11 @@ bool nob_read_entire_file(const char *path, Nob_String_Builder *sb);
 // Process handle
 #ifdef _WIN32
 typedef HANDLE Nob_Proc;
+#define NOB_INVALID_PROC INVALID_HANDLE_VALUE
 #else
 typedef int Nob_Proc;
+#define NOB_INVALID_PROC (-1)
 #endif // _WIN32
-#define NOB_INVALID_PROC -1
 
 typedef struct {
     Nob_Proc *items;
@@ -478,6 +479,7 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
     nob_sb_append_null(&sb);
     nob_log(NOB_INFO, "CMD: %s", sb.items);
     nob_sb_free(sb);
+    memset(&sb, 0, sizeof(sb));
 
 #ifdef _WIN32
     // https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
@@ -496,12 +498,11 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
     PROCESS_INFORMATION piProcInfo;
     ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
-    sb.count = 0;
     // TODO: use a more reliable rendering of the command instead of cmd_render
     // cmd_render is for logging primarily
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
-    BOOL bSuccess = CreateProcess(NULL, sb.items, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
+    BOOL bSuccess = CreateProcessA(NULL, sb.items, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo);
     nob_sb_free(sb);
 
     if (!bSuccess) {
@@ -574,7 +575,7 @@ bool nob_proc_wait(Nob_Proc proc)
 
     CloseHandle(proc);
 
-    return false;
+    return true;
 #else
     for (;;) {
         int wstatus = 0;
