@@ -523,12 +523,13 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd)
     }
 
     if (cpid == 0) {
-        // TODO: list of arguments must end with NULL
-        // - We may want to be able to modify cmd here for that.
-        // - Passing cmd by pointer may break some already existing things.
-        // - nob_cmd_append(&cmd, NULL) does not append NULL, becase nob_cmd_append
-        //   uses it as an indication of the end of varargs
-        if (execvp(cmd.items[0], (char * const*) cmd.items) < 0) {
+        // NOTE: This leaks a bit of memory in the child process.
+        // But do we actually care? It's a one off leak anyway...
+        Nob_Cmd cmd_null = {0};
+        nob_da_append_many(&cmd_null, cmd.items, cmd.count);
+        nob_cmd_append(&cmd_null, NULL);
+
+        if (execvp(cmd.items[0], (char * const*) cmd_null.items) < 0) {
             nob_log(NOB_ERROR, "Could not exec child process: %s", strerror(errno));
             exit(1);
         }
