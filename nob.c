@@ -468,6 +468,8 @@ int main(int argc, char **argv)
     if (strcmp(subcommand, "build") == 0) {
         Config config = {0};
         if (!load_config_from_file("./build/build.conf", &config)) {
+            // TODO: load_config_from_file may fail not only because of the file missing
+            // So the error message may look out of place
             nob_log(NOB_ERROR, "You may want to probably call `%s config` first", program);
             return 1;
         }
@@ -517,5 +519,6 @@ int main(int argc, char **argv)
     }
     // TODO: subcommand for creating final distribution that we can ship to end users
     // It should also supply the ffmpeg executable and stuff
+    // TODO: it would be nice to check for situations like building TARGET_WIN64_MSVC on Linux and report that it's not possible.
     return 0;
 }
