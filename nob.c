@@ -235,7 +235,6 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "./src/musializer.rc");
                     nob_cmd_append(&cmd, "-O", "coff");
                     nob_cmd_append(&cmd, "-o", "./build/musializer.res");
-                    nob_da_append(&cmd, NULL);
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 
                 cmd.count = 0;
