@@ -286,6 +286,7 @@ bool build_musializer(Config config)
                         nob_temp_sprintf("/LIBPATH:build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
                         "raylib.lib");
                     nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib");
+                    // TODO: is some sort of `-static` flag needed for MSVC to get a statically linked executable
                     //nob_cmd_append(&cmd, "-static");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             }
