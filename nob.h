@@ -157,14 +157,12 @@ bool nob_read_entire_file(const char *path, Nob_String_Builder *sb);
 #define nob_sb_free(sb) NOB_FREE((sb).items)
 
 // Process handle
-// TODO: NOB_INVALID_PROC could be actually the same for both platforms
 #ifdef _WIN32
 typedef HANDLE Nob_Proc;
-#define NOB_INVALID_PROC NULL
 #else
 typedef int Nob_Proc;
-#define NOB_INVALID_PROC -1
 #endif // _WIN32
+#define NOB_INVALID_PROC -1
 
 typedef struct {
     Nob_Proc *items;
