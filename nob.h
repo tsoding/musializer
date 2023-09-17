@@ -190,11 +190,6 @@ void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render);
 #define nob_cmd_append(cmd, ...) \
     nob_da_append_many(cmd, ((const char*[]){__VA_ARGS__}), (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
 
-Nob_Cmd nob_cmd_inline_null(void *first, ...);
-#define nob_cmd_inline(...) nob_cmd_inline_null(NULL, __VA_ARGS__, NULL)
-// TODO: NOB_CMD leaks the command
-#define NOB_CMD(...) nob_cmd_run_sync(nob_cmd_inline(__VA_ARGS__))
-
 // Free all the memory allocated by command arguments
 #define nob_cmd_free(cmd) NOB_FREE(cmd.items)
 
@@ -222,14 +217,14 @@ int nob_needs_rebuild(const char *output_path, const char **input_paths, size_t 
 #ifndef NOB_REBUILD_URSELF
 #  if _WIN32
 #    if defined(__GNUC__)
-#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("gcc", "-o", binary_path, source_path)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) "gcc", "-o", binary_path, source_path
 #    elif defined(__clang__)
-#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("clang", "-o", binary_path, source_path)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) "clang", "-o", binary_path, source_path
 #    elif defined(_MSC_VER)
-#       define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("cl.exe", source_path)
+#       define NOB_REBUILD_URSELF(binary_path, source_path) "cl.exe", source_path
 #    endif
 #  else
-#    define NOB_REBUILD_URSELF(binary_path, source_path) NOB_CMD("cc", "-o", binary_path, source_path)
+#    define NOB_REBUILD_URSELF(binary_path, source_path) "cc", "-o", binary_path, source_path
 #  endif
 #endif
 
@@ -270,7 +265,11 @@ int nob_needs_rebuild(const char *output_path, const char **input_paths, size_t 
             nob_sb_append_null(&sb);                                                         \
                                                                                              \
             if (!nob_rename(binary_path, sb.items)) exit(1);                                 \
-            if (!NOB_REBUILD_URSELF(binary_path, source_path)) {                             \
+            Nob_Cmd rebuild = {0};                                                           \
+            nob_cmd_append(&rebuild, NOB_REBUILD_URSELF(binary_path, source_path));          \
+            bool rebuild_succeeded = nob_cmd_run_sync(rebuild);                              \
+            nob_cmd_free(rebuild);                                                           \
+            if (!rebuild_succeeded) {                                                        \
                 nob_rename(sb.items, binary_path);                                           \
                 exit(1);                                                                     \
             }                                                                                \
@@ -929,24 +928,6 @@ bool nob_rename(const char *old_path, const char *new_path)
     }
 #endif // _WIN32
     return true;
-}
-
-Nob_Cmd nob_cmd_inline_null(void *first, ...)
-{
-    Nob_Cmd cmd = {0};
-
-    va_list args;
-    va_start(args, first);
-
-    const char *arg = va_arg(args, const char*);
-    while (arg != NULL) {
-        nob_da_append(&cmd, arg);
-        arg = va_arg(args, const char*);
-    }
-
-    va_end(args);
-
-    return cmd;
 }
 
 bool nob_read_entire_file(const char *path, Nob_String_Builder *sb)
