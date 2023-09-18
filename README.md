@@ -17,39 +17,64 @@ The project aims to make a tool for creating beautiful music visualizations and 
 
 https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338fa19af071
 
-## Build
+## Download Binaries
 
-Dependencies:
-- [raylib](https://www.raylib.com/) and all its transitive dependencies.
+- Windows: [musializer-alpha1-win64.zip](https://github.com/tsoding/musializer/releases/download/alpha1/musializer-alpha1-win64.zip)
+- Linux: *in progress*
+
+## Build from Source
+
+External Dependencies:
 - [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. (it is called as a child process)
 
-The project provides a bunch of build shell scripts that have the following naming scheme `build_<platform>_<compiler>.sh`. Pick the appropriate one.
+We are using Custom Build System written entirely in C called `nob`. It is similar to [nobuild](https://github.com/tsoding/nobuild) in spirit. [nob.h](./nob.h) is the Build System and [nob.c](./nob.c) is the program that builds Musializer.
 
-### POSIX
+Before using `nob` you need to bootstrap it. Just compile it with the available C compiler. On Linux it's usually `$ cc -o nob nob.c` on Windows with MSVC from within `vcvarsall.bat` it's `$ cl.exe nob.c`. You only need to boostrap it once. After the bootstrap you can just keep running the same executable over and over again. It even tries to rebuild itself if you modify [nob.c](./nob.c) (which may fail sometimes, so in that case be ready to reboostrap it).
+
+I really recommend to read [nob.c](./nob.c) and [nob.h](./nob.h) to get an idea of how it all actually works.
+
+### Linux
 
 ```console
-$ ./build_posix_clang.sh
+$ cc -o nob nob.c # only once
+$ ./nob
 $ ./build/musializer
 ```
 
 Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
 
-### Windows
+### Windows MSVC
 
-Windows support is at very early stage right now. Since I don't have a convenient Windows Development Environment, I'm cross compiling Musializer with [MinGW](https://www.mingw-w64.org/). See [./build_windows_mingw.sh](./build_windows_mingw.sh) for more information.
+From within `vcvarsall.bat` do
 
-*More documentation regarding Windows build is comming soon. For now use your hacking skills to figure it out.*
+```console
+> cl.exe nob.c # only once
+> nob.exe
+> build\musializer.exe
+```
+
+### Cross Compilation from Linux to Windows using MinGW-w64
+
+Install [MinGW-w64](https://www.mingw-w64.org/) from your distro repository.
+
+```console
+$ cc -o nob nob.c # only once
+$ ./nob config -t win64-mingw
+$ ./nob
+$ wine ./build/musializer.exe
+```
 
 ## Hot Reloading
 
 **Only on Linux for now**
 
 ```console
-$ export HOTRELOAD=1
-$ ./build_posix.sh
+$ cc -o nob nob.c # only once
+$ ./nob config -r
+$ ./nob
 $ ./build/musializer
 ```
 
-Keep the app running. Rebuild with `./build.sh`. Hot reload by focusing on the window of the app and pressing <kbd>r</kbd>.
+Keep the app running. Rebuild with `./nob`. Hot reload by focusing on the window of the app and pressing <kbd>r</kbd>.
 
 The way it works is by putting the majority of the logic of the application into a `libplug` dynamic library and just reloading it when requested. The [rpath](https://en.wikipedia.org/wiki/Rpath) (aka hard-coded run-time search path) for that library is set to `.` and `./build/`. See [build.sh](./build.sh) for more information on how everything is configured.
