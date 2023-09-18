@@ -454,11 +454,12 @@ defer:
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)
 {
-    nob_log(level, "Usage: %s <subcommand>", program);
+    nob_log(level, "Usage: %s [subcommand]", program);
     nob_log(level, "Subcommands:");
-    nob_log(level, "    build");
+    nob_log(level, "    build (default)");
     nob_log(level, "    config");
     nob_log(level, "    logo");
+    nob_log(level, "    help");
 }
 
 int main(int argc, char **argv)
@@ -467,12 +468,12 @@ int main(int argc, char **argv)
 
     const char *program = nob_shift_args(&argc, &argv);
 
+    const char *subcommand = NULL;
     if (argc <= 0) {
-        nob_log(NOB_ERROR, "No subcommand is provided");
-        log_available_subcommands(program, NOB_ERROR);
-        return 1;
+        subcommand = "build";
+    } else {
+        subcommand = nob_shift_args(&argc, &argv);
     }
-    const char *subcommand = nob_shift_args(&argc, &argv);
 
     if (strcmp(subcommand, "build") == 0) {
         Config config = {0};
@@ -522,6 +523,8 @@ int main(int argc, char **argv)
         nob_da_append(&procs, nob_cmd_run_async(cmd));
 
         if (!nob_procs_wait(procs)) return 1;
+    } else if (strcmp(subcommand, "help") == 0){
+        log_available_subcommands(program, NOB_INFO);
     } else {
         nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
         log_available_subcommands(program, NOB_ERROR);
