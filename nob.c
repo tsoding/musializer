@@ -182,6 +182,8 @@ bool build_musializer(Config config)
             if (config.hotreload) {
                 procs.count = 0;
                     cmd.count = 0;
+                        // TODO: probably replace clang with cc on POSIX systems
+                        // Also enable a way to pick a different compiler
                         nob_cmd_append(&cmd, "clang");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                         nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
