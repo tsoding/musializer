@@ -178,9 +178,9 @@ bool build_musializer(Config config)
             if (config.hotreload) {
                 procs.count = 0;
                     cmd.count = 0;
-                        // TODO: add a way to replace `cc` with something else GCC compatible on POSIX
-                        // Like `clang` for instance
-                        nob_cmd_append(&cmd, "cc");
+                        // TODO: probably replace clang with cc on POSIX systems
+                        // Also enable a way to pick a different compiler
+                        nob_cmd_append(&cmd, "clang");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                         nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                         nob_cmd_append(&cmd, "-fPIC", "-shared");
@@ -196,7 +196,7 @@ bool build_musializer(Config config)
                     nob_da_append(&procs, nob_cmd_run_async(cmd));
 
                     cmd.count = 0;
-                        nob_cmd_append(&cmd, "cc");
+                        nob_cmd_append(&cmd, "clang");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                         nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                         nob_cmd_append(&cmd, "-DHOTRELOAD");
@@ -218,7 +218,7 @@ bool build_musializer(Config config)
                 if (!nob_procs_wait(procs)) nob_return_defer(false);
             } else {
                 cmd.count = 0;
-                    nob_cmd_append(&cmd, "cc");
+                    nob_cmd_append(&cmd, "clang");
                     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
@@ -227,9 +227,21 @@ bool build_musializer(Config config)
                         "./src/separate_translation_unit_for_miniaudio.c",
                         "./src/ffmpeg_linux.c",
                         "./src/musializer.c");
+#if defined (__APPLE__) || defined (__MACH__)
                     nob_cmd_append(&cmd,
-                        nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                        "-l:libraylib.a");
+                        nob_temp_sprintf("./build/raylib/%s/libraylib.a", NOB_ARRAY_GET(target_names, config.target)));
+
+                    nob_cmd_append(&cmd, "-framework", "CoreVideo");
+                    nob_cmd_append(&cmd,"-framework", "IOKit");
+                    nob_cmd_append(&cmd,"-framework", "Cocoa");
+                    nob_cmd_append(&cmd,"-framework", "GLUT");
+                    nob_cmd_append(&cmd,"-framework", "OpenGL");
+
+#else
+                    nob_cmd_append(&cmd,
+                            nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target),
+                            "-l:libraylib.a"));
+#endif
                     nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
                 if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
             }
@@ -354,9 +366,16 @@ bool build_raylib(Config config)
             cmd.count = 0;
             switch (config.target) {
                 case TARGET_POSIX:
-                    nob_cmd_append(&cmd, "cc");
+                    nob_cmd_append(&cmd, "clang");
                     nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+#if defined(__APPLE__) || defined (__MACH__)
+                    nob_cmd_append(&cmd, "-Iexternal/glfw/deps/ming");
+                    nob_cmd_append(&cmd, "-DGRAPHICS_API_OPENGL_33");
+                    if(strcmp(raylib_modules[i], "rglfw") == 0) {
+                        nob_cmd_append(&cmd, "-x", "objective-c");
+                    }
+#endif
                     nob_cmd_append(&cmd, "-c", input_path);
                     nob_cmd_append(&cmd, "-o", output_path);
                     break;
@@ -405,7 +424,7 @@ bool build_raylib(Config config)
 
                 if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
                     if (config.target == TARGET_POSIX) {
-                        nob_cmd_append(&cmd, "cc");
+                        nob_cmd_append(&cmd, "clang");
                     } else {
                         nob_log(NOB_ERROR, "TODO: dynamic raylib for %s is not supported yet", NOB_ARRAY_GET(target_names, config.target));
                         nob_return_defer(false);
