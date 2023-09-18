@@ -31,7 +31,7 @@ We are using Custom Build System written entirely in C called `nob`. It is simil
 
 Before using `nob` you need to bootstrap it. Just compile it with the available C compiler. On Linux it's usually `$ cc -o nob nob.c` on Windows with MSVC from within `vcvarsall.bat` it's `$ cl.exe nob.c`. You only need to boostrap it once. After the bootstrap you can just keep running the same executable over and over again. It even tries to rebuild itself if you modify [nob.c](./nob.c) (which may fail sometimes, so in that case be ready to reboostrap it).
 
-I really recommend to read [nob.c](./nob.c) and [nob.h](./nob.h) to get an idea of how it all actually works.
+I really recommend to read [nob.c](./nob.c) and [nob.h](./nob.h) to get an idea of how it all actually works. The Build System is a work in progress, so if something breaks be ready to dive into it.
 
 ### Linux
 
