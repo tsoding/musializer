@@ -11,6 +11,8 @@
 
 typedef enum {
     TARGET_POSIX,
+    // TODO: TARGET_WIN64_MINGW right now means cross compilation from Linux to Windows using mingw-w64
+    // I think the naming should be more explicit about that
     TARGET_WIN64_MINGW,
     TARGET_WIN64_MSVC,
     COUNT_TARGETS
@@ -452,6 +454,7 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "Subcommands:");
     nob_log(level, "    build (default)");
     nob_log(level, "    config");
+    nob_log(level, "    dist");
     nob_log(level, "    logo");
     nob_log(level, "    help");
 }
@@ -501,6 +504,54 @@ int main(int argc, char **argv)
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
         if (!dump_config_to_file("./build/build.conf", config)) return 1;
+    } else if (strcmp(subcommand, "dist") == 0) {
+        Config config = {0};
+        if (!load_config_from_file("./build/build.conf", &config)) return 1;
+        nob_log(NOB_INFO, "------------------------------");
+        log_config(config);
+        nob_log(NOB_INFO, "------------------------------");
+        if (config.hotreload) {
+            nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
+            return 1;
+        }
+        switch (config.target) {
+            case TARGET_POSIX: {
+#if __linux__
+                if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return 1;
+                if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return 1;
+                if (!nob_copy_directory_recursively("./resources/", "./musializer-linux-x86_64/resources/")) return 1;
+                // TODO: should we pack ffmpeg with Linux build?
+                // There are some static executables for Linux
+                Nob_Cmd cmd = {0};
+                nob_cmd_append(&cmd, "tar", "fvc", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
+                bool ok = nob_cmd_run_sync(cmd);
+                nob_cmd_free(cmd);
+                if (!ok) return 1;
+#else
+                nob_log(NOB_ERROR, "The only \"POSIX\" system that we are shipping on right now is Linux");
+                return 1;
+#endif
+            } break;
+
+            case TARGET_WIN64_MINGW: {
+                if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return 1;
+                if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return 1;
+                if (!nob_copy_directory_recursively("./resources/", "./musializer-win64-mingw/resources/")) return 1;
+                if (!nob_copy_file("musializer-logged.bat", "./musializer-win64-mingw/musializer-logged.bat")) return 1;
+                // TODO: pack ffmpeg.exe with windows build
+                //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return 1;
+                Nob_Cmd cmd = {0};
+                nob_cmd_append(&cmd, "zip", "-r", "./musializer-win64-mingw.zip", "./musializer-win64-mingw/");
+                bool ok = nob_cmd_run_sync(cmd);
+                nob_cmd_free(cmd);
+                if (!ok) return 1;
+            } break;
+
+            case TARGET_WIN64_MSVC: {
+                nob_log(NOB_ERROR, "TODO: Creating distro for MSVC build is not implemented yet");
+                return 1;
+            } break;
+        }
     } else if (strcmp(subcommand, "logo") == 0) {
         Nob_Procs procs = {0};
 
@@ -523,8 +574,6 @@ int main(int argc, char **argv)
         nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
         log_available_subcommands(program, NOB_ERROR);
     }
-    // TODO: subcommand for creating final distribution that we can ship to end users
-    // It should also supply the ffmpeg executable and stuff
     // TODO: it would be nice to check for situations like building TARGET_WIN64_MSVC on Linux and report that it's not possible.
     return 0;
 }
