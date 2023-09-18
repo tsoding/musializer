@@ -34,22 +34,25 @@ void log_available_targets(Nob_Log_Level level)
 typedef struct {
     Target target;
     bool hotreload;
-    bool help_requested;
 } Config;
 
-bool parse_config_from_args(int argc, char **argv, Config *config)
+bool compute_default_config(Config *config)
 {
     memset(config, 0, sizeof(Config));
 #ifdef _WIN32
 #   if defined(_MSC_VER)
-        config->target = TARGET_WIN32_MSVC;
+        config->target = TARGET_WIN64_MSVC;
 #   else
-        config->target = TARGET_WIN32_MINGW;
+        config->target = TARGET_WIN64_MINGW;
 #   endif
 #else
     config->target = TARGET_POSIX;
 #endif
+    return true;
+}
 
+bool parse_config_from_args(int argc, char **argv, Config *config)
+{
     while (argc > 0) {
         const char *flag = nob_shift_args(&argc, &argv);
         if (strcmp(flag, "-t") == 0) {
@@ -77,7 +80,11 @@ bool parse_config_from_args(int argc, char **argv, Config *config)
         } else if (strcmp("-r", flag) == 0) {
             config->hotreload = true;
         } else if (strcmp("-h", flag) == 0 || strcmp("--help", flag) == 0) {
-            config->help_requested = true;
+            nob_log(NOB_INFO, "Available config flags:");
+            nob_log(NOB_INFO, "    -t <target>    set build target");
+            nob_log(NOB_INFO, "    -r             enable hotreload");
+            nob_log(NOB_INFO, "    -h             print this help");
+            return false;
         } else {
             nob_log(NOB_ERROR, "Unknown flag %s", flag);
             return false;
@@ -277,7 +284,7 @@ bool build_musializer(Config config)
                         "./src/plug.c",
                         "./src/separate_translation_unit_for_miniaudio.c",
                         "./src/ffmpeg_windows.c"
-                        // TODO: building resource file is not implemented for TARGET_WIN32_MSVC
+                        // TODO: building resource file is not implemented for TARGET_WIN64_MSVC
                         //"./build/musializer.res"
                         );
                     nob_cmd_append(&cmd,
@@ -467,12 +474,17 @@ int main(int argc, char **argv)
 
     if (strcmp(subcommand, "build") == 0) {
         Config config = {0};
-        if (!load_config_from_file("./build/build.conf", &config)) {
-            // TODO: load_config_from_file may fail not only because of the file missing
-            // So the error message may look out of place
-            // TODO: use a default config in case ./build/build.conf is missing
-            nob_log(NOB_ERROR, "You may want to probably call `%s config` first", program);
-            return 1;
+        switch (nob_file_exists("./build/build.conf")) {
+            case -1:
+                return 1;
+            case 0:
+                if (!nob_mkdir_if_not_exists("build")) return 1;
+                if (!compute_default_config(&config)) return 1;
+                if (!dump_config_to_file("./build/build.conf", config)) return 1;
+                break;
+            case 1:
+                if (!load_config_from_file("./build/build.conf", &config)) return 1;
+                break;
         }
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
@@ -484,16 +496,10 @@ int main(int argc, char **argv)
         }
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
     } else if (strcmp(subcommand, "config") == 0) {
-        if (!nob_mkdir_if_not_exists("build")) return 1;
         Config config = {0};
+        if (!nob_mkdir_if_not_exists("build")) return 1;
+        if (!compute_default_config(&config)) return 1;
         if (!parse_config_from_args(argc, argv, &config)) return 1;
-        if (config.help_requested) {
-            nob_log(NOB_INFO, "Available config flags:");
-            nob_log(NOB_INFO, "    -t <target>    set build target");
-            nob_log(NOB_INFO, "    -r             enable hotreload");
-            nob_log(NOB_INFO, "    -h             print this help");
-            return 0;
-        }
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
