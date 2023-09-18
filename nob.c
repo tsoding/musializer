@@ -101,19 +101,13 @@ void log_config(Config config)
 
 bool dump_config_to_file(const char *path, Config config)
 {
-    char line[256];
-
     Nob_String_Builder sb = {0};
-
     nob_log(NOB_INFO, "Saving configuration to %s", path);
-
-    snprintf(line, sizeof(line), "target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target));
-    nob_sb_append_cstr(&sb, line);
-    snprintf(line, sizeof(line), "hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false");
-    nob_sb_append_cstr(&sb, line);
-
-    if (!nob_write_entire_file(path, sb.items, sb.count)) return false;
-    return true;
+    nob_sb_append_cstr(&sb, nob_temp_sprintf("target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target)));
+    nob_sb_append_cstr(&sb, nob_temp_sprintf("hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false"));
+    bool res = nob_write_entire_file(path, sb.items, sb.count);
+    nob_sb_free(sb);
+    return res;
 }
 
 bool load_config_from_file(const char *path, Config *config)
