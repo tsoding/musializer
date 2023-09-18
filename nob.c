@@ -470,6 +470,7 @@ int main(int argc, char **argv)
         if (!load_config_from_file("./build/build.conf", &config)) {
             // TODO: load_config_from_file may fail not only because of the file missing
             // So the error message may look out of place
+            // TODO: use a default config in case ./build/build.conf is missing
             nob_log(NOB_ERROR, "You may want to probably call `%s config` first", program);
             return 1;
         }
