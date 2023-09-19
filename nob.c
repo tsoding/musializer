@@ -187,7 +187,6 @@ bool build_musializer(Config config)
                         nob_cmd_append(&cmd, "-o", "./build/libplug.so");
                         nob_cmd_append(&cmd,
                             "./src/plug.c",
-                            "./src/separate_translation_unit_for_miniaudio.c",
                             "./src/ffmpeg_linux.c");
                         nob_cmd_append(&cmd,
                             nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
@@ -224,7 +223,6 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
                         "./src/plug.c",
-                        "./src/separate_translation_unit_for_miniaudio.c",
                         "./src/ffmpeg_linux.c",
                         "./src/musializer.c");
                     nob_cmd_append(&cmd,
@@ -254,7 +252,6 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
                         "./src/plug.c",
-                        "./src/separate_translation_unit_for_miniaudio.c",
                         "./src/ffmpeg_windows.c",
                         "./src/musializer.c",
                         "./build/musializer.res"
@@ -280,7 +277,6 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd,
                         "./src/musializer.c",
                         "./src/plug.c",
-                        "./src/separate_translation_unit_for_miniaudio.c",
                         "./src/ffmpeg_windows.c"
                         // TODO: building resource file is not implemented for TARGET_WIN64_MSVC
                         //"./build/musializer.res"

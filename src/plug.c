@@ -7,7 +7,8 @@
 
 #include "plug.h"
 #include "ffmpeg.h"
-#include "separate_translation_unit_for_miniaudio.h"
+#define _WINDOWS_
+#include "miniaudio.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -68,7 +69,7 @@ typedef struct {
 
     // Microphone
     bool capturing;
-    void *microphone;
+    ma_device *microphone;
 } Plug;
 
 Plug *p = NULL;
@@ -273,6 +274,12 @@ void callback(void *bufferData, unsigned int frames)
         fft_push(fs[i][0]);
     }
 }
+void ma_callback(ma_device *pDevice, void *pOutput, const void *pInput,ma_uint32 frameCount)
+{
+    callback((void*)pInput,frameCount);
+    (void)pOutput;
+    (void)pDevice;
+}
 
 void plug_init(void)
 {
@@ -326,7 +333,7 @@ void plug_update(void)
         if (p->capturing) {
             if (p->microphone != NULL) {
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) {
-                    uninit_capture_device(p->microphone);
+                    ma_device_uninit(p->microphone);
                     p->microphone = NULL;
                     p->capturing = false;
                 }
@@ -383,10 +390,23 @@ void plug_update(void)
 
             if (IsKeyPressed(KEY_M)) {
                 // TODO: let the user choose their mic
-                p->microphone = init_default_capture_device(callback);
+                ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
+                deviceConfig.capture.format = ma_format_f32;
+                deviceConfig.capture.channels = 2;
+                deviceConfig.sampleRate = 44100;
+                deviceConfig.dataCallback = ma_callback;
+                deviceConfig.pUserData = NULL;
+                p->microphone = malloc(sizeof(ma_device));
+                assert(p->microphone != NULL && "Buy MORE RAM lol!!");
+                ma_result result = ma_device_init(NULL, &deviceConfig, p->microphone);
+                if (result != MA_SUCCESS) {
+                  TraceLog(LOG_ERROR,"MINIAUDIO: Failed to initialize capture device: %s",ma_result_description(result));
+                }
                 if (p->microphone != NULL) {
-                    if (!start_capture_device(p->microphone)) {
-                        uninit_capture_device(p->microphone);
+                    ma_result result = ma_device_start(p->microphone);
+                    if (result != MA_SUCCESS) {
+                        TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s",ma_result_description(result));
+                        ma_device_uninit(p->microphone);
                         p->microphone = NULL;
                     }
                 }
