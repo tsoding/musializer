@@ -289,6 +289,8 @@ typedef struct {
     const char *data;
 } Nob_String_View;
 
+const char *nob_temp_sv_to_cstr(Nob_String_View sv);
+
 Nob_String_View nob_sv_chop_by_delim(Nob_String_View *sv, char delim);
 Nob_String_View nob_sv_trim(Nob_String_View sv);
 bool nob_sv_eq(Nob_String_View a, Nob_String_View b);
@@ -845,6 +847,15 @@ size_t nob_temp_save(void)
 void nob_temp_rewind(size_t checkpoint)
 {
     nob_temp_size = checkpoint;
+}
+
+const char *nob_temp_sv_to_cstr(Nob_String_View sv)
+{
+    char *result = nob_temp_alloc(sv.count + 1);
+    NOB_ASSERT(result != NULL && "Extend the size of the temporary allocator");
+    memcpy(result, sv.data, sv.count);
+    result[sv.count] = '\0';
+    return result;
 }
 
 int nob_needs_rebuild(const char *output_path, const char **input_paths, size_t input_paths_count)
