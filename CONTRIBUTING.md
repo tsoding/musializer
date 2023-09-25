@@ -1,6 +1,5 @@
 I have very limited resources in terms of handling feedback on my projects. So here are the limitations to keep in mind:
 
-- I don't look into reported Issues.
 - I only look into **small** PRs that suggest
   - bug fixes,
   - documentation fixes.
