@@ -10,7 +10,7 @@
 #include "nob.h"
 
 typedef enum {
-    TARGET_POSIX,
+    TARGET_LINUX,
     // TODO: TARGET_WIN64_MINGW right now means cross compilation from Linux to Windows using mingw-w64
     // I think the naming should be more explicit about that
     TARGET_WIN64_MINGW,
@@ -20,7 +20,7 @@ typedef enum {
 
 static_assert(3 == COUNT_TARGETS, "Amount of targets have changed");
 const char *target_names[] = {
-    [TARGET_POSIX]       = "posix",
+    [TARGET_LINUX]       = "linux",
     [TARGET_WIN64_MINGW] = "win64-mingw",
     [TARGET_WIN64_MSVC]  = "win64-msvc",
 };
@@ -48,7 +48,7 @@ bool compute_default_config(Config *config)
         config->target = TARGET_WIN64_MINGW;
 #   endif
 #else
-    config->target = TARGET_POSIX;
+    config->target = TARGET_LINUX;
 #endif
     return true;
 }
@@ -174,7 +174,7 @@ bool build_musializer(Config config)
     Nob_Procs procs = {0};
 
     switch (config.target) {
-        case TARGET_POSIX: {
+        case TARGET_LINUX: {
             if (config.hotreload) {
                 procs.count = 0;
                     cmd.count = 0;
@@ -334,7 +334,7 @@ bool build_raylib(Config config)
         const char *input_path = nob_temp_sprintf("./raylib/raylib-4.5.0/src/%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
         switch (config.target) {
-        case TARGET_POSIX:
+        case TARGET_LINUX:
         case TARGET_WIN64_MINGW:
             output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             break;
@@ -349,7 +349,7 @@ bool build_raylib(Config config)
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             cmd.count = 0;
             switch (config.target) {
-                case TARGET_POSIX:
+                case TARGET_LINUX:
                     nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
@@ -383,7 +383,7 @@ bool build_raylib(Config config)
     if (!nob_procs_wait(procs)) nob_return_defer(false);
 
     switch (config.target) {
-        case TARGET_POSIX:
+        case TARGET_LINUX:
         case TARGET_WIN64_MINGW: {
             if (!config.hotreload) {
                 const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
@@ -400,7 +400,7 @@ bool build_raylib(Config config)
                 const char *libraylib_path = nob_temp_sprintf("%s/libraylib.so", build_path);
 
                 if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
-                    if (config.target == TARGET_POSIX) {
+                    if (config.target == TARGET_LINUX) {
                         nob_cmd_append(&cmd, "cc");
                     } else {
                         nob_log(NOB_ERROR, "TODO: dynamic raylib for %s is not supported yet", NOB_ARRAY_GET(target_names, config.target));
@@ -511,7 +511,7 @@ int main(int argc, char **argv)
             return 1;
         }
         switch (config.target) {
-            case TARGET_POSIX: {
+            case TARGET_LINUX: {
 #if __linux__
                 if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return 1;
                 if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return 1;
