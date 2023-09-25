@@ -400,7 +400,7 @@ void plug_update(void)
                 assert(p->microphone != NULL && "Buy MORE RAM lol!!");
                 ma_result result = ma_device_init(NULL, &deviceConfig, p->microphone);
                 if (result != MA_SUCCESS) {
-                  TraceLog(LOG_ERROR,"MINIAUDIO: Failed to initialize capture device: %s",ma_result_description(result));
+                    TraceLog(LOG_ERROR,"MINIAUDIO: Failed to initialize capture device: %s",ma_result_description(result));
                 }
                 if (p->microphone != NULL) {
                     ma_result result = ma_device_start(p->microphone);
