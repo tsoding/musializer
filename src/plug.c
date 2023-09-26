@@ -492,6 +492,7 @@ void plug_update(void)
             position.y = h/2 - size.y/2 + fontSize,
             DrawTextEx(p->font, label, position, fontSize, 0, color);
         } else { // FFmpeg process is going
+            // TODO: introduce a rendering mode that perfectly loops the video
             if ((p->wave_cursor >= p->wave.frameCount && fft_settled()) || IsKeyPressed(KEY_ESCAPE)) { // Rendering is finished or cancelled
                 // TODO: ffmpeg processes frames slower than we generate them
                 // So when we cancel the rendering ffmpeg is still going and blocking the UI
