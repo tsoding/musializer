@@ -444,6 +444,48 @@ defer:
     return result;
 }
 
+bool build_dist(Config config)
+{
+    if (config.hotreload) {
+        nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
+        return 1;
+    }
+
+    switch (config.target) {
+        case TARGET_LINUX: {
+            if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return 1;
+            if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return 1;
+            if (!nob_copy_directory_recursively("./resources/", "./musializer-linux-x86_64/resources/")) return 1;
+            // TODO: should we pack ffmpeg with Linux build?
+            // There are some static executables for Linux
+            Nob_Cmd cmd = {0};
+            nob_cmd_append(&cmd, "tar", "fvc", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
+            bool ok = nob_cmd_run_sync(cmd);
+            nob_cmd_free(cmd);
+            if (!ok) return 1;
+        } break;
+
+        case TARGET_WIN64_MINGW: {
+            if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return 1;
+            if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return 1;
+            if (!nob_copy_directory_recursively("./resources/", "./musializer-win64-mingw/resources/")) return 1;
+            if (!nob_copy_file("musializer-logged.bat", "./musializer-win64-mingw/musializer-logged.bat")) return 1;
+            // TODO: pack ffmpeg.exe with windows build
+            //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return 1;
+            Nob_Cmd cmd = {0};
+            nob_cmd_append(&cmd, "zip", "-r", "./musializer-win64-mingw.zip", "./musializer-win64-mingw/");
+            bool ok = nob_cmd_run_sync(cmd);
+            nob_cmd_free(cmd);
+            if (!ok) return 1;
+        } break;
+
+        case TARGET_WIN64_MSVC: {
+            nob_log(NOB_ERROR, "TODO: Creating distro for MSVC build is not implemented yet");
+            return 1;
+        } break;
+    }
+}
+
 void log_available_subcommands(const char *program, Nob_Log_Level level)
 {
     nob_log(level, "Usage: %s [subcommand]", program);
@@ -506,48 +548,7 @@ int main(int argc, char **argv)
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
-        if (config.hotreload) {
-            nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
-            return 1;
-        }
-        switch (config.target) {
-            case TARGET_LINUX: {
-#if __linux__
-                if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return 1;
-                if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return 1;
-                if (!nob_copy_directory_recursively("./resources/", "./musializer-linux-x86_64/resources/")) return 1;
-                // TODO: should we pack ffmpeg with Linux build?
-                // There are some static executables for Linux
-                Nob_Cmd cmd = {0};
-                nob_cmd_append(&cmd, "tar", "fvc", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
-                bool ok = nob_cmd_run_sync(cmd);
-                nob_cmd_free(cmd);
-                if (!ok) return 1;
-#else
-                nob_log(NOB_ERROR, "The only \"POSIX\" system that we are shipping on right now is Linux");
-                return 1;
-#endif
-            } break;
-
-            case TARGET_WIN64_MINGW: {
-                if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return 1;
-                if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return 1;
-                if (!nob_copy_directory_recursively("./resources/", "./musializer-win64-mingw/resources/")) return 1;
-                if (!nob_copy_file("musializer-logged.bat", "./musializer-win64-mingw/musializer-logged.bat")) return 1;
-                // TODO: pack ffmpeg.exe with windows build
-                //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return 1;
-                Nob_Cmd cmd = {0};
-                nob_cmd_append(&cmd, "zip", "-r", "./musializer-win64-mingw.zip", "./musializer-win64-mingw/");
-                bool ok = nob_cmd_run_sync(cmd);
-                nob_cmd_free(cmd);
-                if (!ok) return 1;
-            } break;
-
-            case TARGET_WIN64_MSVC: {
-                nob_log(NOB_ERROR, "TODO: Creating distro for MSVC build is not implemented yet");
-                return 1;
-            } break;
-        }
+        if (!build_dist(config)) return 1;
     } else if (strcmp(subcommand, "logo") == 0) {
         Nob_Procs procs = {0};
 
