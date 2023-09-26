@@ -15,14 +15,16 @@ typedef enum {
     // I think the naming should be more explicit about that
     TARGET_WIN64_MINGW,
     TARGET_WIN64_MSVC,
+    TARGET_MACOS,
     COUNT_TARGETS
 } Target;
 
-static_assert(3 == COUNT_TARGETS, "Amount of targets have changed");
+static_assert(4 == COUNT_TARGETS, "Amount of targets have changed");
 const char *target_names[] = {
     [TARGET_LINUX]       = "linux",
     [TARGET_WIN64_MINGW] = "win64-mingw",
     [TARGET_WIN64_MSVC]  = "win64-msvc",
+    [TARGET_MACOS]       = "macos",
 };
 
 void log_available_targets(Nob_Log_Level level)
@@ -48,7 +50,11 @@ bool compute_default_config(Config *config)
         config->target = TARGET_WIN64_MINGW;
 #   endif
 #else
-    config->target = TARGET_LINUX;
+#   if defined (__APPLE__) || defined (__MACH__)
+        config->target = TARGET_MACOS;
+#   else
+        config->target = TARGET_LINUX;
+#   endif
 #endif
     return true;
 }
@@ -233,6 +239,34 @@ bool build_musializer(Config config)
             }
         } break;
 
+        case TARGET_MACOS: {
+            if (config.hotreload) {
+                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
+                nob_return_defer(false);
+            }
+
+            cmd.count = 0;
+                nob_cmd_append(&cmd, "clang");
+                nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                nob_cmd_append(&cmd, "-o", "./build/musializer");
+                nob_cmd_append(&cmd,
+                    "./src/plug.c",
+                    "./src/ffmpeg_linux.c",
+                    "./src/musializer.c");
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("./build/raylib/%s/libraylib.a", NOB_ARRAY_GET(target_names, config.target)));
+
+                nob_cmd_append(&cmd, "-framework", "CoreVideo");
+                nob_cmd_append(&cmd, "-framework", "IOKit");
+                nob_cmd_append(&cmd, "-framework", "Cocoa");
+                nob_cmd_append(&cmd, "-framework", "GLUT");
+                nob_cmd_append(&cmd, "-framework", "OpenGL");
+
+                nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
+            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+        } break;
+
         case TARGET_WIN64_MINGW: {
             if (config.hotreload) {
                 nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
@@ -335,6 +369,7 @@ bool build_raylib(Config config)
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
         switch (config.target) {
         case TARGET_LINUX:
+        case TARGET_MACOS:
         case TARGET_WIN64_MINGW:
             output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             break;
@@ -353,6 +388,18 @@ bool build_raylib(Config config)
                     nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "-c", input_path);
+                    nob_cmd_append(&cmd, "-o", output_path);
+                    break;
+                case TARGET_MACOS:
+                    nob_cmd_append(&cmd, "clang");
+                    nob_cmd_append(&cmd, "-g", "-DPLATFORM_DESKTOP", "-fPIC");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "-Iexternal/glfw/deps/ming");
+                    nob_cmd_append(&cmd, "-DGRAPHICS_API_OPENGL_33");
+                    if(strcmp(raylib_modules[i], "rglfw") == 0) {
+                        nob_cmd_append(&cmd, "-x", "objective-c");
+                    }
                     nob_cmd_append(&cmd, "-c", input_path);
                     nob_cmd_append(&cmd, "-o", output_path);
                     break;
@@ -383,6 +430,7 @@ bool build_raylib(Config config)
     if (!nob_procs_wait(procs)) nob_return_defer(false);
 
     switch (config.target) {
+        case TARGET_MACOS:
         case TARGET_LINUX:
         case TARGET_WIN64_MINGW: {
             if (!config.hotreload) {
@@ -400,12 +448,11 @@ bool build_raylib(Config config)
                 const char *libraylib_path = nob_temp_sprintf("%s/libraylib.so", build_path);
 
                 if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
-                    if (config.target == TARGET_LINUX) {
-                        nob_cmd_append(&cmd, "cc");
-                    } else {
+                    if (config.target != TARGET_LINUX) {
                         nob_log(NOB_ERROR, "TODO: dynamic raylib for %s is not supported yet", NOB_ARRAY_GET(target_names, config.target));
                         nob_return_defer(false);
                     }
+                    nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-shared");
                     nob_cmd_append(&cmd, "-o", libraylib_path);
                     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
