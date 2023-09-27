@@ -78,3 +78,13 @@ $ ./build/musializer
 Keep the app running. Rebuild with `./nob`. Hot reload by focusing on the window of the app and pressing <kbd>r</kbd>.
 
 The way it works is by putting the majority of the logic of the application into a `libplug` dynamic library and just reloading it when requested. The [rpath](https://en.wikipedia.org/wiki/Rpath) (aka hard-coded run-time search path) for that library is set to `.` and `./build/`. See [build.sh](./build.sh) for more information on how everything is configured.
+
+## Usage
+
+| Keyboard Shortcut | Function                                      |
+| ----------------- | --------------------------------------------- |
+| M                 | Capture and visualise sound from microphone   |
+| Q                 | Restart playback                              |
+| F                 | Render with ffmpeg                            |
+
+
