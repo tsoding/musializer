@@ -7,7 +7,7 @@
 #include <errno.h>
 
 #define NOB_IMPLEMENTATION
-#include "nob.h"
+#include "./src/nob.h"
 
 typedef enum {
     TARGET_LINUX,

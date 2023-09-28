@@ -9,6 +9,8 @@
 #include "ffmpeg.h"
 #define _WINDOWS_
 #include "miniaudio.h"
+#define NOB_IMPLEMENTATION
+#include "nob.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -42,14 +44,24 @@
 #endif
 
 typedef struct {
-    // Visualizer
     char *file_path;
     Music music;
+} Sample;
+
+typedef struct {
+    Sample *items;
+    size_t count;
+    size_t capacity;
+} Samples;
+
+typedef struct {
+    // Visualizer
+    Samples samples;
+    int current_sample;
     Font font;
     Shader circle;
     int circle_radius_location;
     int circle_power_location;
-    bool error;
 
     // Renderer
     bool rendering;
@@ -167,10 +179,10 @@ size_t fft_analyze(float dt)
     return m;
 }
 
-void fft_render(size_t w, size_t h, size_t m)
+void fft_render(Rectangle boundary, size_t m)
 {
     // The width of a single bar
-    float cell_width = (float)w/m;
+    float cell_width = boundary.width/m;
 
     // Global color parameters
     float saturation = 0.75f;
@@ -182,12 +194,12 @@ void fft_render(size_t w, size_t h, size_t m)
         float hue = (float)i/m;
         Color color = ColorFromHSV(hue*360, saturation, value);
         Vector2 startPos = {
-            i*cell_width + cell_width/2,
-            h - h*2/3*t,
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*t,
         };
         Vector2 endPos = {
-            i*cell_width + cell_width/2,
-            h,
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height,
         };
         float thick = cell_width/3*sqrtf(t);
         DrawLineEx(startPos, endPos, thick, color);
@@ -205,12 +217,12 @@ void fft_render(size_t w, size_t h, size_t m)
         float hue = (float)i/m;
         Color color = ColorFromHSV(hue*360, saturation, value);
         Vector2 startPos = {
-            i*cell_width + cell_width/2,
-            h - h*2/3*start,
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*start,
         };
         Vector2 endPos = {
-            i*cell_width + cell_width/2,
-            h - h*2/3*end,
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*end,
         };
         float radius = cell_width*3*sqrtf(end);
         Vector2 origin = {0};
@@ -245,8 +257,8 @@ void fft_render(size_t w, size_t h, size_t m)
         float hue = (float)i/m;
         Color color = ColorFromHSV(hue*360, saturation, value);
         Vector2 center = {
-            i*cell_width + cell_width/2,
-            h - h*2/3*t,
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*t,
         };
         float radius = cell_width*6*sqrtf(t);
         Vector2 position = {
@@ -298,12 +310,14 @@ void plug_init(void)
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
+    p->current_sample = -1;
 }
 
 Plug *plug_pre_reload(void)
 {
-    if (IsMusicReady(p->music)) {
-        DetachAudioStreamProcessor(p->music.stream, callback);
+    for (size_t i = 0; i < p->samples.count; ++i) {
+        Sample *it = &p->samples.items[i];
+        DetachAudioStreamProcessor(it->music.stream, callback);
     }
     return p;
 }
@@ -311,13 +325,28 @@ Plug *plug_pre_reload(void)
 void plug_post_reload(Plug *pp)
 {
     p = pp;
-    if (IsMusicReady(p->music)) {
-        AttachAudioStreamProcessor(p->music.stream, callback);
+    for (size_t i = 0; i < p->samples.count; ++i) {
+        Sample *it = &p->samples.items[i];
+        AttachAudioStreamProcessor(it->music.stream, callback);
     }
     UnloadShader(p->circle);
     p->circle = LoadShader(NULL, TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION));
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
+}
+
+Sample *current_sample(void)
+{
+    if (0 <= p->current_sample && (size_t) p->current_sample < p->samples.count) {
+        return &p->samples.items[p->current_sample];
+    }
+    return NULL;
+}
+
+void error_load_file_popup(void)
+{
+    // TODO: implement annoying popup that indicates that we could not load the file
+    TraceLog(LOG_ERROR, "Could not load file");
 }
 
 void plug_update(void)
@@ -339,7 +368,9 @@ void plug_update(void)
                 }
 
                 size_t m = fft_analyze(GetFrameTime());
-                fft_render(GetRenderWidth(), GetRenderHeight(), m);
+                fft_render(CLITERAL(Rectangle) {
+                    0, 0, GetRenderWidth(), GetRenderHeight()
+                }, m);
             } else {
                 if (IsKeyPressed(KEY_ESCAPE)) {
                     p->capturing = false;
@@ -365,24 +396,27 @@ void plug_update(void)
         } else {
             if (IsFileDropped()) {
                 FilePathList droppedFiles = LoadDroppedFiles();
-                if (droppedFiles.count > 0) {
-                    free(p->file_path);
-                    p->file_path = strdup(droppedFiles.paths[0]);
+                for (size_t i = 0; i < droppedFiles.count; ++i) {
+                    char *file_path = strdup(droppedFiles.paths[i]);
 
-                    if (IsMusicReady(p->music)) {
-                        StopMusicStream(p->music);
-                        UnloadMusicStream(p->music);
-                    }
+                    Sample *sample = current_sample();
+                    if (sample) StopMusicStream(sample->music);
 
-                    p->music = LoadMusicStream(p->file_path);
+                    Music music = LoadMusicStream(file_path);
 
-                    if (IsMusicReady(p->music)) {
-                        p->error = false;
-                        SetMusicVolume(p->music, 0.5f);
-                        AttachAudioStreamProcessor(p->music.stream, callback);
-                        PlayMusicStream(p->music);
+                    if (IsMusicReady(music)) {
+                        SetMusicVolume(music, 0.5f);
+                        AttachAudioStreamProcessor(music.stream, callback);
+                        PlayMusicStream(music);
+
+                        nob_da_append(&p->samples, (CLITERAL(Sample) {
+                            .file_path = file_path,
+                            .music = music,
+                        }));
+                        p->current_sample = p->samples.count - 1;
                     } else {
-                        p->error = true;
+                        free(file_path);
+                        error_load_file_popup();
                     }
                 }
                 UnloadDroppedFiles(droppedFiles);
@@ -413,49 +447,85 @@ void plug_update(void)
                 p->capturing = true;
             }
 
-            if (IsMusicReady(p->music)) { // The music is loaded and ready
-                UpdateMusicStream(p->music);
+            Sample *sample = current_sample();
+            if (sample) { // The music is loaded and ready
+                UpdateMusicStream(sample->music);
 
                 if (IsKeyPressed(KEY_SPACE)) {
-                    if (IsMusicStreamPlaying(p->music)) {
-                        PauseMusicStream(p->music);
+                    if (IsMusicStreamPlaying(sample->music)) {
+                        PauseMusicStream(sample->music);
                     } else {
-                        ResumeMusicStream(p->music);
+                        ResumeMusicStream(sample->music);
                     }
                 }
 
                 if (IsKeyPressed(KEY_Q)) {
-                    StopMusicStream(p->music);
-                    PlayMusicStream(p->music);
+                    StopMusicStream(sample->music);
+                    PlayMusicStream(sample->music);
                 }
 
                 if (IsKeyPressed(KEY_F)) {
-                    StopMusicStream(p->music);
+                    StopMusicStream(sample->music);
 
                     fft_clean();
                     // TODO: LoadWave is pretty slow on big files
-                    p->wave = LoadWave(p->file_path);
+                    p->wave = LoadWave(sample->file_path);
                     p->wave_cursor = 0;
                     p->wave_samples = LoadWaveSamples(p->wave);
                     // TODO: set the rendering output path based on the input path
                     // Basically output into the same folder
-                    p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, p->file_path);
+                    p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, sample->file_path);
                     p->rendering = true;
                     SetTraceLogLevel(LOG_WARNING);
                 }
 
+                float panel_height = h*0.25;
+                Rectangle preview_boundary = {
+                    0, 0, w, h - panel_height
+                };
+
                 size_t m = fft_analyze(GetFrameTime());
-                fft_render(GetRenderWidth(), GetRenderHeight(), m);
-            } else { // We are waiting for the user to Drag&Drop the Music
-                const char *label;
-                Color color;
-                if (p->error) {
-                    label = "Could not load file";
-                    color = RED;
-                } else {
-                    label = "Drag&Drop Music Here";
-                    color = WHITE;
+                fft_render(preview_boundary, m);
+
+                static float panel_scroll = 0;
+                static float panel_velocity = 0;
+                panel_velocity *= 0.9;
+                panel_velocity += GetMouseWheelMove()*panel_height*4;
+                panel_scroll += panel_velocity*GetFrameTime();
+                Rectangle panel_boundary = {
+                    .x = panel_scroll,
+                    .y = preview_boundary.height,
+                    .width = w,
+                    .height = panel_height
+                };
+                float panel_padding = panel_height*0.1;
+
+                for (size_t i = 0; i < p->samples.count; ++i) {
+                    Rectangle item_boundary = {
+                        .x = i*panel_height + panel_boundary.x + panel_padding,
+                        .y = panel_boundary.y + panel_padding,
+                        .width = panel_height - panel_padding*2,
+                        .height = panel_height - panel_padding*2,
+                    };
+                    if (((int) i != p->current_sample)) {
+                        if (CheckCollisionPointRec(GetMousePosition(), item_boundary)) {
+                            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                                Sample *sample = current_sample();
+                                if (sample) StopMusicStream(sample->music);
+                                PlayMusicStream(p->samples.items[i].music);
+                                p->current_sample = i;
+                            }
+                            DrawRectangleRec(item_boundary, RED);
+                        } else {
+                            DrawRectangleRec(item_boundary, WHITE);
+                        }
+                    } else {
+                        DrawRectangleRec(item_boundary, BLUE);
+                    }
                 }
+            } else { // We are waiting for the user to Drag&Drop the Music
+                const char *label = "Drag&Drop Music Here";
+                Color color = WHITE;
                 Vector2 size = MeasureTextEx(p->font, label, p->font.baseSize, 0);
                 Vector2 position = {
                     w/2 - size.x/2,
@@ -465,6 +535,8 @@ void plug_update(void)
             }
         }
     } else { // We are in the Rendering Mode
+        Sample *sample = current_sample();
+        NOB_ASSERT(sample != NULL);
         if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
             if (IsKeyPressed(KEY_ESCAPE)) {
                 SetTraceLogLevel(LOG_INFO);
@@ -472,7 +544,7 @@ void plug_update(void)
                 UnloadWaveSamples(p->wave_samples);
                 p->rendering = false;
                 fft_clean();
-                PlayMusicStream(p->music);
+                PlayMusicStream(sample->music);
             }
 
             const char *label = "FFmpeg Failure: Check the Logs";
@@ -511,7 +583,7 @@ void plug_update(void)
                     UnloadWaveSamples(p->wave_samples);
                     p->rendering = false;
                     fft_clean();
-                    PlayMusicStream(p->music);
+                    PlayMusicStream(sample->music);
                 }
             } else { // Rendering is going...
                 // Label
@@ -566,7 +638,9 @@ void plug_update(void)
 
                 BeginTextureMode(p->screen);
                 ClearBackground(GetColor(0x151515FF));
-                fft_render(p->screen.texture.width, p->screen.texture.height, m);
+                fft_render(CLITERAL(Rectangle) {
+                    0, 0, p->screen.texture.width, p->screen.texture.height
+                }, m);
                 EndTextureMode();
 
                 Image image = LoadImageFromTexture(p->screen.texture);
