@@ -491,9 +491,14 @@ void plug_update(void)
                 static float panel_velocity = 0;
                 panel_velocity *= 0.9;
                 panel_velocity += GetMouseWheelMove()*panel_height*4;
-                panel_scroll += panel_velocity*GetFrameTime();
+                panel_scroll -= panel_velocity*GetFrameTime();
+                float min_scroll = 0;
+                if (panel_scroll < min_scroll) panel_scroll = min_scroll;
+                float max_scroll = panel_height*p->samples.count - w;
+                if (max_scroll < 0) max_scroll = 0;
+                if (panel_scroll > max_scroll) panel_scroll = max_scroll;
                 Rectangle panel_boundary = {
-                    .x = panel_scroll,
+                    .x = -panel_scroll,
                     .y = preview_boundary.height,
                     .width = w,
                     .height = panel_height
@@ -501,6 +506,7 @@ void plug_update(void)
                 float panel_padding = panel_height*0.1;
 
                 for (size_t i = 0; i < p->samples.count; ++i) {
+                    // TODO: tooltip with filepath on each item in the panel
                     Rectangle item_boundary = {
                         .x = i*panel_height + panel_boundary.x + panel_padding,
                         .y = panel_boundary.y + panel_padding,
