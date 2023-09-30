@@ -351,6 +351,10 @@ void error_load_file_popup(void)
 
 void tracks_panel(Rectangle panel_boundary)
 {
+    Color background = ColorFromHSV(0, 0, 0.2);
+    Color hoverover = ColorBrightness(background, 0.2);
+    Color selected = ColorBrightness(background, 0.6);
+
     float panel_height = panel_boundary.height;
     static float panel_scroll = 0;
     static float panel_velocity = 0;
@@ -380,12 +384,12 @@ void tracks_panel(Rectangle panel_boundary)
                     PlayMusicStream(p->tracks.items[i].music);
                     p->current_track = i;
                 }
-                DrawRectangleRec(item_boundary, RED);
+                DrawRectangleRec(item_boundary, hoverover);
             } else {
-                DrawRectangleRec(item_boundary, WHITE);
+                DrawRectangleRec(item_boundary, background);
             }
         } else {
-            DrawRectangleRec(item_boundary, BLUE);
+            DrawRectangleRec(item_boundary, selected);
         }
     }
 }
