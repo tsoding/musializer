@@ -349,6 +349,47 @@ void error_load_file_popup(void)
     TraceLog(LOG_ERROR, "Could not load file");
 }
 
+void tracks_panel(Rectangle panel_boundary)
+{
+    float panel_height = panel_boundary.height;
+    static float panel_scroll = 0;
+    static float panel_velocity = 0;
+    panel_velocity *= 0.9;
+    panel_velocity += GetMouseWheelMove()*panel_height*4;
+    panel_scroll -= panel_velocity*GetFrameTime();
+    float min_scroll = 0;
+    if (panel_scroll < min_scroll) panel_scroll = min_scroll;
+    float max_scroll = panel_height*p->tracks.count - panel_boundary.width;
+    if (max_scroll < 0) max_scroll = 0;
+    if (panel_scroll > max_scroll) panel_scroll = max_scroll;
+    float panel_padding = panel_height*0.1;
+
+    for (size_t i = 0; i < p->tracks.count; ++i) {
+        // TODO: tooltip with filepath on each item in the panel
+        Rectangle item_boundary = {
+            .x = i*panel_height + panel_boundary.x + panel_padding - panel_scroll,
+            .y = panel_boundary.y + panel_padding,
+            .width = panel_height - panel_padding*2,
+            .height = panel_height - panel_padding*2,
+        };
+        if (((int) i != p->current_track)) {
+            if (CheckCollisionPointRec(GetMousePosition(), item_boundary)) {
+                if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                    Track *track = current_track();
+                    if (track) StopMusicStream(track->music);
+                    PlayMusicStream(p->tracks.items[i].music);
+                    p->current_track = i;
+                }
+                DrawRectangleRec(item_boundary, RED);
+            } else {
+                DrawRectangleRec(item_boundary, WHITE);
+            }
+        } else {
+            DrawRectangleRec(item_boundary, BLUE);
+        }
+    }
+}
+
 void plug_update(void)
 {
     int w = GetRenderWidth();
@@ -487,48 +528,12 @@ void plug_update(void)
                 size_t m = fft_analyze(GetFrameTime());
                 fft_render(preview_boundary, m);
 
-                static float panel_scroll = 0;
-                static float panel_velocity = 0;
-                panel_velocity *= 0.9;
-                panel_velocity += GetMouseWheelMove()*panel_height*4;
-                panel_scroll -= panel_velocity*GetFrameTime();
-                float min_scroll = 0;
-                if (panel_scroll < min_scroll) panel_scroll = min_scroll;
-                float max_scroll = panel_height*p->tracks.count - w;
-                if (max_scroll < 0) max_scroll = 0;
-                if (panel_scroll > max_scroll) panel_scroll = max_scroll;
-                Rectangle panel_boundary = {
-                    .x = -panel_scroll,
+                tracks_panel(CLITERAL(Rectangle) {
+                    .x = 0,
                     .y = preview_boundary.height,
                     .width = w,
                     .height = panel_height
-                };
-                float panel_padding = panel_height*0.1;
-
-                for (size_t i = 0; i < p->tracks.count; ++i) {
-                    // TODO: tooltip with filepath on each item in the panel
-                    Rectangle item_boundary = {
-                        .x = i*panel_height + panel_boundary.x + panel_padding,
-                        .y = panel_boundary.y + panel_padding,
-                        .width = panel_height - panel_padding*2,
-                        .height = panel_height - panel_padding*2,
-                    };
-                    if (((int) i != p->current_track)) {
-                        if (CheckCollisionPointRec(GetMousePosition(), item_boundary)) {
-                            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                                Track *track = current_track();
-                                if (track) StopMusicStream(track->music);
-                                PlayMusicStream(p->tracks.items[i].music);
-                                p->current_track = i;
-                            }
-                            DrawRectangleRec(item_boundary, RED);
-                        } else {
-                            DrawRectangleRec(item_boundary, WHITE);
-                        }
-                    } else {
-                        DrawRectangleRec(item_boundary, BLUE);
-                    }
-                }
+                });
             } else { // We are waiting for the user to Drag&Drop the Music
                 const char *label = "Drag&Drop Music Here";
                 Color color = WHITE;
