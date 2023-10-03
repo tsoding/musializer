@@ -438,14 +438,17 @@ void tracks_panel(Rectangle panel_boundary)
 
         size_t text_size = TextLength(text);
         size_t max_char_count = (size_t) (item_boundary.width - text_padding * 2) / (size.x / text_size);
-        
-        char disp_text[max_char_count + 1];
-        memcpy(disp_text, text, max_char_count);
-        memcpy(disp_text + (max_char_count - 2), "...", 3);
-        disp_text[max_char_count] = 0;
-        
+
         // TODO: use SDF fonts
-        DrawTextEx(p->font, disp_text, position, fontSize, 0, WHITE);
+        if(max_char_count > text_size) {
+            DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
+        } else {
+            char disp_text[max_char_count + 1];
+            memcpy(disp_text, text, max_char_count - 3);
+            memcpy(disp_text + (max_char_count - 3), "...", 3);
+            disp_text[max_char_count] = 0;  
+            DrawTextEx(p->font, disp_text, position, fontSize, 0, WHITE);
+        }
     }
     
     if (entire_scrollable_area > visible_area_size) {
