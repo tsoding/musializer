@@ -300,6 +300,7 @@ void plug_init(void)
     memset(p, 0, sizeof(*p));
 
     p->font = LoadFontEx("./resources/fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
+    SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
     // TODO: Maybe we should try to keep compiling different versions of shaders
     // until one of them works?
     //
@@ -349,33 +350,66 @@ void error_load_file_popup(void)
     TraceLog(LOG_ERROR, "Could not load file");
 }
 
+void timeline(Rectangle timeline_boundary, Track *track)
+{
+    float played = GetMusicTimePlayed(track->music);
+    float len = GetMusicTimeLength(track->music);
+    float x = played/len*GetRenderWidth();
+    Vector2 startPos = {
+        .x = x,
+        .y = timeline_boundary.y
+    };
+    Vector2 endPos = {
+        .x = x,
+        .y = timeline_boundary.y + timeline_boundary.height
+    };
+    DrawLineEx(startPos, endPos, 10, RED);
+
+    Vector2 mouse = GetMousePosition();
+    if (CheckCollisionPointRec(mouse, timeline_boundary)) {
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            float t = (mouse.x - timeline_boundary.x)/timeline_boundary.width;
+            SeekMusicStream(track->music, t*len);
+        }
+    }
+
+    // TODO: enable the user to render a specific region instead of the
+    // whole song.
+    // TODO: visualize sound wave on the timeline
+}
+
 void tracks_panel(Rectangle panel_boundary)
 {
     Color background = ColorFromHSV(0, 0, 0.2);
     Color hoverover = ColorBrightness(background, 0.2);
-    Color selected = ColorBrightness(background, 0.6);
+    Color selected = ColorBrightness(BLUE, 0.2);//ColorBrightness(background, 0.6);
 
-    float panel_height = panel_boundary.height;
+    float scroll_bar_width = panel_boundary.width*0.03;
+    float item_size = panel_boundary.width*0.2;
+    float visible_area_size = panel_boundary.height;
+    float entire_scrollable_area = item_size*p->tracks.count;
     static float panel_scroll = 0;
     static float panel_velocity = 0;
     panel_velocity *= 0.9;
-    panel_velocity += GetMouseWheelMove()*panel_height*4;
+    panel_velocity += GetMouseWheelMove()*item_size*8;
     panel_scroll -= panel_velocity*GetFrameTime();
     float min_scroll = 0;
     if (panel_scroll < min_scroll) panel_scroll = min_scroll;
-    float max_scroll = panel_height*p->tracks.count - panel_boundary.width;
+    float max_scroll = entire_scrollable_area - visible_area_size;
     if (max_scroll < 0) max_scroll = 0;
     if (panel_scroll > max_scroll) panel_scroll = max_scroll;
-    float panel_padding = panel_height*0.1;
+    float panel_padding = item_size*0.1;
 
+    BeginScissorMode(panel_boundary.x, panel_boundary.y, panel_boundary.width, panel_boundary.height);
     for (size_t i = 0; i < p->tracks.count; ++i) {
         // TODO: tooltip with filepath on each item in the panel
         Rectangle item_boundary = {
-            .x = i*panel_height + panel_boundary.x + panel_padding - panel_scroll,
-            .y = panel_boundary.y + panel_padding,
-            .width = panel_height - panel_padding*2,
-            .height = panel_height - panel_padding*2,
+            .x = panel_boundary.x + panel_padding,
+            .y = i*item_size + panel_boundary.y + panel_padding - panel_scroll,
+            .width = panel_boundary.width - panel_padding*2 - scroll_bar_width,
+            .height = item_size - panel_padding*2,
         };
+        Color color;
         if (((int) i != p->current_track)) {
             if (CheckCollisionPointRec(GetMousePosition(), item_boundary)) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -384,14 +418,41 @@ void tracks_panel(Rectangle panel_boundary)
                     PlayMusicStream(p->tracks.items[i].music);
                     p->current_track = i;
                 }
-                DrawRectangleRec(item_boundary, hoverover);
+                color = hoverover;
             } else {
-                DrawRectangleRec(item_boundary, background);
+                color = background;
             }
         } else {
-            DrawRectangleRec(item_boundary, selected);
+            color = selected;
         }
+        DrawRectangleRounded(item_boundary, 0.2, 20, color);
+
+        const char *text = GetFileName(p->tracks.items[i].file_path);
+        float fontSize = item_boundary.height*0.5;
+        float text_padding = item_boundary.width*0.05;
+        Vector2 size = MeasureTextEx(p->font, text, fontSize, 0);
+        Vector2 position = {
+            .x = item_boundary.x + text_padding,
+            .y = item_boundary.y + item_boundary.height*0.5 - size.y*0.5,
+        };
+        // TODO: cut out overflown text
+        // TODO: use SDF fonts
+        DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
     }
+    
+    if (entire_scrollable_area > visible_area_size) {
+        float t = visible_area_size/entire_scrollable_area;
+        float q = panel_scroll/entire_scrollable_area;
+        Rectangle scroll_bar_boundary = {
+            .x = panel_boundary.x + panel_boundary.width - scroll_bar_width,
+            .y = panel_boundary.y + panel_boundary.height*q,
+            .width = scroll_bar_width,
+            .height = panel_boundary.height*t,
+        };
+        DrawRectangleRounded(scroll_bar_boundary, 0.8, 20, background);
+    }
+
+    EndScissorMode();
 }
 
 void plug_update(void)
@@ -524,20 +585,33 @@ void plug_update(void)
                     SetTraceLogLevel(LOG_WARNING);
                 }
 
-                float panel_height = h*0.25;
+                float tracks_panel_width = w*0.25;
+                float timeline_height = h*0.20;
                 Rectangle preview_boundary = {
-                    0, 0, w, h - panel_height
+                    .x = tracks_panel_width,
+                    .y = 0,
+                    .width = w - tracks_panel_width,
+                    .height = h - timeline_height
                 };
 
                 size_t m = fft_analyze(GetFrameTime());
+                BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
                 fft_render(preview_boundary, m);
+                EndScissorMode();
 
                 tracks_panel(CLITERAL(Rectangle) {
                     .x = 0,
+                    .y = 0,
+                    .width = tracks_panel_width,
+                    .height = preview_boundary.height,
+                });
+
+                timeline(CLITERAL(Rectangle) {
+                    .x = 0,
                     .y = preview_boundary.height,
                     .width = w,
-                    .height = panel_height
-                });
+                    .height = timeline_height,
+                }, track);
             } else { // We are waiting for the user to Drag&Drop the Music
                 const char *label = "Drag&Drop Music Here";
                 Color color = WHITE;
