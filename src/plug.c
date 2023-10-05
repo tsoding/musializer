@@ -380,19 +380,29 @@ void timeline(Rectangle timeline_boundary, Track *track)
 
 void tracks_panel(Rectangle panel_boundary)
 {
+    Vector2 mouse = GetMousePosition();
+
     Color background = ColorFromHSV(0, 0, 0.2);
     Color hoverover = ColorBrightness(background, 0.2);
-    Color selected = ColorBrightness(BLUE, 0.2);//ColorBrightness(background, 0.6);
+    Color selected = ColorBrightness(BLUE, 0.2);
 
     float scroll_bar_width = panel_boundary.width*0.03;
     float item_size = panel_boundary.width*0.2;
     float visible_area_size = panel_boundary.height;
     float entire_scrollable_area = item_size*p->tracks.count;
+
     static float panel_scroll = 0;
     static float panel_velocity = 0;
     panel_velocity *= 0.9;
     panel_velocity += GetMouseWheelMove()*item_size*8;
     panel_scroll -= panel_velocity*GetFrameTime();
+
+    static bool scrolling = false;
+    static float scrolling_mouse_offset = 0.0f;
+    if (scrolling) {
+        panel_scroll = (mouse.y - panel_boundary.y - scrolling_mouse_offset)/visible_area_size*entire_scrollable_area;
+    }
+
     float min_scroll = 0;
     if (panel_scroll < min_scroll) panel_scroll = min_scroll;
     float max_scroll = entire_scrollable_area - visible_area_size;
@@ -411,7 +421,7 @@ void tracks_panel(Rectangle panel_boundary)
         };
         Color color;
         if (((int) i != p->current_track)) {
-            if (CheckCollisionPointRec(GetMousePosition(), item_boundary)) {
+            if (CheckCollisionPointRec(mouse, item_boundary)) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                     Track *track = current_track();
                     if (track) StopMusicStream(track->music);
@@ -450,6 +460,19 @@ void tracks_panel(Rectangle panel_boundary)
             .height = panel_boundary.height*t,
         };
         DrawRectangleRounded(scroll_bar_boundary, 0.8, 20, background);
+
+        if (scrolling) {
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                scrolling = false;
+            }
+        } else {
+            if (CheckCollisionPointRec(mouse, scroll_bar_boundary)) {
+                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    scrolling = true;
+                    scrolling_mouse_offset = mouse.y - scroll_bar_boundary.y;
+                }
+            }
+        }
     }
 
     EndScissorMode();
