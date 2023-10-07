@@ -495,42 +495,51 @@ bool build_dist(Config config)
 {
     if (config.hotreload) {
         nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
-        return 1;
+        return false;
     }
 
     switch (config.target) {
         case TARGET_LINUX: {
-            if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return 1;
-            if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return 1;
-            if (!nob_copy_directory_recursively("./resources/", "./musializer-linux-x86_64/resources/")) return 1;
+            if (!nob_mkdir_if_not_exists("./musializer-linux-x86_64/")) return false;
+            if (!nob_copy_file("./build/musializer", "./musializer-linux-x86_64/musializer")) return false;
+            if (!nob_copy_directory_recursively("./resources/", "./musializer-linux-x86_64/resources/")) return false;
             // TODO: should we pack ffmpeg with Linux build?
             // There are some static executables for Linux
             Nob_Cmd cmd = {0};
             nob_cmd_append(&cmd, "tar", "fvc", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
             bool ok = nob_cmd_run_sync(cmd);
             nob_cmd_free(cmd);
-            if (!ok) return 1;
+            if (!ok) return false;
         } break;
 
         case TARGET_WIN64_MINGW: {
-            if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return 1;
-            if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return 1;
-            if (!nob_copy_directory_recursively("./resources/", "./musializer-win64-mingw/resources/")) return 1;
-            if (!nob_copy_file("musializer-logged.bat", "./musializer-win64-mingw/musializer-logged.bat")) return 1;
+            if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return false;
+            if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return false;
+            if (!nob_copy_directory_recursively("./resources/", "./musializer-win64-mingw/resources/")) return false;
+            if (!nob_copy_file("musializer-logged.bat", "./musializer-win64-mingw/musializer-logged.bat")) return false;
             // TODO: pack ffmpeg.exe with windows build
-            //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return 1;
+            //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return false;
             Nob_Cmd cmd = {0};
             nob_cmd_append(&cmd, "zip", "-r", "./musializer-win64-mingw.zip", "./musializer-win64-mingw/");
             bool ok = nob_cmd_run_sync(cmd);
             nob_cmd_free(cmd);
-            if (!ok) return 1;
+            if (!ok) return false;
         } break;
 
         case TARGET_WIN64_MSVC: {
             nob_log(NOB_ERROR, "TODO: Creating distro for MSVC build is not implemented yet");
-            return 1;
+            return false;
         } break;
+
+        case TARGET_MACOS: {
+            nob_log(NOB_ERROR, "TODO: Creating distro for MacOS build is not implemented yet");
+            return false;
+        }
+
+        default: NOB_ASSERT(0 && "unreachable");
     }
+
+    return true;
 }
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)
