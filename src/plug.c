@@ -25,6 +25,15 @@
 #define RENDER_WIDTH (16*RENDER_FACTOR)
 #define RENDER_HEIGHT (9*RENDER_FACTOR)
 
+#define COLOR_ACCENT                  ColorFromHSV(225, 0.75, 0.8)
+#define COLOR_BACKGROUND              GetColor(0x151515FF)
+#define COLOR_TRACK_PANEL_BACKGROUND  ColorBrightness(COLOR_BACKGROUND, -0.1)
+#define COLOR_TRACK_BUTTON_BACKGROUND ColorBrightness(COLOR_BACKGROUND, 0.15)
+#define COLOR_TRACK_BUTTON_HOVEROVER  ColorBrightness(COLOR_TRACK_BUTTON_BACKGROUND, 0.15)
+#define COLOR_TRACK_BUTTON_SELECTED   COLOR_ACCENT
+#define COLOR_TIMELINE_CURSOR         COLOR_ACCENT
+#define COLOR_TIMELINE_BACKGROUND     ColorBrightness(COLOR_BACKGROUND, -0.3)
+
 // Microsoft could not update their parser OMEGALUL:
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/complex-math-support?view=msvc-170#types-used-in-complex-math
 #ifdef _MSC_VER
@@ -352,6 +361,8 @@ void error_load_file_popup(void)
 
 void timeline(Rectangle timeline_boundary, Track *track)
 {
+    DrawRectangleRec(timeline_boundary, COLOR_TIMELINE_BACKGROUND);
+
     float played = GetMusicTimePlayed(track->music);
     float len = GetMusicTimeLength(track->music);
     float x = played/len*GetRenderWidth();
@@ -363,7 +374,7 @@ void timeline(Rectangle timeline_boundary, Track *track)
         .x = x,
         .y = timeline_boundary.y + timeline_boundary.height
     };
-    DrawLineEx(startPos, endPos, 10, RED);
+    DrawLineEx(startPos, endPos, 10, COLOR_TIMELINE_CURSOR);
 
     Vector2 mouse = GetMousePosition();
     if (CheckCollisionPointRec(mouse, timeline_boundary)) {
@@ -373,18 +384,15 @@ void timeline(Rectangle timeline_boundary, Track *track)
         }
     }
 
-    // TODO: enable the user to render a specific region instead of the
-    // whole song.
+    // TODO: enable the user to render a specific region instead of the whole song.
     // TODO: visualize sound wave on the timeline
 }
 
 void tracks_panel(Rectangle panel_boundary)
 {
-    Vector2 mouse = GetMousePosition();
+    DrawRectangleRec(panel_boundary, COLOR_TRACK_PANEL_BACKGROUND);
 
-    Color background = ColorFromHSV(0, 0, 0.2);
-    Color hoverover = ColorBrightness(background, 0.2);
-    Color selected = ColorBrightness(BLUE, 0.2);
+    Vector2 mouse = GetMousePosition();
 
     float scroll_bar_width = panel_boundary.width*0.03;
     float item_size = panel_boundary.width*0.2;
@@ -428,12 +436,12 @@ void tracks_panel(Rectangle panel_boundary)
                     PlayMusicStream(p->tracks.items[i].music);
                     p->current_track = i;
                 }
-                color = hoverover;
+                color = COLOR_TRACK_BUTTON_HOVEROVER;
             } else {
-                color = background;
+                color = COLOR_TRACK_BUTTON_BACKGROUND;
             }
         } else {
-            color = selected;
+            color = COLOR_TRACK_BUTTON_SELECTED;
         }
         DrawRectangleRounded(item_boundary, 0.2, 20, color);
 
@@ -449,7 +457,7 @@ void tracks_panel(Rectangle panel_boundary)
         // TODO: use SDF fonts
         DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
     }
-    
+
     if (entire_scrollable_area > visible_area_size) {
         float t = visible_area_size/entire_scrollable_area;
         float q = panel_scroll/entire_scrollable_area;
@@ -459,7 +467,7 @@ void tracks_panel(Rectangle panel_boundary)
             .width = scroll_bar_width,
             .height = panel_boundary.height*t,
         };
-        DrawRectangleRounded(scroll_bar_boundary, 0.8, 20, background);
+        DrawRectangleRounded(scroll_bar_boundary, 0.8, 20, COLOR_TRACK_BUTTON_BACKGROUND);
 
         if (scrolling) {
             if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
@@ -484,7 +492,7 @@ void plug_update(void)
     int h = GetRenderHeight();
 
     BeginDrawing();
-    ClearBackground(GetColor(0x151515FF));
+    ClearBackground(COLOR_BACKGROUND);
 
     if (!p->rendering) { // We are in the Preview Mode
         // TODO: there is no visual indication whether we are in the capturing or playing mode
@@ -749,7 +757,7 @@ void plug_update(void)
                 size_t m = fft_analyze(1.0f/RENDER_FPS);
 
                 BeginTextureMode(p->screen);
-                ClearBackground(GetColor(0x151515FF));
+                ClearBackground(COLOR_BACKGROUND);
                 fft_render(CLITERAL(Rectangle) {
                     0, 0, p->screen.texture.width, p->screen.texture.height
                 }, m);
