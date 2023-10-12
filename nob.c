@@ -7,7 +7,6 @@
 #include <errno.h>
 
 #define NOB_IMPLEMENTATION
-/* #define NOB_DA_APPEND_AS_FUNC */
 #include "./src/nob.h"
 
 typedef enum {
