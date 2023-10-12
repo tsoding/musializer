@@ -26,10 +26,18 @@
 #ifndef NOB_H_
 #define NOB_H_
 
-#define NOB_ASSERT assert
-#define NOB_REALLOC realloc
-#define NOB_FREE free
+#ifndef NOB_ASSERT
+#    define NOB_ASSERT assert
+#endif
+#ifndef NOB_REALLOC
+#    define NOB_REALLOC realloc
+#endif
+#ifndef NOB_FREE
+#    define NOB_FREE free
+#endif
 
+#include <stddef.h>
+#include <stdint.h>
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -58,6 +66,12 @@
 #    define NOB_LINE_END "\n"
 #endif
 
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(NOB_TYPEOF)
+#    define NOB_TYPEOF(expr) __extension__ __typeof__(expr)
+#elif defined(__cplusplus) && !defined(NOB_TYPEOF)
+#    define NOB_TYPEOF(expr) decltype(expr)
+#endif
+
 #define NOB_ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
 #define NOB_ARRAY_GET(array, index) \
     (NOB_ASSERT(index >= 0), NOB_ASSERT(index < NOB_ARRAY_LEN(array)), array[index])
@@ -73,6 +87,16 @@ void nob_log(Nob_Log_Level level, const char *fmt, ...);
 // It is an equivalent of shift command from bash. It basically pops a command line
 // argument from the beginning.
 char *nob_shift_args(int *argc, char ***argv);
+
+typedef struct {
+    void *items;
+    size_t count;
+    size_t capacity;
+} Nob_Dyn_Array;
+
+// For instance, with `Nob_File_Paths` you could use it as:
+//   nob_da_item(const char*, paths, 0)
+#define nob_da_item(type, da, index) (((type*)(da->items))[index])
 
 typedef struct {
     const char **items;
@@ -99,6 +123,7 @@ Nob_File_Type nob_get_file_type(const char *path);
 // Initial capacity of a dynamic array
 #define NOB_DA_INIT_CAP 256
 
+#if !defined(NOB_DA_APPEND_AS_FUNC) || !defined(NOB_TYPEOF)
 // Append an item to a dynamic array
 #define nob_da_append(da, item)                                                          \
     do {                                                                                 \
@@ -110,8 +135,6 @@ Nob_File_Type nob_get_file_type(const char *path);
                                                                                          \
         (da)->items[(da)->count++] = (item);                                             \
     } while (0)
-
-#define nob_da_free(da) NOB_FREE((da).items)
 
 // Append several items to a dynamic array
 #define nob_da_append_many(da, new_items, new_items_count)                                  \
@@ -129,6 +152,37 @@ Nob_File_Type nob_get_file_type(const char *path);
         memcpy((da)->items + (da)->count, new_items, new_items_count*sizeof(*(da)->items)); \
         (da)->count += new_items_count;                                                     \
     } while (0)
+
+#else
+
+#define PP_CAT(a, b) PP_CAT_PRIVATE(a, b) // Make sure a and b expand correctly
+#define PP_CAT_PRIVATE(a, b) a ## b
+#define UNIQUE(x) PP_CAT(___, PP_CAT(x, PP_CAT(__LINE__, ___)))
+
+// Emit the symbol only if it is wanted
+#define WANT_NOB_DA_APPEND_FUNC_DECL 1
+
+void nob_da_append_func(Nob_Dyn_Array *da, void *item, const size_t item_size);
+
+// Since we need an lvalue for the item we need to create a temporary variable
+#define nob_da_append(da, item)                                 \
+    do {                                                        \
+        NOB_TYPEOF(item) UNIQUE(_nob_item) = (item);            \
+        nob_da_append_func(                                     \
+            (Nob_Dyn_Array*)(da),                               \
+            &UNIQUE(_nob_item),                                 \
+            sizeof(*((da)->items))                              \
+        );                                                      \
+    } while (0)
+
+void nob_da_append_many_func(Nob_Dyn_Array *da, void *new_items, size_t new_items_count, const size_t item_size);
+
+#define nob_da_append_many(da, new_items, new_items_count) \
+    nob_da_append_many_func((Nob_Dyn_Array*)(da), (void*)(new_items), (new_items_count), sizeof(*(new_items)))
+
+#endif // NOB_DA_APPEND_MACRO
+
+#define nob_da_free(da) NOB_FREE((da).items)
 
 typedef struct {
     char *items;
@@ -371,6 +425,40 @@ int closedir(DIR *dirp);
 
 static size_t nob_temp_size = 0;
 static char nob_temp[NOB_TEMP_CAPACITY] = {0};
+
+#if WANT_NOB_DA_APPEND_FUNC_DECL
+void nob_da_append_func(Nob_Dyn_Array *da, void *item, const size_t item_size)
+{
+    if (da->count >= da->capacity) {
+        da->capacity = da->capacity == 0 ? NOB_DA_INIT_CAP : da->capacity*2;
+        da->items = NOB_REALLOC(da->items, da->capacity*item_size);
+        NOB_ASSERT(da->items != NULL && "Buy more RAM lol");
+    }
+
+    memcpy((char*)(da->items) + da->count*item_size, item, item_size);
+    ++(da->count);
+}
+
+void nob_da_append_many_func(Nob_Dyn_Array *da, void *new_items, size_t new_items_count, const size_t item_size)
+{
+    if (da->count + new_items_count > da->capacity) {
+        if (da->capacity == 0) {
+            da->capacity = NOB_DA_INIT_CAP;
+        }
+        while (da->count + new_items_count > da->capacity) {
+            da->capacity *= 2;
+        }
+        da->items = NOB_REALLOC(da->items, da->capacity*item_size);
+        NOB_ASSERT(da->items != NULL && "Buy more RAM lol");
+    }
+    memcpy((char*)da->items + da->count*item_size, new_items, new_items_count*item_size);
+    da->count += new_items_count;
+}
+
+// Avoid polluting the global namespace with internal macros
+#undef WANT_NOB_DA_APPEND_FUNC_DECL
+
+#endif
 
 bool nob_mkdir_if_not_exists(const char *path)
 {
