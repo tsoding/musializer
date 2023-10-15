@@ -36,7 +36,7 @@
 #define COLOR_TIMELINE_BACKGROUND     ColorBrightness(COLOR_BACKGROUND, -0.3)
 #define COLOR_FULLSCREEN_BUTTON_BACKGROUND COLOR_TRACK_BUTTON_BACKGROUND
 #define COLOR_FULLSCREEN_BUTTON_HOVEROVER  COLOR_TRACK_BUTTON_HOVEROVER
-#define FULLSCREEN_TIMER_SECS 3.0f
+#define FULLSCREEN_TIMER_SECS 1.0f
 
 // Microsoft could not update their parser OMEGALUL:
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/complex-math-support?view=msvc-170#types-used-in-complex-math
@@ -498,27 +498,24 @@ void tracks_panel(Rectangle panel_boundary)
     EndScissorMode();
 }
 
-// TODO: different fullscreen button icons depending on the current state of preview
-bool fullscreen_button(Rectangle preview_boundary)
+void fullscreen_button(Rectangle preview_boundary)
 {
-    bool clicked = false;
-
     Vector2 mouse = GetMousePosition();
 
-    float fullscreen_button = 60;
+    float fullscreen_button_size = 50;
     float fullscreen_button_margin = 50;
 
     Rectangle fullscreen_button_boundary = {
-        preview_boundary.x + preview_boundary.width - fullscreen_button - fullscreen_button_margin,
+        preview_boundary.x + preview_boundary.width - fullscreen_button_size - fullscreen_button_margin,
         preview_boundary.y + fullscreen_button_margin,
-        fullscreen_button,
-        fullscreen_button,
+        fullscreen_button_size,
+        fullscreen_button_size,
     };
 
     bool hoverover;
     if (CheckCollisionPointRec(mouse, fullscreen_button_boundary)) {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            clicked = true;
+            p->fullscreen = !p->fullscreen;
         }
         hoverover = true;
     } else {
@@ -529,7 +526,7 @@ bool fullscreen_button(Rectangle preview_boundary)
 
     float icon_size = 380;
     DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
-    float scale = fullscreen_button/icon_size*0.6;
+    float scale = fullscreen_button_size/icon_size*0.6;
     Rectangle dest = {
         fullscreen_button_boundary.x + fullscreen_button_boundary.width/2 - icon_size*scale/2,
         fullscreen_button_boundary.y + fullscreen_button_boundary.height/2 - icon_size*scale/2,
@@ -552,9 +549,6 @@ bool fullscreen_button(Rectangle preview_boundary)
     }
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(p->fullscreen_texture, source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
-    // DrawTextureEx(p->fullscreen_texture, position, 0, scale, ColorBrightness(WHITE, -0.10));
-
-    return clicked;
 }
 
 void plug_update(void)
@@ -698,9 +692,7 @@ void plug_update(void)
                     fft_render(preview_boundary, m);
 
                     if (p->fullscreen_timer > 0.0) {
-                        if (fullscreen_button(preview_boundary)) {
-                            p->fullscreen = !p->fullscreen;
-                        }
+                        fullscreen_button(preview_boundary);
                         p->fullscreen_timer -= GetFrameTime();
                     }
 
@@ -735,9 +727,7 @@ void plug_update(void)
                         .height = timeline_height,
                     }, track);
 
-                    if (fullscreen_button(preview_boundary)) {
-                        p->fullscreen = !p->fullscreen;
-                    }
+                    fullscreen_button(preview_boundary);
                 }
 
             } else { // We are waiting for the user to Drag&Drop the Music
