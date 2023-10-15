@@ -13,6 +13,7 @@
 #include "nob.h"
 
 #include <raylib.h>
+#include <raymath.h>
 #include <rlgl.h>
 
 #define GLSL_VERSION 330
@@ -33,6 +34,9 @@
 #define COLOR_TRACK_BUTTON_SELECTED   COLOR_ACCENT
 #define COLOR_TIMELINE_CURSOR         COLOR_ACCENT
 #define COLOR_TIMELINE_BACKGROUND     ColorBrightness(COLOR_BACKGROUND, -0.3)
+#define COLOR_FULLSCREEN_BUTTON_BACKGROUND COLOR_TRACK_BUTTON_BACKGROUND
+#define COLOR_FULLSCREEN_BUTTON_HOVEROVER  COLOR_TRACK_BUTTON_HOVEROVER
+#define FULLSCREEN_TIMER_SECS 3.0f
 
 // Microsoft could not update their parser OMEGALUL:
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/complex-math-support?view=msvc-170#types-used-in-complex-math
@@ -71,6 +75,10 @@ typedef struct {
     Shader circle;
     int circle_radius_location;
     int circle_power_location;
+    bool fullscreen;
+    Image fullscreen_image;
+    Texture2D fullscreen_texture;
+    float fullscreen_timer;
 
     // Renderer
     bool rendering;
@@ -320,6 +328,10 @@ void plug_init(void)
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
+    p->fullscreen_image = LoadImage("./resources/icons/fullscreen.png");
+    p->fullscreen_texture = LoadTextureFromImage(p->fullscreen_image);
+    p->fullscreen_timer = FULLSCREEN_TIMER_SECS;
+    SetTextureFilter(p->fullscreen_texture, TEXTURE_FILTER_BILINEAR);
     p->current_track = -1;
 }
 
@@ -486,6 +498,65 @@ void tracks_panel(Rectangle panel_boundary)
     EndScissorMode();
 }
 
+// TODO: different fullscreen button icons depending on the current state of preview
+bool fullscreen_button(Rectangle preview_boundary)
+{
+    bool clicked = false;
+
+    Vector2 mouse = GetMousePosition();
+
+    float fullscreen_button = 60;
+    float fullscreen_button_margin = 50;
+
+    Rectangle fullscreen_button_boundary = {
+        preview_boundary.x + preview_boundary.width - fullscreen_button - fullscreen_button_margin,
+        preview_boundary.y + fullscreen_button_margin,
+        fullscreen_button,
+        fullscreen_button,
+    };
+
+    bool hoverover;
+    if (CheckCollisionPointRec(mouse, fullscreen_button_boundary)) {
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            clicked = true;
+        }
+        hoverover = true;
+    } else {
+        hoverover = false;
+    }
+
+    Color color = hoverover ? COLOR_FULLSCREEN_BUTTON_HOVEROVER : COLOR_FULLSCREEN_BUTTON_BACKGROUND;
+
+    float icon_size = 380;
+    DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
+    float scale = fullscreen_button/icon_size*0.6;
+    Rectangle dest = {
+        fullscreen_button_boundary.x + fullscreen_button_boundary.width/2 - icon_size*scale/2,
+        fullscreen_button_boundary.y + fullscreen_button_boundary.height/2 - icon_size*scale/2,
+        icon_size*scale,
+        icon_size*scale
+    };
+    size_t icon_index;
+    if (!p->fullscreen) {
+        if (!hoverover) {
+            icon_index = 0;
+        } else {
+            icon_index = 1;
+        }
+    } else {
+        if (!hoverover) {
+            icon_index = 2;
+        } else {
+            icon_index = 3;
+        }
+    }
+    Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
+    DrawTexturePro(p->fullscreen_texture, source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    // DrawTextureEx(p->fullscreen_texture, position, 0, scale, ColorBrightness(WHITE, -0.10));
+
+    return clicked;
+}
+
 void plug_update(void)
 {
     int w = GetRenderWidth();
@@ -596,12 +667,7 @@ void plug_update(void)
                     }
                 }
 
-                if (IsKeyPressed(KEY_Q)) {
-                    StopMusicStream(track->music);
-                    PlayMusicStream(track->music);
-                }
-
-                if (IsKeyPressed(KEY_F)) {
+                if (IsKeyPressed(KEY_R)) {
                     StopMusicStream(track->music);
 
                     fft_clean();
@@ -616,33 +682,64 @@ void plug_update(void)
                     SetTraceLogLevel(LOG_WARNING);
                 }
 
-                float tracks_panel_width = w*0.25;
-                float timeline_height = h*0.20;
-                Rectangle preview_boundary = {
-                    .x = tracks_panel_width,
-                    .y = 0,
-                    .width = w - tracks_panel_width,
-                    .height = h - timeline_height
-                };
+                if (IsKeyPressed(KEY_F)) {
+                    p->fullscreen = !p->fullscreen;
+                }
 
                 size_t m = fft_analyze(GetFrameTime());
-                BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
-                fft_render(preview_boundary, m);
-                EndScissorMode();
 
-                tracks_panel(CLITERAL(Rectangle) {
-                    .x = 0,
-                    .y = 0,
-                    .width = tracks_panel_width,
-                    .height = preview_boundary.height,
-                });
+                if (p->fullscreen) {
+                    Rectangle preview_boundary = {
+                        .x = 0,
+                        .y = 0,
+                        .width = w,
+                        .height = h,
+                    };
+                    fft_render(preview_boundary, m);
 
-                timeline(CLITERAL(Rectangle) {
-                    .x = 0,
-                    .y = preview_boundary.height,
-                    .width = w,
-                    .height = timeline_height,
-                }, track);
+                    if (p->fullscreen_timer > 0.0) {
+                        if (fullscreen_button(preview_boundary)) {
+                            p->fullscreen = !p->fullscreen;
+                        }
+                        p->fullscreen_timer -= GetFrameTime();
+                    }
+
+                    if (Vector2Length(GetMouseDelta()) > 0.0) {
+                        p->fullscreen_timer = FULLSCREEN_TIMER_SECS;
+                    }
+                } else {
+                    float tracks_panel_width = w*0.25;
+                    float timeline_height = h*0.20;
+                    Rectangle preview_boundary = {
+                        .x = tracks_panel_width,
+                        .y = 0,
+                        .width = w - tracks_panel_width,
+                        .height = h - timeline_height
+                    };
+
+                    BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
+                    fft_render(preview_boundary, m);
+                    EndScissorMode();
+
+                    tracks_panel(CLITERAL(Rectangle) {
+                        .x = 0,
+                        .y = 0,
+                        .width = tracks_panel_width,
+                        .height = preview_boundary.height,
+                    });
+
+                    timeline(CLITERAL(Rectangle) {
+                        .x = 0,
+                        .y = preview_boundary.height,
+                        .width = w,
+                        .height = timeline_height,
+                    }, track);
+
+                    if (fullscreen_button(preview_boundary)) {
+                        p->fullscreen = !p->fullscreen;
+                    }
+                }
+
             } else { // We are waiting for the user to Drag&Drop the Music
                 const char *label = "Drag&Drop Music Here";
                 Color color = WHITE;
