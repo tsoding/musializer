@@ -68,6 +68,55 @@ typedef struct {
 } Tracks;
 
 typedef struct {
+    const char *key;
+    Image value;
+} Image_Item;
+
+typedef struct {
+    Image_Item *items;
+    size_t count;
+    size_t capacity;
+} Images;
+
+typedef struct {
+    const char *key;
+    Texture value;
+} Texture_Item;
+
+typedef struct {
+    Texture_Item *items;
+    size_t count;
+    size_t capacity;
+} Textures;
+
+void *assoc_find_(void *items, size_t item_size, size_t items_count, size_t item_value_offset, const char *key)
+{
+    for (size_t i = 0; i < items_count; ++i) {
+        char *item = (char*)items + i*item_size;
+        const char *item_key = *(const char**)item;
+        void *item_value = item + item_value_offset;
+        if (strcmp(key, item_key) == 0) {
+            return item_value;
+        }
+    }
+    return NULL;
+}
+
+#define assoc_find(table, key) \
+    assoc_find_((table).items, \
+                sizeof((table).items[0]), \
+                (table).count, \
+                ((char*)&(table).items[0].value - (char*)&(table).items[0]), \
+                (key))
+
+typedef struct {
+    Images images;
+    Textures textures;
+} Assets;
+
+typedef struct {
+    Assets assets;
+
     // Visualizer
     Tracks tracks;
     int current_track;
@@ -76,8 +125,6 @@ typedef struct {
     int circle_radius_location;
     int circle_power_location;
     bool fullscreen;
-    Image fullscreen_image;
-    Texture2D fullscreen_texture;
 
     // Renderer
     bool rendering;
@@ -101,6 +148,44 @@ typedef struct {
 } Plug;
 
 Plug *p = NULL;
+
+Image assets_image(const char *file_path)
+{
+    Image *image = assoc_find(p->assets.images, file_path);
+    if (image) return *image;
+
+    Image_Item item = {0};
+    item.key = file_path;
+    item.value = LoadImage(file_path);
+    nob_da_append(&p->assets.images, item);
+    return item.value;
+}
+
+Texture assets_texture(const char *file_path)
+{
+    Texture *texture = assoc_find(p->assets.textures, file_path);
+    if (texture) return *texture;
+
+    Image image = assets_image(file_path);
+    Texture_Item item = {0};
+    item.key = file_path;
+    item.value = LoadTextureFromImage(image);
+    SetTextureFilter(item.value, TEXTURE_FILTER_BILINEAR);
+    nob_da_append(&p->assets.textures, item);
+    return item.value;
+}
+
+void assets_unload_everything(void)
+{
+    for (size_t i = 0; i < p->assets.textures.count; ++i) {
+        UnloadTexture(p->assets.textures.items[i].value);
+    }
+    p->assets.textures.count = 0;
+    for (size_t i = 0; i < p->assets.images.count; ++i) {
+        UnloadImage(p->assets.images.items[i].value);
+    }
+    p->assets.images.count = 0;
+}
 
 bool fft_settled(void)
 {
@@ -327,9 +412,6 @@ void plug_init(void)
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
-    p->fullscreen_image = LoadImage("./resources/icons/fullscreen.png");
-    p->fullscreen_texture = LoadTextureFromImage(p->fullscreen_image);
-    SetTextureFilter(p->fullscreen_texture, TEXTURE_FILTER_BILINEAR);
     p->current_track = -1;
 }
 
@@ -339,6 +421,7 @@ Plug *plug_pre_reload(void)
         Track *it = &p->tracks.items[i];
         DetachAudioStreamProcessor(it->music.stream, callback);
     }
+    assets_unload_everything();
     return p;
 }
 
@@ -557,7 +640,7 @@ void fullscreen_button(Rectangle preview_boundary)
         }
     }
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
-    DrawTexturePro(p->fullscreen_texture, source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 }
 
 void plug_update(void)
