@@ -37,6 +37,9 @@
 #define COLOR_HUD_BUTTON_BACKGROUND   COLOR_TRACK_BUTTON_BACKGROUND
 #define COLOR_HUD_BUTTON_HOVEROVER    COLOR_TRACK_BUTTON_HOVEROVER
 #define HUD_TIMER_SECS 1.0f
+#define HUD_BUTTON_SIZE 50
+#define HUD_BUTTON_MARGIN 50
+#define HUD_ICON_SCALE 0.5
 
 // Microsoft could not update their parser OMEGALUL:
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/complex-math-support?view=msvc-170#types-used-in-complex-math
@@ -413,7 +416,8 @@ void plug_init(void)
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
     p->current_track = -1;
-    
+
+    // TODO: restore master config between sessions
     SetMasterVolume(0.5);
 }
 
@@ -581,9 +585,6 @@ void tracks_panel(Rectangle panel_boundary)
     EndScissorMode();
 }
 
-#define HUD_BUTTON_SIZE 60
-#define HUD_BUTTON_MARGIN 50
-
 typedef enum {
     BS_NONE      = 0, // 00
     BS_HOVEROVER = 1, // 01
@@ -606,9 +607,9 @@ int fullscreen_button(Rectangle preview_boundary)
 
     Color color = hoverover ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
 
-    float icon_size = 380;
     DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
-    float scale = HUD_BUTTON_SIZE/icon_size*0.6;
+    float icon_size = 380;
+    float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
     Rectangle dest = {
         fullscreen_button_boundary.x + fullscreen_button_boundary.width/2 - icon_size*scale/2,
         fullscreen_button_boundary.y + fullscreen_button_boundary.height/2 - icon_size*scale/2,
@@ -690,7 +691,7 @@ void volume_slider(Rectangle preview_boundary)
         HUD_BUTTON_SIZE,
     };
 
-    size_t expanded_slots = 7;
+    size_t expanded_slots = 6;
     if (expanded) volume_slider_boundary.width = expanded_slots*HUD_BUTTON_SIZE;
 
     expanded = dragging || CheckCollisionPointRec(mouse, volume_slider_boundary);
@@ -698,15 +699,38 @@ void volume_slider(Rectangle preview_boundary)
     Color color = COLOR_HUD_BUTTON_HOVEROVER;
     DrawRectangleRounded(volume_slider_boundary, 0.5, 20, color);
 
+    float icon_size = 512;
+    float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
+    Rectangle dest = {
+        volume_slider_boundary.x + HUD_BUTTON_SIZE/2 - icon_size*scale/2,
+        volume_slider_boundary.y + HUD_BUTTON_SIZE/2 - icon_size*scale/2,
+        icon_size*scale,
+        icon_size*scale
+    };
+
+    float volume = GetMasterVolume();
+
+    size_t icon_index;
+    if (volume <= 0) {
+        icon_index = 0;
+    } else {
+        icon_index = volume*2.0f;
+        if (icon_index >= 2) icon_index = 2;
+        icon_index += 1;
+    }
+
+    Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
+
+    DrawTexturePro(assets_texture("./resources/icons/volume.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+
     if (expanded) {
-        float value = GetMasterVolume();
         horz_slider(CLITERAL(Rectangle) {
             .x = volume_slider_boundary.x + HUD_BUTTON_SIZE,
             .y = volume_slider_boundary.y,
             .width = (expanded_slots - 1)*HUD_BUTTON_SIZE,
             .height = HUD_BUTTON_SIZE,
-        }, &value, &dragging);
-        SetMasterVolume(value);
+        }, &volume, &dragging);
+        SetMasterVolume(volume);
     }
 }
 

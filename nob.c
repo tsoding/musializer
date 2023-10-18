@@ -549,7 +549,7 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "    build (default)");
     nob_log(level, "    config");
     nob_log(level, "    dist");
-    nob_log(level, "    logo");
+    nob_log(level, "    svg");
     nob_log(level, "    help");
 }
 
@@ -605,20 +605,48 @@ int main(int argc, char **argv)
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
         if (!build_dist(config)) return 1;
-    } else if (strcmp(subcommand, "logo") == 0) {
+    } else if (strcmp(subcommand, "svg") == 0) {
         Nob_Procs procs = {0};
 
         Nob_Cmd cmd = {0};
-        nob_cmd_append(&cmd, "convert");
-        nob_cmd_append(&cmd, "-background", "None");
-        nob_cmd_append(&cmd, "./resources/logo/logo.svg");
-        nob_cmd_append(&cmd, "-resize", "256");
-        nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
-        nob_da_append(&procs, nob_cmd_run_async(cmd));
 
-        cmd.count -= 1;
-        nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
-        nob_da_append(&procs, nob_cmd_run_async(cmd));
+        if (nob_needs_rebuild1("./resources/logo/logo-256.ico", "./resources/logo/logo.svg")) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "convert");
+            nob_cmd_append(&cmd, "-background", "None");
+            nob_cmd_append(&cmd, "./resources/logo/logo.svg");
+            nob_cmd_append(&cmd, "-resize", "256");
+            nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        }
+
+        if (nob_needs_rebuild1("./resources/logo/logo-256.png", "./resources/logo/logo.svg")) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "convert");
+            nob_cmd_append(&cmd, "-background", "None");
+            nob_cmd_append(&cmd, "./resources/logo/logo.svg");
+            nob_cmd_append(&cmd, "-resize", "256");
+            nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        }
+
+        if (nob_needs_rebuild1("./resources/icons/fullscreen.svg", "./resources/icons/fullscreen.png")) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "convert");
+            nob_cmd_append(&cmd, "-background", "None");
+            nob_cmd_append(&cmd, "./resources/icons/fullscreen.svg");
+            nob_cmd_append(&cmd, "./resources/icons/fullscreen.png");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        }
+
+        if (nob_needs_rebuild1("./resources/icons/volume.png", "./resources/icons/volume.svg")) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "convert");
+            nob_cmd_append(&cmd, "-background", "None");
+            nob_cmd_append(&cmd, "./resources/icons/volume.svg");
+            nob_cmd_append(&cmd, "./resources/icons/volume.png");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        }
 
         if (!nob_procs_wait(procs)) return 1;
     } else if (strcmp(subcommand, "help") == 0){
