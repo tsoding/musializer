@@ -164,6 +164,9 @@ Image assets_image(const char *file_path)
     return item.value;
 }
 
+// TODO: icon textures look horrible
+// This is probably because they are downscaled. We should probably do something about that.
+// Maybe just not downscale or use mipmaps or something.
 Texture assets_texture(const char *file_path)
 {
     Texture *texture = assoc_find(p->assets.textures, file_path);
