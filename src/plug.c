@@ -878,6 +878,7 @@ void plug_update(void)
                         int state = fullscreen_button(preview_boundary);
                         if (state & BS_CLICKED) p->fullscreen = !p->fullscreen;
                         if (!(state & BS_HOVEROVER)) hud_timer -= GetFrameTime();
+                        // TODO: the state of volume slider does not reset hud_timer
                         volume_slider(preview_boundary);
                     }
 
