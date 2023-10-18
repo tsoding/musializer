@@ -630,7 +630,7 @@ int main(int argc, char **argv)
             nob_da_append(&procs, nob_cmd_run_async(cmd));
         }
 
-        if (nob_needs_rebuild1("./resources/icons/fullscreen.svg", "./resources/icons/fullscreen.png")) {
+        if (nob_needs_rebuild1("./resources/icons/fullscreen.png", "./resources/icons/fullscreen.svg")) {
             cmd.count = 0;
             nob_cmd_append(&cmd, "convert");
             nob_cmd_append(&cmd, "-background", "None");
