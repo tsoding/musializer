@@ -711,6 +711,8 @@ void volume_slider(Rectangle preview_boundary)
         icon_size*scale
     };
 
+    // TODO: toggle mute on clicking the icon
+    // TODO: animate volume slider expansion
     float volume = GetMasterVolume();
 
     size_t icon_index;
