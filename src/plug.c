@@ -753,6 +753,7 @@ void plug_update(void)
         // TODO: there is no visual indication whether we are in the capturing or playing mode
         if (p->capturing) {
             if (p->microphone != NULL) {
+                // TODO: put microphone capture behind feature flag and exclude it from Alpha 2 release
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_M)) {
                     ma_device_uninit(p->microphone);
                     p->microphone = NULL;
