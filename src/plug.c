@@ -420,7 +420,7 @@ void plug_init(void)
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
     p->current_track = -1;
 
-    // TODO: restore master config between sessions
+    // TODO: restore master volume between sessions
     SetMasterVolume(0.5);
 }
 
@@ -719,8 +719,9 @@ void volume_slider(Rectangle preview_boundary)
     if (volume <= 0) {
         icon_index = 0;
     } else {
-        icon_index = volume*2.0f;
-        if (icon_index >= 2) icon_index = 2;
+        size_t phases = 2;
+        icon_index = volume*phases;
+        if (icon_index >= phases) icon_index = phases - 1;
         icon_index += 1;
     }
 
