@@ -719,7 +719,7 @@ void volume_slider(Rectangle preview_boundary)
     } else {
         icon_index = volume*2.0f;
         if (icon_index >= 2) icon_index = 2;
-        icon_index += 1;
+        else icon_index += 1;        
     }
 
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
