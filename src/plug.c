@@ -869,6 +869,9 @@ void plug_update(void)
                     p->fullscreen = !p->fullscreen;
                 }
 
+                // TODO: add button to start rendering
+                // TODO: add tooltips to all the buttons tha describe their function and associated keyboard shortcuts
+
                 size_t m = fft_analyze(GetFrameTime());
 
                 if (p->fullscreen) {

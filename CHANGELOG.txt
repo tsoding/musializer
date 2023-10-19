@@ -1,6 +1,8 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
+- TODO: fullscreen button
+
 - Added master volume control. It controls the volume during the
   preview. It does not affect the audio of the final rendered video.
 
