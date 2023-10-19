@@ -497,6 +497,7 @@ void tracks_panel(Rectangle panel_boundary)
     Vector2 mouse = GetMousePosition();
 
     float scroll_bar_width = panel_boundary.width*0.03;
+    // TODO: don't scale item_size relative to the panel width
     float item_size = panel_boundary.width*0.2;
     float visible_area_size = panel_boundary.height;
     float entire_scrollable_area = item_size*p->tracks.count;
