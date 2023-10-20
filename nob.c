@@ -38,6 +38,7 @@ void log_available_targets(Nob_Log_Level level)
 typedef struct {
     Target target;
     bool hotreload;
+    bool microphone;
 } Config;
 
 bool compute_default_config(Config *config)
@@ -87,10 +88,13 @@ bool parse_config_from_args(int argc, char **argv, Config *config)
             }
         } else if (strcmp("-r", flag) == 0) {
             config->hotreload = true;
+        } else if (strcmp("-m", flag) == 0) {
+            config->microphone = true;
         } else if (strcmp("-h", flag) == 0 || strcmp("--help", flag) == 0) {
             nob_log(NOB_INFO, "Available config flags:");
             nob_log(NOB_INFO, "    -t <target>    set build target");
             nob_log(NOB_INFO, "    -r             enable hotreload");
+            nob_log(NOB_INFO, "    -m             enable microphone");
             nob_log(NOB_INFO, "    -h             print this help");
             return false;
         } else {
@@ -105,6 +109,7 @@ void log_config(Config config)
 {
     nob_log(NOB_INFO, "Target: %s", NOB_ARRAY_GET(target_names, config.target));
     nob_log(NOB_INFO, "Hotreload: %s", config.hotreload ? "ENABLED" : "DISABLED");
+    nob_log(NOB_INFO, "Microphone: %s", config.microphone ? "ENABLED" : "DISABLED");
 }
 
 bool dump_config_to_file(const char *path, Config config)
@@ -113,9 +118,38 @@ bool dump_config_to_file(const char *path, Config config)
     nob_log(NOB_INFO, "Saving configuration to %s", path);
     nob_sb_append_cstr(&sb, nob_temp_sprintf("target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target)));
     nob_sb_append_cstr(&sb, nob_temp_sprintf("hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false"));
+    nob_sb_append_cstr(&sb, nob_temp_sprintf("microphone = %s"NOB_LINE_END, config.microphone ? "true" : "false"));
     bool res = nob_write_entire_file(path, sb.items, sb.count);
     nob_sb_free(sb);
     return res;
+}
+
+bool config_parse_boolean(const char *path, size_t row, Nob_String_View token, bool *boolean)
+{
+    if (nob_sv_eq(token, nob_sv_from_cstr("true"))) {
+        *boolean = true;
+    } else if (nob_sv_eq(token, nob_sv_from_cstr("false"))) {
+        *boolean = false;
+    } else {
+        nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row + 1, SV_Arg(token));
+        nob_log(NOB_ERROR, "Expected `true` or `false`");
+        return false;
+    }
+    return true;
+}
+
+bool config_parse_target(const char *path, size_t row, Nob_String_View token, Target *target)
+{
+    bool found = false;
+    for (size_t t = 0; !found && t < COUNT_TARGETS; ++t) {
+        if (nob_sv_eq(token, nob_sv_from_cstr(target_names[t]))) {
+            *target = t;
+            return true;
+        }
+    }
+    nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row + 1, SV_Arg(token));
+    log_available_targets(NOB_ERROR);
+    return false;
 }
 
 bool load_config_from_file(const char *path, Config *config)
@@ -140,28 +174,11 @@ bool load_config_from_file(const char *path, Config *config)
         Nob_String_View value = nob_sv_trim(line);
 
         if (nob_sv_eq(key, nob_sv_from_cstr("target"))) {
-            bool found = false;
-            for (size_t t = 0; !found && t < COUNT_TARGETS; ++t) {
-                if (nob_sv_eq(value, nob_sv_from_cstr(target_names[t]))) {
-                    config->target = t;
-                    found = true;
-                }
-            }
-            if (!found) {
-                nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row + 1, SV_Arg(value));
-                log_available_targets(NOB_ERROR);
-                nob_return_defer(false);
-            }
+            if (!config_parse_target(path, row, value, &config->target)) nob_return_defer(false);
         } else if (nob_sv_eq(key, nob_sv_from_cstr("hotreload"))) {
-            if (nob_sv_eq(value, nob_sv_from_cstr("true"))) {
-                config->hotreload = true;
-            } else if (nob_sv_eq(value, nob_sv_from_cstr("false"))) {
-                config->hotreload = false;
-            } else {
-                nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row + 1, SV_Arg(value));
-                nob_log(NOB_ERROR, "Expected `true` or `false`");
-                nob_return_defer(false);
-            }
+            if (!config_parse_boolean(path, row, value, &config->hotreload)) nob_return_defer(false);
+        } else if (nob_sv_eq(key, nob_sv_from_cstr("microphone"))) {
+            if (!config_parse_boolean(path, row, value, &config->microphone)) nob_return_defer(false);
         } else {
             nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row + 1, SV_Arg(key));
             nob_return_defer(false);
@@ -188,6 +205,7 @@ bool build_musializer(Config config)
                         // Like `clang` for instance
                         nob_cmd_append(&cmd, "cc");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                        if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
                         nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                         nob_cmd_append(&cmd, "-fPIC", "-shared");
                         nob_cmd_append(&cmd, "-o", "./build/libplug.so");
@@ -203,6 +221,7 @@ bool build_musializer(Config config)
                     cmd.count = 0;
                         nob_cmd_append(&cmd, "cc");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                        if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
                         nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                         nob_cmd_append(&cmd, "-DHOTRELOAD");
                         nob_cmd_append(&cmd, "-o", "./build/musializer");
@@ -225,6 +244,7 @@ bool build_musializer(Config config)
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                    if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
@@ -248,6 +268,7 @@ bool build_musializer(Config config)
             cmd.count = 0;
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
+                if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
                 nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
                 nob_cmd_append(&cmd,
@@ -282,6 +303,7 @@ bool build_musializer(Config config)
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
                     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                    if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
                     nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
@@ -306,6 +328,7 @@ bool build_musializer(Config config)
             } else {
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "cl.exe");
+                    if (config.microphone) nob_cmd_append(&cmd, "/DFEATURE_MICROPHONE");
                     nob_cmd_append(&cmd, "/I", "./raylib/raylib-4.5.0/src/");
                     nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
                     nob_cmd_append(&cmd,
