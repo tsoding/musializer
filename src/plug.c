@@ -19,7 +19,7 @@
 #define GLSL_VERSION 330
 
 #define N (1<<13)
-#define FONT_SIZE 69
+#define FONT_SIZE 64
 
 #define RENDER_FPS 30
 #define RENDER_FACTOR 100
@@ -1041,6 +1041,7 @@ void plug_init(void)
     memset(p, 0, sizeof(*p));
 
     p->font = LoadFontEx("./resources/fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
+    GenTextureMipmaps(&p->font.texture);
     SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
     // TODO: Maybe we should try to keep compiling different versions of shaders
     // until one of them works?
