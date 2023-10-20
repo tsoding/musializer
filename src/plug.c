@@ -166,9 +166,6 @@ static Image assets_image(const char *file_path)
     return item.value;
 }
 
-// TODO: icon textures look horrible
-// This is probably because they are downscaled. We should probably do something about that.
-// Maybe just not downscale or use mipmaps or something.
 static Texture assets_texture(const char *file_path)
 {
     Texture *texture = assoc_find(p->assets.textures, file_path);
@@ -178,6 +175,7 @@ static Texture assets_texture(const char *file_path)
     Texture_Item item = {0};
     item.key = file_path;
     item.value = LoadTextureFromImage(image);
+    GenTextureMipmaps(&item.value);
     SetTextureFilter(item.value, TEXTURE_FILTER_BILINEAR);
     nob_da_append(&p->assets.textures, item);
     return item.value;
@@ -569,7 +567,7 @@ static int fullscreen_button(Rectangle preview_boundary)
     Color color = hoverover ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
 
     DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
-    float icon_size = 380;
+    float icon_size = 512;
     float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
     Rectangle dest = {
         fullscreen_button_boundary.x + fullscreen_button_boundary.width/2 - icon_size*scale/2,
@@ -616,6 +614,7 @@ static void horz_slider(Rectangle boundary, float *value, bool *dragging)
         .y = startPos.y,
     };
     float radius = boundary.height/4;
+    // TODO: try to use the circle shader for horz_slider
     DrawCircleV(center, radius, color);
 
     int hoverover = CheckCollisionPointCircle(mouse, center, radius);
@@ -657,7 +656,12 @@ static void volume_slider(Rectangle preview_boundary)
 
     expanded = dragging || CheckCollisionPointRec(mouse, volume_slider_boundary);
 
-    Color color = COLOR_HUD_BUTTON_HOVEROVER;
+    Color color;
+    if (expanded) {
+        color = COLOR_HUD_BUTTON_HOVEROVER;
+    } else {
+        color = COLOR_HUD_BUTTON_BACKGROUND;
+    }
     DrawRectangleRounded(volume_slider_boundary, 0.5, 20, color);
 
     float icon_size = 512;
@@ -671,6 +675,7 @@ static void volume_slider(Rectangle preview_boundary)
 
     // TODO: toggle mute on clicking the icon
     // TODO: animate volume slider expansion
+    // TODO: change volume with mouse wheel when you hover over volume slider
     float volume = GetMasterVolume();
 
     size_t icon_index;
