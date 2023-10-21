@@ -7,14 +7,14 @@
 
 #include "plug.h"
 #include "ffmpeg.h"
-#define _WINDOWS_
-#include "miniaudio.h"
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
 #include <raylib.h>
-#include <raymath.h>
 #include <rlgl.h>
+
+#define _WINDOWS_
+#include "miniaudio.h"
 
 #define GLSL_VERSION 330
 
@@ -816,7 +816,8 @@ static void preview_screen(void)
                 volume_slider(preview_boundary);
             }
 
-            if (Vector2Length(GetMouseDelta()) > 0.0) {
+            Vector2 delta = GetMouseDelta();
+            if (delta.x + delta.y > 0.0) {
                 hud_timer = HUD_TIMER_SECS;
             }
         } else {
