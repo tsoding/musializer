@@ -824,7 +824,7 @@ static void preview_screen(void)
             }
 
             Vector2 delta = GetMouseDelta();
-            if (delta.x + delta.y > 0.0) {
+            if (fabsf(delta.x) + fabsf(delta.y) > 0.0) {
                 hud_timer = HUD_TIMER_SECS;
             }
         } else {
@@ -1005,9 +1005,8 @@ void rendering_screen(void)
             DrawRectangleLinesEx(bar_box, 2, WHITE);
 
             // Rendering
-            size_t chunk_size = p->wave.sampleRate/RENDER_FPS;
-            // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
             {
+                size_t chunk_size = p->wave.sampleRate/RENDER_FPS;
                 float *fs = (float*)p->wave_samples;
                 for (size_t i = 0; i < chunk_size; ++i) {
                     if (p->wave_cursor < p->wave.frameCount) {
