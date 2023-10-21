@@ -503,6 +503,8 @@ static void tracks_panel(Rectangle panel_boundary)
         } else {
             color = COLOR_TRACK_BUTTON_SELECTED;
         }
+        // TODO: enable MSAA so the rounded rectangles look better
+        // That triggers an old raylib bug with circles tho, so I we will have to look into that
         DrawRectangleRounded(item_boundary, 0.2, 20, color);
 
         const char *text = GetFileName(p->tracks.items[i].file_path);
