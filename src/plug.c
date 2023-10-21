@@ -521,6 +521,7 @@ static void tracks_panel(Rectangle panel_boundary)
     }
 
     // TODO: jump to specific place by clicking the scrollbar
+    // TODO: up and down clickable buttons on the scrollbar
 
     if (entire_scrollable_area > visible_area_size) {
         float t = visible_area_size/entire_scrollable_area;
