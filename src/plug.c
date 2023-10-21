@@ -460,7 +460,9 @@ static void tracks_panel(Rectangle panel_boundary)
     static float panel_scroll = 0;
     static float panel_velocity = 0;
     panel_velocity *= 0.9;
-    panel_velocity += GetMouseWheelMove()*item_size*8;
+    if (CheckCollisionPointRec(mouse, panel_boundary)) {
+        panel_velocity += GetMouseWheelMove()*item_size*8;
+    }
     panel_scroll -= panel_velocity*GetFrameTime();
 
     static bool scrolling = false;
