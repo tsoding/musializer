@@ -520,6 +520,8 @@ static void tracks_panel(Rectangle panel_boundary)
         DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
     }
 
+    // TODO: jump to specific place by clicking the scrollbar
+
     if (entire_scrollable_area > visible_area_size) {
         float t = visible_area_size/entire_scrollable_area;
         float q = panel_scroll/entire_scrollable_area;
@@ -599,6 +601,7 @@ static int fullscreen_button(Rectangle preview_boundary)
     return (clicked<<1) | hoverover;
 }
 
+// TODO: set a specific slider value by clicking on the bar of the slider
 static void horz_slider(Rectangle boundary, float *value, bool *dragging)
 {
     Vector2 mouse = GetMousePosition();
