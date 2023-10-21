@@ -677,7 +677,6 @@ static void volume_slider(Rectangle preview_boundary)
 
     // TODO: toggle mute on clicking the icon
     // TODO: animate volume slider expansion
-    // TODO: change volume with mouse wheel when you hover over volume slider
     float volume = GetMasterVolume();
 
     size_t icon_index;
@@ -701,6 +700,10 @@ static void volume_slider(Rectangle preview_boundary)
             .width = (expanded_slots - 1)*HUD_BUTTON_SIZE,
             .height = HUD_BUTTON_SIZE,
         }, &volume, &dragging);
+        float mouse_wheel_step = 0.05;
+        volume += GetMouseWheelMove()*mouse_wheel_step;
+        if (volume < 0) volume = 0;
+        if (volume > 1) volume = 1;
         SetMasterVolume(volume);
     }
 }
