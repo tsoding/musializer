@@ -602,7 +602,15 @@ static int fullscreen_button(Rectangle preview_boundary)
     return (clicked<<1) | hoverover;
 }
 
-// TODO: set a specific slider value by clicking on the bar of the slider
+static float slider_get_value(float x, float lox, float hix)
+{
+    if (x < lox) x = lox;
+    if (x > hix) x = hix;
+    x -= lox;
+    x /= hix - lox;
+    return x;
+}
+
 static void horz_slider(Rectangle boundary, float *value, bool *dragging)
 {
     Vector2 mouse = GetMousePosition();
@@ -625,19 +633,20 @@ static void horz_slider(Rectangle boundary, float *value, bool *dragging)
     // TODO: try to use the circle shader for horz_slider
     DrawCircleV(center, radius, color);
 
-    int hoverover = CheckCollisionPointCircle(mouse, center, radius);
-
     if (!*dragging) {
-        if (hoverover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            *dragging = true;
+        if (CheckCollisionPointCircle(mouse, center, radius)) {
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                *dragging = true;
+            }
+        } else {
+            if (CheckCollisionPointRec(mouse, boundary)) {
+                if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                    *value = slider_get_value(mouse.x, startPos.x, endPos.x);
+                }
+            }
         }
     } else {
-        float x = mouse.x;
-        if (x < startPos.x) x = startPos.x;
-        if (x > endPos.x)   x = endPos.x;
-        x -= startPos.x;
-        x /= endPos.x - startPos.x;
-        *value = x;
+        *value = slider_get_value(mouse.x, startPos.x, endPos.x);
 
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             *dragging = false;
