@@ -1,3 +1,9 @@
+#if 0
+    EXEC="${0%.*}"
+    [ -x "$EXEC" ] || gcc -O3 -o "$EXEC" "$0"
+    exec "$EXEC" "$@"
+#endif
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
