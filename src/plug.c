@@ -1123,3 +1123,7 @@ void plug_update(void)
 
     EndDrawing();
 }
+
+// TODO: introduce the notion of active UI element
+// To get rid of the bugs when you dragging something and unpress the mouse
+// over another element and accidentally activate it.
