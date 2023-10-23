@@ -630,8 +630,17 @@ static void horz_slider(Rectangle boundary, float *value, bool *dragging)
         .y = startPos.y,
     };
     float radius = boundary.height/4;
-    // TODO: try to use the circle shader for horz_slider
-    DrawCircleV(center, radius, color);
+    {
+        Texture2D texture = { rlGetTextureIdDefault(), 1, 1, 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+        SetShaderValue(p->circle, p->circle_radius_location, (float[1]){ 0.43f }, SHADER_UNIFORM_FLOAT);
+        SetShaderValue(p->circle, p->circle_power_location, (float[1]){ 2.0f }, SHADER_UNIFORM_FLOAT);
+        BeginShaderMode(p->circle);
+        Rectangle source = {0, 0, 1, 1};
+        Rectangle dest = { center.x - radius, center.y - radius, radius*2, radius*2 };
+        Vector2 origin = {0};
+        DrawTexturePro(texture, source, dest, origin, 0, color);
+        EndShaderMode();
+    }
 
     if (!*dragging) {
         if (CheckCollisionPointCircle(mouse, center, radius)) {
@@ -755,7 +764,7 @@ static void preview_screen(void)
         UnloadDroppedFiles(droppedFiles);
     }
 
- #ifdef FEATURE_MICROPHONE
+#ifdef FEATURE_MICROPHONE
     if (IsKeyPressed(KEY_M)) {
         // TODO: let the user choose their mic
         ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
