@@ -14,7 +14,10 @@
 
 #include "./hotreload.h"
 
-int main(void)
+int command_line_track_count = 0;
+char **command_line_tracks = NULL;
+
+int main(int argc, char **argv)
 {
 #ifndef _WIN32
     // NOTE: This is needed because if the pipe between Musializer and FFmpeg breaks
@@ -36,6 +39,9 @@ int main(void)
     SetTargetFPS(60);
     SetExitKey(KEY_NULL);
     InitAudioDevice();
+
+    command_line_track_count = argc - 1;
+    command_line_tracks = argv + 1;
 
     plug_init();
     while (!WindowShouldClose()) {

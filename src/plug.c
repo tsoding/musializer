@@ -154,6 +154,10 @@ typedef struct {
 
 static Plug *p = NULL;
 
+/* For loading tracks from command line arguments */
+extern char** command_line_tracks;
+extern int command_line_track_count;
+
 static Image assets_image(const char *file_path)
 {
     Image *image = assoc_find(p->assets.images, file_path);
@@ -732,6 +736,26 @@ static void volume_slider(Rectangle preview_boundary)
     }
 }
 
+static int try_load_track(char *file_path)
+{
+    Music music = LoadMusicStream(file_path);
+
+    if (IsMusicReady(music)) {
+        AttachAudioStreamProcessor(music.stream, callback);
+        PlayMusicStream(music);
+
+        nob_da_append(&p->tracks, (CLITERAL(Track) {
+            .file_path = file_path,
+            .music = music,
+        }));
+        p->current_track = p->tracks.count - 1;
+        return 1;
+    } else {
+        error_load_file_popup();
+        return 0;
+    }
+}
+
 static void preview_screen(void)
 {
     int w = GetRenderWidth();
@@ -745,20 +769,8 @@ static void preview_screen(void)
             Track *track = current_track();
             if (track) StopMusicStream(track->music);
 
-            Music music = LoadMusicStream(file_path);
-
-            if (IsMusicReady(music)) {
-                AttachAudioStreamProcessor(music.stream, callback);
-                PlayMusicStream(music);
-
-                nob_da_append(&p->tracks, (CLITERAL(Track) {
-                    .file_path = file_path,
-                    .music = music,
-                }));
-                p->current_track = p->tracks.count - 1;
-            } else {
+            if (!try_load_track(file_path)) {
                 free(file_path);
-                error_load_file_popup();
             }
         }
         UnloadDroppedFiles(droppedFiles);
@@ -1086,6 +1098,11 @@ void plug_init(void)
 
     // TODO: restore master volume between sessions
     SetMasterVolume(0.5);
+
+    for (int i = 0; i < command_line_track_count; i++) {
+        char *file_path = command_line_tracks[i];
+        try_load_track(file_path);
+    }
 }
 
 Plug *plug_pre_reload(void)
