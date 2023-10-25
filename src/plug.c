@@ -489,7 +489,7 @@ static void tracks_panel(Rectangle panel_boundary)
         };
         Color color;
         if (((int) i != p->current_track)) {
-            if (CheckCollisionPointRec(mouse, item_boundary)) {
+            if (CheckCollisionPointRec(mouse, panel_boundary) && CheckCollisionPointRec(mouse, item_boundary)) {
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                     Track *track = current_track();
                     if (track) StopMusicStream(track->music);
