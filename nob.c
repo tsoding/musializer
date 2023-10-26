@@ -11,8 +11,6 @@
 
 typedef enum {
     TARGET_LINUX,
-    // TODO: TARGET_WIN64_MINGW right now means cross compilation from Linux to Windows using mingw-w64
-    // I think the naming should be more explicit about that
     TARGET_WIN64_MINGW,
     TARGET_WIN64_MSVC,
     TARGET_MACOS,
@@ -294,7 +292,13 @@ bool build_musializer(Config config)
                 nob_return_defer(false);
             } else {
                 cmd.count = 0;
+                #ifdef _WIN32
+                    // On windows, mingw doesn't have the `x86_64-w64-mingw32-` prefix for windres.
+                    // For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
+                    nob_cmd_append(&cmd, "windres");
+                #else
                     nob_cmd_append(&cmd, "x86_64-w64-mingw32-windres");
+                #endif // _WIN32
                     nob_cmd_append(&cmd, "./src/musializer.rc");
                     nob_cmd_append(&cmd, "-O", "coff");
                     nob_cmd_append(&cmd, "-o", "./build/musializer.res");
