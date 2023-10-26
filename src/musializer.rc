@@ -1,1 +1,3 @@
+#include <winuser.h>
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "utf8.xml"
 id ICON "./resources/logo/logo-256.ico"
