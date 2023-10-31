@@ -235,6 +235,11 @@ static void fft(float in[], size_t stride, Float_Complex out[], size_t n)
     }
 }
 
+#define E 2.71828182846
+float sigmoid(float n) {
+    return (1 / (1 + powf(E, -n)));
+}
+
 static inline float amp(Float_Complex z)
 {
     float a = crealf(z);
@@ -292,14 +297,26 @@ static void fft_render(Rectangle boundary, size_t m)
     float cell_width = boundary.width/m;
 
     // Global color parameters
+    int spectrum_width = 360; //if more than 360 the spectrum will be repeated over the entire width, otherwise only part of the spectrum will be visible at one point in time
     float saturation = 0.75f;
     float value = 1.0f;
 
+    // Running rainbow
+    static int color_shift = 0;
+    // In order for the animation speed to depend on the average "power"
+    float sum = 0;
+    for (size_t i = 0; i < m; ++i){
+        sum += p->out_smooth[i];
+    }
+    float avg = sum / m;
+    color_shift = (color_shift + (int)(sigmoid(avg) * 5)) % 360;
+    
     // Display the Bars
     for (size_t i = 0; i < m; ++i) {
         float t = p->out_smooth[i];
-        float hue = (float)i/m;
-        Color color = ColorFromHSV(hue*360, saturation, value);
+        int hue = (int)((float)i/m * spectrum_width + color_shift) % 360;
+
+        Color color = ColorFromHSV(hue, saturation, value);
         Vector2 startPos = {
             boundary.x + i*cell_width + cell_width/2,
             boundary.y + boundary.height - boundary.height*2/3*t,
@@ -321,8 +338,9 @@ static void fft_render(Rectangle boundary, size_t m)
     for (size_t i = 0; i < m; ++i) {
         float start = p->out_smear[i];
         float end = p->out_smooth[i];
-        float hue = (float)i/m;
-        Color color = ColorFromHSV(hue*360, saturation, value);
+        int hue = (int)((float)i/m * spectrum_width + color_shift) % 360;
+
+        Color color = ColorFromHSV(hue, saturation, value);
         Vector2 startPos = {
             boundary.x + i*cell_width + cell_width/2,
             boundary.y + boundary.height - boundary.height*2/3*start,
@@ -361,8 +379,9 @@ static void fft_render(Rectangle boundary, size_t m)
     BeginShaderMode(p->circle);
     for (size_t i = 0; i < m; ++i) {
         float t = p->out_smooth[i];
-        float hue = (float)i/m;
-        Color color = ColorFromHSV(hue*360, saturation, value);
+        int hue = (int)((float)i/m * spectrum_width + color_shift) % 360;
+
+        Color color = ColorFromHSV(hue, saturation, value);
         Vector2 center = {
             boundary.x + i*cell_width + cell_width/2,
             boundary.y + boundary.height - boundary.height*2/3*t,
