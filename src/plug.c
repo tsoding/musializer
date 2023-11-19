@@ -669,13 +669,15 @@ static void volume_slider(Rectangle preview_boundary)
 
     static int expanded = false;
     static bool dragging = false;
+    static float saved_volume = 0.0f;
 
-    Rectangle volume_slider_boundary = {
+    Rectangle volume_icon_boundary = {
         preview_boundary.x + HUD_BUTTON_MARGIN,
         preview_boundary.y + HUD_BUTTON_MARGIN,
         HUD_BUTTON_SIZE,
         HUD_BUTTON_SIZE,
     };
+    Rectangle volume_slider_boundary = volume_icon_boundary;
 
     size_t expanded_slots = 6;
     if (expanded) volume_slider_boundary.width = expanded_slots*HUD_BUTTON_SIZE;
@@ -699,7 +701,6 @@ static void volume_slider(Rectangle preview_boundary)
         icon_size*scale
     };
 
-    // TODO: toggle mute on clicking the icon
     // TODO: animate volume slider expansion
     float volume = GetMasterVolume();
 
@@ -729,6 +730,18 @@ static void volume_slider(Rectangle preview_boundary)
         if (volume < 0) volume = 0;
         if (volume > 1) volume = 1;
         SetMasterVolume(volume);
+    }
+
+    if (CheckCollisionPointRec(mouse, volume_icon_boundary)) {
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            if (volume > 0) {
+                saved_volume = volume;
+                volume = 0;
+            } else {
+                volume = saved_volume;
+            }
+            SetMasterVolume(volume);
+        }
     }
 }
 
