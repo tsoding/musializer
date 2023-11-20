@@ -18,7 +18,7 @@
 
 #define GLSL_VERSION 330
 
-#define N (1<<13)
+#define FFT_SIZE (1<<13)
 #define FONT_SIZE 64
 
 #define RENDER_FPS 30
@@ -138,12 +138,12 @@ typedef struct {
     FFMPEG *ffmpeg;
 
     // FFT Analyzer
-    float in_raw[N];
-    float in_win[N];
-    Float_Complex out_raw[N];
-    float out_log[N];
-    float out_smooth[N];
-    float out_smear[N];
+    float in_raw[FFT_SIZE];
+    float in_win[FFT_SIZE];
+    Float_Complex out_raw[FFT_SIZE];
+    float out_log[FFT_SIZE];
+    float out_smooth[FFT_SIZE];
+    float out_smear[FFT_SIZE];
 
 #ifdef FEATURE_MICROPHONE
     // Microphone
@@ -196,7 +196,7 @@ static void assets_unload_everything(void)
 static bool fft_settled(void)
 {
     float eps = 1e-3;
-    for (size_t i = 0; i < N; ++i) {
+    for (size_t i = 0; i < FFT_SIZE; ++i) {
         if (p->out_smooth[i] > eps) return false;
         if (p->out_smear[i] > eps) return false;
     }
@@ -245,24 +245,24 @@ static inline float amp(Float_Complex z)
 static size_t fft_analyze(float dt)
 {
     // Apply the Hann Window on the Input - https://en.wikipedia.org/wiki/Hann_function
-    for (size_t i = 0; i < N; ++i) {
-        float t = (float)i/(N - 1);
+    for (size_t i = 0; i < FFT_SIZE; ++i) {
+        float t = (float)i/(FFT_SIZE - 1);
         float hann = 0.5 - 0.5*cosf(2*PI*t);
         p->in_win[i] = p->in_raw[i]*hann;
     }
 
     // FFT
-    fft(p->in_win, 1, p->out_raw, N);
+    fft(p->in_win, 1, p->out_raw, FFT_SIZE);
 
     // "Squash" into the Logarithmic Scale
     float step = 1.06;
     float lowf = 1.0f;
     size_t m = 0;
     float max_amp = 1.0f;
-    for (float f = lowf; (size_t) f < N/2; f = ceilf(f*step)) {
+    for (float f = lowf; (size_t) f < FFT_SIZE/2; f = ceilf(f*step)) {
         float f1 = ceilf(f*step);
         float a = 0.0f;
-        for (size_t q = (size_t) f; q < N/2 && q < (size_t) f1; ++q) {
+        for (size_t q = (size_t) f; q < FFT_SIZE/2 && q < (size_t) f1; ++q) {
             float b = amp(p->out_raw[q]);
             if (b > a) a = b;
         }
@@ -379,8 +379,8 @@ static void fft_render(Rectangle boundary, size_t m)
 
 static void fft_push(float frame)
 {
-    memmove(p->in_raw, p->in_raw + 1, (N - 1)*sizeof(p->in_raw[0]));
-    p->in_raw[N-1] = frame;
+    memmove(p->in_raw, p->in_raw + 1, (FFT_SIZE - 1)*sizeof(p->in_raw[0]));
+    p->in_raw[FFT_SIZE-1] = frame;
 }
 
 static void callback(void *bufferData, unsigned int frames)
@@ -732,6 +732,8 @@ static void volume_slider(Rectangle preview_boundary)
         SetMasterVolume(volume);
     }
 
+    // TODO: toggle mute on KEY_M
+    // The problem is that it colides with the microphone feature
     if (CheckCollisionPointRec(mouse, volume_icon_boundary)) {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             if (volume > 0) {
