@@ -526,12 +526,19 @@ static void tracks_panel(Rectangle panel_boundary)
         DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
     }
 
-    // TODO: jump to specific place by clicking the scrollbar
     // TODO: up and down clickable buttons on the scrollbar
 
-    if (entire_scrollable_area > visible_area_size) {
+    if (entire_scrollable_area > visible_area_size) { // Is scrolling needed
         float t = visible_area_size/entire_scrollable_area;
         float q = panel_scroll/entire_scrollable_area;
+        Rectangle scroll_bar_area = {
+            .x = panel_boundary.x + panel_boundary.width - scroll_bar_width,
+            .y = panel_boundary.y,
+            .width = scroll_bar_width,
+            .height = panel_boundary.height,
+        };
+        // TODO: some sort of color for the scroll bar background
+        //DrawRectangleRounded(scroll_bar_area, 0.8, 20, RED);
         Rectangle scroll_bar_boundary = {
             .x = panel_boundary.x + panel_boundary.width - scroll_bar_width,
             .y = panel_boundary.y + panel_boundary.height*q,
@@ -549,6 +556,14 @@ static void tracks_panel(Rectangle panel_boundary)
                 if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
                     scrolling = true;
                     scrolling_mouse_offset = mouse.y - scroll_bar_boundary.y;
+                }
+            } else if (CheckCollisionPointRec(mouse, scroll_bar_area)) {
+                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+                    if (mouse.y < scroll_bar_boundary.y) {
+                        panel_velocity += item_size*16;
+                    } else if (scroll_bar_boundary.y + scroll_bar_boundary.height < mouse.y){
+                        panel_velocity += -item_size*16;
+                    }
                 }
             }
         }
