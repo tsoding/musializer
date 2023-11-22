@@ -623,12 +623,12 @@ int main(int argc, char **argv)
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
     } else if (strcmp(subcommand, "config") == 0) {
         Config config = {0};
-        if (!nob_mkdir_if_not_exists("build")) return 1;
         if (!compute_default_config(&config)) return 1;
         if (!parse_config_from_args(argc, argv, &config)) return 1;
         nob_log(NOB_INFO, "------------------------------");
         log_config(config);
         nob_log(NOB_INFO, "------------------------------");
+        if (!nob_mkdir_if_not_exists("build")) return 1;
         if (!dump_config_to_file("./build/build.conf", config)) return 1;
     } else if (strcmp(subcommand, "dist") == 0) {
         Config config = {0};
