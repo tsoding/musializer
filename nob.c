@@ -9,6 +9,8 @@
 #define NOB_IMPLEMENTATION
 #include "./src/nob.h"
 
+#define RAYLIB_VERSION "5.0"
+
 typedef enum {
     TARGET_LINUX,
     TARGET_WIN64_MINGW,
@@ -204,7 +206,7 @@ bool build_musializer(Config config)
                         nob_cmd_append(&cmd, "cc");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                         if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                        nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                        nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                         nob_cmd_append(&cmd, "-fPIC", "-shared");
                         nob_cmd_append(&cmd, "-o", "./build/libplug.so");
                         nob_cmd_append(&cmd,
@@ -220,7 +222,7 @@ bool build_musializer(Config config)
                         nob_cmd_append(&cmd, "cc");
                         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                         if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                        nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                        nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                         nob_cmd_append(&cmd, "-DHOTRELOAD");
                         nob_cmd_append(&cmd, "-o", "./build/musializer");
                         nob_cmd_append(&cmd,
@@ -243,7 +245,7 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                     if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
                         "./src/plug.c",
@@ -267,7 +269,7 @@ bool build_musializer(Config config)
                 nob_cmd_append(&cmd, "clang");
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
                 if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
                 nob_cmd_append(&cmd,
                     "./src/plug.c",
@@ -308,7 +310,7 @@ bool build_musializer(Config config)
                     nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
                     nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                     if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                     nob_cmd_append(&cmd, "-o", "./build/musializer");
                     nob_cmd_append(&cmd,
                         "./src/plug.c",
@@ -339,7 +341,7 @@ bool build_musializer(Config config)
                 cmd.count = 0;
                     nob_cmd_append(&cmd, "cl.exe");
                     if (config.microphone) nob_cmd_append(&cmd, "/DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "/I", "./raylib/raylib-4.5.0/src/");
+                    nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
                     nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
                     nob_cmd_append(&cmd,
                         "./src/musializer.c",
@@ -397,7 +399,7 @@ bool build_raylib(Config config)
     }
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-        const char *input_path = nob_temp_sprintf("./raylib/raylib-4.5.0/src/%s.c", raylib_modules[i]);
+        const char *input_path = nob_temp_sprintf("./raylib/raylib-"RAYLIB_VERSION"/src/%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
         switch (config.target) {
         case TARGET_LINUX:
@@ -419,14 +421,14 @@ bool build_raylib(Config config)
                 case TARGET_LINUX:
                     nob_cmd_append(&cmd, "cc");
                     nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
                     nob_cmd_append(&cmd, "-c", input_path);
                     nob_cmd_append(&cmd, "-o", output_path);
                     break;
                 case TARGET_MACOS:
                     nob_cmd_append(&cmd, "clang");
                     nob_cmd_append(&cmd, "-g", "-DPLATFORM_DESKTOP", "-fPIC");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
                     nob_cmd_append(&cmd, "-Iexternal/glfw/deps/ming");
                     nob_cmd_append(&cmd, "-DGRAPHICS_API_OPENGL_33");
                     if(strcmp(raylib_modules[i], "rglfw") == 0) {
@@ -440,13 +442,13 @@ bool build_raylib(Config config)
                     nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
                     nob_cmd_append(&cmd, "-DPLATFORM_DESKTOP");
                     nob_cmd_append(&cmd, "-fPIC");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
                     nob_cmd_append(&cmd, "-c", input_path);
                     nob_cmd_append(&cmd, "-o", output_path);
                     break;
                 case TARGET_WIN64_MSVC:
                     nob_cmd_append(&cmd, "cl.exe", "/DPLATFORM_DESKTOP");
-                    nob_cmd_append(&cmd, "/I", "./raylib/raylib-4.5.0/src/external/glfw/include");
+                    nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
                     nob_cmd_append(&cmd, "/c", input_path);
                     nob_cmd_append(&cmd, nob_temp_sprintf("/Fo%s", output_path));
                     break;
