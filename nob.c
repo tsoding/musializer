@@ -9,365 +9,16 @@
 #define NOB_IMPLEMENTATION
 #include "./src/nob.h"
 
+#ifdef CONFIGURED
+
+#include "./build/config.h"
+
 #define RAYLIB_VERSION "5.0"
 
-typedef enum {
-    TARGET_LINUX,
-    TARGET_WIN64_MINGW,
-    TARGET_WIN64_MSVC,
-    TARGET_MACOS,
-    COUNT_TARGETS
-} Target;
-
-static_assert(4 == COUNT_TARGETS, "Amount of targets have changed");
-const char *target_names[] = {
-    [TARGET_LINUX]       = "linux",
-    [TARGET_WIN64_MINGW] = "win64-mingw",
-    [TARGET_WIN64_MSVC]  = "win64-msvc",
-    [TARGET_MACOS]       = "macos",
-};
-
-void log_available_targets(Nob_Log_Level level)
-{
-    nob_log(level, "Available targets:");
-    for (size_t i = 0; i < COUNT_TARGETS; ++i) {
-        nob_log(level, "    %s", target_names[i]);
-    }
-}
-
-typedef struct {
-    Target target;
-    bool hotreload;
-    bool microphone;
-} Config;
-
-bool compute_default_config(Config *config)
-{
-    memset(config, 0, sizeof(Config));
-#ifdef _WIN32
-#   if defined(_MSC_VER)
-        config->target = TARGET_WIN64_MSVC;
-#   else
-        config->target = TARGET_WIN64_MINGW;
-#   endif
-#else
-#   if defined (__APPLE__) || defined (__MACH__)
-        config->target = TARGET_MACOS;
-#   else
-        config->target = TARGET_LINUX;
-#   endif
-#endif
-    return true;
-}
-
-bool parse_config_from_args(int argc, char **argv, Config *config)
-{
-    while (argc > 0) {
-        const char *flag = nob_shift_args(&argc, &argv);
-        if (strcmp(flag, "-t") == 0) {
-            if (argc <= 0) {
-                nob_log(NOB_ERROR, "No value is provided for flag %s", flag);
-                log_available_targets(NOB_ERROR);
-                return false;
-            }
-
-            const char *value = nob_shift_args(&argc, &argv);
-
-            bool found = false;
-            for (size_t i = 0; !found && i < COUNT_TARGETS; ++i) {
-                if (strcmp(target_names[i], value) == 0) {
-                    config->target = i;
-                    found = true;
-                }
-            }
-
-            if (!found) {
-                nob_log(NOB_ERROR, "Unknown target %s", value);
-                log_available_targets(NOB_ERROR);
-                return false;
-            }
-        } else if (strcmp("-r", flag) == 0) {
-            config->hotreload = true;
-        } else if (strcmp("-m", flag) == 0) {
-            config->microphone = true;
-        } else if (strcmp("-h", flag) == 0 || strcmp("--help", flag) == 0) {
-            nob_log(NOB_INFO, "Available config flags:");
-            nob_log(NOB_INFO, "    -t <target>    set build target");
-            nob_log(NOB_INFO, "    -r             enable hotreload");
-            nob_log(NOB_INFO, "    -m             enable microphone");
-            nob_log(NOB_INFO, "    -h             print this help");
-            return false;
-        } else {
-            nob_log(NOB_ERROR, "Unknown flag %s", flag);
-            return false;
-        }
-    }
-    return true;
-}
-
-void log_config(Config config)
-{
-    nob_log(NOB_INFO, "Target: %s", NOB_ARRAY_GET(target_names, config.target));
-    nob_log(NOB_INFO, "Hotreload: %s", config.hotreload ? "ENABLED" : "DISABLED");
-    nob_log(NOB_INFO, "Microphone: %s", config.microphone ? "ENABLED" : "DISABLED");
-}
-
-bool dump_config_to_file(const char *path, Config config)
-{
-    Nob_String_Builder sb = {0};
-    nob_log(NOB_INFO, "Saving configuration to %s", path);
-    nob_sb_append_cstr(&sb, nob_temp_sprintf("target = %s"NOB_LINE_END, NOB_ARRAY_GET(target_names, config.target)));
-    nob_sb_append_cstr(&sb, nob_temp_sprintf("hotreload = %s"NOB_LINE_END, config.hotreload ? "true" : "false"));
-    nob_sb_append_cstr(&sb, nob_temp_sprintf("microphone = %s"NOB_LINE_END, config.microphone ? "true" : "false"));
-    bool res = nob_write_entire_file(path, sb.items, sb.count);
-    nob_sb_free(sb);
-    return res;
-}
-
-bool config_parse_boolean(const char *path, size_t row, Nob_String_View token, bool *boolean)
-{
-    if (nob_sv_eq(token, nob_sv_from_cstr("true"))) {
-        *boolean = true;
-    } else if (nob_sv_eq(token, nob_sv_from_cstr("false"))) {
-        *boolean = false;
-    } else {
-        nob_log(NOB_ERROR, "%s:%zu: Invalid boolean `"SV_Fmt"`", path, row + 1, SV_Arg(token));
-        nob_log(NOB_ERROR, "Expected `true` or `false`");
-        return false;
-    }
-    return true;
-}
-
-bool config_parse_target(const char *path, size_t row, Nob_String_View token, Target *target)
-{
-    bool found = false;
-    for (size_t t = 0; !found && t < COUNT_TARGETS; ++t) {
-        if (nob_sv_eq(token, nob_sv_from_cstr(target_names[t]))) {
-            *target = t;
-            return true;
-        }
-    }
-    nob_log(NOB_ERROR, "%s:%zu: Invalid target `"SV_Fmt"`", path, row + 1, SV_Arg(token));
-    log_available_targets(NOB_ERROR);
-    return false;
-}
-
-bool load_config_from_file(const char *path, Config *config)
-{
-    bool result = true;
-    Nob_String_Builder sb = {0};
-
-    nob_log(NOB_INFO, "Loading configuration from %s", path);
-
-    if (!nob_read_entire_file(path, &sb)) nob_return_defer(false);
-
-    Nob_String_View content = {
-        .data = sb.items,
-        .count = sb.count,
-    };
-
-    for (size_t row = 0; content.count > 0; ++row) {
-        Nob_String_View line = nob_sv_trim(nob_sv_chop_by_delim(&content, '\n'));
-        if (line.count == 0) continue;
-
-        Nob_String_View key = nob_sv_trim(nob_sv_chop_by_delim(&line, '='));
-        Nob_String_View value = nob_sv_trim(line);
-
-        if (nob_sv_eq(key, nob_sv_from_cstr("target"))) {
-            if (!config_parse_target(path, row, value, &config->target)) nob_return_defer(false);
-        } else if (nob_sv_eq(key, nob_sv_from_cstr("hotreload"))) {
-            if (!config_parse_boolean(path, row, value, &config->hotreload)) nob_return_defer(false);
-        } else if (nob_sv_eq(key, nob_sv_from_cstr("microphone"))) {
-            if (!config_parse_boolean(path, row, value, &config->microphone)) nob_return_defer(false);
-        } else {
-            nob_log(NOB_ERROR, "%s:%zu: Invalid key `"SV_Fmt"`", path, row + 1, SV_Arg(key));
-            nob_return_defer(false);
-        }
-    }
-
-defer:
-    nob_sb_free(sb);
-    return result;
-}
-
-bool build_musializer(Config config)
-{
-    bool result = true;
-    Nob_Cmd cmd = {0};
-    Nob_Procs procs = {0};
-
-    switch (config.target) {
-        case TARGET_LINUX: {
-            if (config.hotreload) {
-                procs.count = 0;
-                    cmd.count = 0;
-                        // TODO: add a way to replace `cc` with something else GCC compatible on POSIX
-                        // Like `clang` for instance
-                        nob_cmd_append(&cmd, "cc");
-                        nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                        if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                        nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                        nob_cmd_append(&cmd, "-fPIC", "-shared");
-                        nob_cmd_append(&cmd, "-o", "./build/libplug.so");
-                        nob_cmd_append(&cmd,
-                            "./src/plug.c",
-                            "./src/ffmpeg_linux.c");
-                        nob_cmd_append(&cmd,
-                            nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                            "-l:libraylib.so");
-                        nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                    nob_da_append(&procs, nob_cmd_run_async(cmd));
-
-                    cmd.count = 0;
-                        nob_cmd_append(&cmd, "cc");
-                        nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                        if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                        nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                        nob_cmd_append(&cmd, "-DHOTRELOAD");
-                        nob_cmd_append(&cmd, "-o", "./build/musializer");
-                        nob_cmd_append(&cmd,
-                            "./src/musializer.c",
-                            "./src/hotreload_linux.c");
-                        nob_cmd_append(&cmd,
-                            "-Wl,-rpath=./build/",
-                            "-Wl,-rpath=./",
-                            nob_temp_sprintf("-Wl,-rpath=./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                            // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
-                            nob_temp_sprintf("-Wl,-rpath=./raylib/%s", NOB_ARRAY_GET(target_names, config.target)));
-                        nob_cmd_append(&cmd,
-                            nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                            "-l:libraylib.so");
-                        nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                    nob_da_append(&procs, nob_cmd_run_async(cmd));
-                if (!nob_procs_wait(procs)) nob_return_defer(false);
-            } else {
-                cmd.count = 0;
-                    nob_cmd_append(&cmd, "cc");
-                    nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                    if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                    nob_cmd_append(&cmd, "-o", "./build/musializer");
-                    nob_cmd_append(&cmd,
-                        "./src/plug.c",
-                        "./src/ffmpeg_linux.c",
-                        "./src/musializer.c");
-                    nob_cmd_append(&cmd,
-                        nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                        "-l:libraylib.a");
-                    nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-            }
-        } break;
-
-        case TARGET_MACOS: {
-            if (config.hotreload) {
-                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-                nob_return_defer(false);
-            }
-
-            cmd.count = 0;
-                nob_cmd_append(&cmd, "clang");
-                nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
-                if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                nob_cmd_append(&cmd, "-o", "./build/musializer");
-                nob_cmd_append(&cmd,
-                    "./src/plug.c",
-                    "./src/ffmpeg_linux.c",
-                    "./src/musializer.c");
-                nob_cmd_append(&cmd,
-                    nob_temp_sprintf("./build/raylib/%s/libraylib.a", NOB_ARRAY_GET(target_names, config.target)));
-
-                nob_cmd_append(&cmd, "-framework", "CoreVideo");
-                nob_cmd_append(&cmd, "-framework", "IOKit");
-                nob_cmd_append(&cmd, "-framework", "Cocoa");
-                nob_cmd_append(&cmd, "-framework", "GLUT");
-                nob_cmd_append(&cmd, "-framework", "OpenGL");
-
-                nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
-            if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-        } break;
-
-        case TARGET_WIN64_MINGW: {
-            if (config.hotreload) {
-                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-                nob_return_defer(false);
-            } else {
-                cmd.count = 0;
-                #ifdef _WIN32
-                    // On windows, mingw doesn't have the `x86_64-w64-mingw32-` prefix for windres.
-                    // For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
-                    nob_cmd_append(&cmd, "windres");
-                #else
-                    nob_cmd_append(&cmd, "x86_64-w64-mingw32-windres");
-                #endif // _WIN32
-                    nob_cmd_append(&cmd, "./src/musializer.rc");
-                    nob_cmd_append(&cmd, "-O", "coff");
-                    nob_cmd_append(&cmd, "-o", "./build/musializer.res");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-
-                cmd.count = 0;
-                    nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
-                    nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
-                    if (config.microphone) nob_cmd_append(&cmd, "-DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                    nob_cmd_append(&cmd, "-o", "./build/musializer");
-                    nob_cmd_append(&cmd,
-                        "./src/plug.c",
-                        "./src/ffmpeg_windows.c",
-                        "./src/musializer.c",
-                        "./build/musializer.res"
-                        );
-                    nob_cmd_append(&cmd,
-                        nob_temp_sprintf("-L./build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                        "-l:libraylib.a");
-                    nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
-                    nob_cmd_append(&cmd, "-static");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-            }
-        } break;
-
-        case TARGET_WIN64_MSVC: {
-            if (config.hotreload) {
-                nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-                nob_return_defer(false);
-            } else {
-                cmd.count = 0;
-                    nob_cmd_append(&cmd, "rc");
-                    nob_cmd_append(&cmd, "/fo", "./build/musializer.res");
-                    nob_cmd_append(&cmd, "./src/musializer.rc");
-                    // NOTE: Do not change the order of commandline arguments to rc. Their argparser is weird.
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-                cmd.count = 0;
-                    nob_cmd_append(&cmd, "cl.exe");
-                    if (config.microphone) nob_cmd_append(&cmd, "/DFEATURE_MICROPHONE");
-                    nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
-                    nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
-                    nob_cmd_append(&cmd,
-                        "./src/musializer.c",
-                        "./src/plug.c",
-                        "./src/ffmpeg_windows.c"
-                        // TODO: building resource file is not implemented for TARGET_WIN64_MSVC
-                        );
-                    nob_cmd_append(&cmd,
-                        "/link",
-                        nob_temp_sprintf("/LIBPATH:build/raylib/%s", NOB_ARRAY_GET(target_names, config.target)),
-                        "raylib.lib");
-                    nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "./build/musializer.res");
-                    // TODO: is some sort of `-static` flag needed for MSVC to get a statically linked executable
-                    //nob_cmd_append(&cmd, "-static");
-                if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
-            }
-        } break;
-
-        default: NOB_ASSERT(0 && "unreachable");
-    }
-
-defer:
-    nob_cmd_free(cmd);
-    nob_da_free(procs);
-    return result;
-}
+#define TARGET_LINUX 0
+#define TARGET_WIN64_MINGW 1
+#define TARGET_WIN64_MSVC 2
+#define TARGET_MACOS 3
 
 static const char *raylib_modules[] = {
     "rcore",
@@ -380,6 +31,17 @@ static const char *raylib_modules[] = {
     "utils",
 };
 
+#if MUSIALIZER_TARGET == TARGET_LINUX
+#include "nob_linux.c"
+#elif MUSIALIZER_TARGET == TARGET_MACOS
+#include "nob_macos.c"
+#elif MUSIALIZER_TARGET == TARGET_WIN64_MINGW
+#include "nob_win64_mingw.c"
+#elif MUSIALIZER_TARGET == TARGET_WIN64_MSVC
+#include "nob_win64_msvc.c"
+#endif // MUSIALIZER_TARGET
+
+#if 0
 bool build_raylib(Config config)
 {
     bool result = true;
@@ -575,6 +237,7 @@ bool build_dist(Config config)
 
     return true;
 }
+#endif
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)
 {
@@ -589,7 +252,7 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
 
 int main(int argc, char **argv)
 {
-    NOB_GO_REBUILD_URSELF(argc, argv);
+    nob_log(NOB_INFO, "-- STAGE 2 --");
 
     const char *program = nob_shift_args(&argc, &argv);
 
@@ -601,44 +264,16 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(subcommand, "build") == 0) {
-        Config config = {0};
-        switch (nob_file_exists("./build/build.conf")) {
-            case -1:
-                return 1;
-            case 0:
-                if (!nob_mkdir_if_not_exists("build")) return 1;
-                if (!compute_default_config(&config)) return 1;
-                if (!dump_config_to_file("./build/build.conf", config)) return 1;
-                break;
-            case 1:
-                if (!load_config_from_file("./build/build.conf", &config)) return 1;
-                break;
-        }
-        nob_log(NOB_INFO, "------------------------------");
-        log_config(config);
-        nob_log(NOB_INFO, "------------------------------");
-        if (!build_raylib(config)) return 1;
-        if (!build_musializer(config)) return 1;
-        if (config.target == TARGET_WIN64_MINGW || config.target == TARGET_WIN64_MSVC) {
-            if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
-        }
+        // TODO: print the current config somehow, because it's useful information
+        if (!build_raylib()) return 1;
+        if (!build_musializer()) return 1;
+        // // TODO: move the copying of musializer-logged.bat to nob_win64_*.c
+        // if (config.target == TARGET_WIN64_MINGW || config.target == TARGET_WIN64_MSVC) {
+        //     if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
+        // }
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
-    } else if (strcmp(subcommand, "config") == 0) {
-        Config config = {0};
-        if (!compute_default_config(&config)) return 1;
-        if (!parse_config_from_args(argc, argv, &config)) return 1;
-        nob_log(NOB_INFO, "------------------------------");
-        log_config(config);
-        nob_log(NOB_INFO, "------------------------------");
-        if (!nob_mkdir_if_not_exists("build")) return 1;
-        if (!dump_config_to_file("./build/build.conf", config)) return 1;
     } else if (strcmp(subcommand, "dist") == 0) {
-        Config config = {0};
-        if (!load_config_from_file("./build/build.conf", &config)) return 1;
-        nob_log(NOB_INFO, "------------------------------");
-        log_config(config);
-        nob_log(NOB_INFO, "------------------------------");
-        if (!build_dist(config)) return 1;
+        if (!build_dist()) return 1;
     } else if (strcmp(subcommand, "svg") == 0) {
         Nob_Procs procs = {0};
 
@@ -700,3 +335,56 @@ int main(int argc, char **argv)
     // TODO: it would be nice to check for situations like building TARGET_WIN64_MSVC on Linux and report that it's not possible.
     return 0;
 }
+
+#else
+
+int main(int argc, char **argv)
+{
+    NOB_GO_REBUILD_URSELF(argc, argv);
+
+    nob_log(NOB_INFO, "-- STAGE 1 --");
+
+    const char *program = nob_shift_args(&argc, &argv);
+
+    if (!nob_mkdir_if_not_exists("build")) return 1;
+
+    const char *config_path = "./build/config.h";
+    int config_exists = nob_file_exists(config_path);
+    if (config_exists < 0) return 1;
+    if (config_exists == 0) {
+        nob_log(NOB_INFO, "Generating %s", config_path);
+        Nob_String_Builder content = {0};
+#ifdef _WIN32
+#   if defined(_MSC_VER)
+        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
+#   else
+        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
+#   endif
+#else
+#   if defined (__APPLE__) || defined (__MACH__)
+        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_MACOS\n");
+#   else
+        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_LINUX\n");
+#   endif
+#endif
+        nob_sb_append_cstr(&content, "// #define MUSIALIZER_HOTRELOAD\n");
+        nob_sb_append_cstr(&content, "// #define MUSIALIZER_MICROPHONE\n");
+        if (!nob_write_entire_file(config_path, content.items, content.count)) return 1;
+    } else {
+        nob_log(NOB_INFO, "%s already exists", config_path);
+    }
+
+    Nob_Cmd cmd = {0};
+    const char *configured_binary = "./build/nob.configured";
+    nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
+    if (!nob_cmd_run_sync(cmd)) return 1;
+
+    cmd.count = 0;
+    nob_cmd_append(&cmd, configured_binary);
+    nob_da_append_many(&cmd, argv, argc);
+    if (!nob_cmd_run_sync(cmd)) return 1;
+
+    return 0;
+}
+
+#endif // CONFIGURED
