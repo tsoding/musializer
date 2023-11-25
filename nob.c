@@ -246,7 +246,6 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "Usage: %s [subcommand]", program);
     nob_log(level, "Subcommands:");
     nob_log(level, "    build (default)");
-    nob_log(level, "    config");
     nob_log(level, "    dist");
     nob_log(level, "    svg");
     nob_log(level, "    help");
