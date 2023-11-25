@@ -9,9 +9,11 @@
 #define NOB_IMPLEMENTATION
 #include "./src/nob.h"
 
+#define CONFIG_PATH "./build/config.h"
+
 #ifdef CONFIGURED
 
-#include "./build/config.h"
+#include CONFIG_PATH
 
 #define RAYLIB_VERSION "5.0"
 
@@ -252,7 +254,19 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
 
 int main(int argc, char **argv)
 {
-    nob_log(NOB_INFO, "-- STAGE 2 --");
+    nob_log(NOB_INFO, "--- STAGE 2 ---");
+    nob_log(NOB_INFO, "Target: %s", MUSIALIZER_TARGET_NAME);
+#ifdef MUSIALIZER_HOTRELOAD
+    nob_log(NOB_INFO, "Hotreload: ENABLED");
+#else
+    nob_log(NOB_INFO, "Hotreload: DISABLED");
+#endif // MUSIALIZER_HOTRELOAD
+#ifdef MUSIALIZER_MICROPHONE
+    nob_log(NOB_INFO, "Microphone: ENABLED");
+#else
+    nob_log(NOB_INFO, "Microphone: DISABLED");
+#endif // MUSIALIZER_MICROPHONE
+    nob_log(NOB_INFO, "---");
 
     const char *program = nob_shift_args(&argc, &argv);
 
@@ -338,46 +352,57 @@ int main(int argc, char **argv)
 
 #else
 
+void generate_default_configuration(Nob_String_Builder *content)
+{
+#ifdef _WIN32
+#   if defined(_MSC_VER)
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
+#   else
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
+#   endif
+#else
+#   if defined (__APPLE__) || defined (__MACH__)
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_MACOS\n");
+#   else
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_LINUX\n");
+#   endif
+#endif
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_HOTRELOAD\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_MICROPHONE\n");
+}
+
 int main(int argc, char **argv)
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
-    nob_log(NOB_INFO, "-- STAGE 1 --");
+    nob_log(NOB_INFO, "--- STAGE 1 ---");
 
     const char *program = nob_shift_args(&argc, &argv);
 
     if (!nob_mkdir_if_not_exists("build")) return 1;
 
-    const char *config_path = "./build/config.h";
-    int config_exists = nob_file_exists(config_path);
+    int config_exists = nob_file_exists(CONFIG_PATH);
     if (config_exists < 0) return 1;
     if (config_exists == 0) {
-        nob_log(NOB_INFO, "Generating %s", config_path);
+        nob_log(NOB_INFO, "Generating %s", CONFIG_PATH);
         Nob_String_Builder content = {0};
-#ifdef _WIN32
-#   if defined(_MSC_VER)
-        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-#   else
-        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-#   endif
-#else
-#   if defined (__APPLE__) || defined (__MACH__)
-        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_MACOS\n");
-#   else
-        nob_sb_append_cstr(&content, "#define MUSIALIZER_TARGET TARGET_LINUX\n");
-#   endif
-#endif
-        nob_sb_append_cstr(&content, "// #define MUSIALIZER_HOTRELOAD\n");
-        nob_sb_append_cstr(&content, "// #define MUSIALIZER_MICROPHONE\n");
-        if (!nob_write_entire_file(config_path, content.items, content.count)) return 1;
+        generate_default_configuration(&content);
+        if (!nob_write_entire_file(CONFIG_PATH, content.items, content.count)) return 1;
     } else {
-        nob_log(NOB_INFO, "%s already exists", config_path);
+        nob_log(NOB_INFO, "file `%s` already exists", CONFIG_PATH);
     }
 
     Nob_Cmd cmd = {0};
     const char *configured_binary = "./build/nob.configured";
-    nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
-    if (!nob_cmd_run_sync(cmd)) return 1;
+    const char *deps[] = { __FILE__, CONFIG_PATH };
+    int needs_rebuild = nob_needs_rebuild(configured_binary, deps, NOB_ARRAY_LEN(deps));
+    if (needs_rebuild < 0) return 1;
+    if (needs_rebuild) {
+        nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
+        if (!nob_cmd_run_sync(cmd)) return 1;
+    } else {
+        nob_log(NOB_INFO, "executable `%s` is up to date", configured_binary);
+    }
 
     cmd.count = 0;
     nob_cmd_append(&cmd, configured_binary);
