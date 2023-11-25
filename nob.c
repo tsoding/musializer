@@ -84,13 +84,8 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(subcommand, "build") == 0) {
-        // TODO: print the current config somehow, because it's useful information
         if (!build_raylib()) return 1;
         if (!build_musializer()) return 1;
-        // // TODO: move the copying of musializer-logged.bat to nob_win64_*.c
-        // if (config.target == TARGET_WIN64_MINGW || config.target == TARGET_WIN64_MSVC) {
-        //     if (!nob_copy_file("musializer-logged.bat", "build/musializer-logged.bat")) return 1;
-        // }
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
     } else if (strcmp(subcommand, "dist") == 0) {
         if (!build_dist()) return 1;
