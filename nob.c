@@ -174,8 +174,17 @@ void generate_default_config(Nob_String_Builder *content)
 
 int main(int argc, char **argv)
 {
-    // TODO: check if ./build/build.config exists and inform the user about the build changes
     NOB_GO_REBUILD_URSELF(argc, argv);
+
+    const char *build_conf_path = "./build/build.conf";
+    int build_conf_exists = nob_file_exists(build_conf_path);
+    if (build_conf_exists < 0) return 1;
+    if (build_conf_exists) {
+        nob_log(NOB_ERROR, "We found %s. That means your build folder has an old schema.", build_conf_path);
+        nob_log(NOB_ERROR, "Instead of %s you are suppose to use %s now to configure the build.", build_conf_path, CONFIG_PATH);
+        nob_log(NOB_ERROR, "Remove your ./build/ folder and try to build the project again to regenerate everything.");
+        return 1;
+    }
 
     nob_log(NOB_INFO, "--- STAGE 1 ---");
 
