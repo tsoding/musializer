@@ -34,13 +34,13 @@ static const char *raylib_modules[] = {
 };
 
 #if MUSIALIZER_TARGET == TARGET_LINUX
-#include "nob_linux.c"
+#include "src/nob_linux.c"
 #elif MUSIALIZER_TARGET == TARGET_MACOS
-#include "nob_macos.c"
+#include "src/nob_macos.c"
 #elif MUSIALIZER_TARGET == TARGET_WIN64_MINGW
-#include "nob_win64_mingw.c"
+#include "src/nob_win64_mingw.c"
 #elif MUSIALIZER_TARGET == TARGET_WIN64_MSVC
-#include "nob_win64_msvc.c"
+#include "src/nob_win64_msvc.c"
 #endif // MUSIALIZER_TARGET
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)
@@ -53,20 +53,25 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "    help");
 }
 
+void log_config(Nob_Log_Level level)
+{
+    nob_log(level, "Target: %s", MUSIALIZER_TARGET_NAME);
+#ifdef MUSIALIZER_HOTRELOAD
+    nob_log(level, "Hotreload: ENABLED");
+#else
+    nob_log(level, "Hotreload: DISABLED");
+#endif // MUSIALIZER_HOTRELOAD
+#ifdef MUSIALIZER_MICROPHONE
+    nob_log(level, "Microphone: ENABLED");
+#else
+    nob_log(level, "Microphone: DISABLED");
+#endif // MUSIALIZER_MICROPHONE
+}
+
 int main(int argc, char **argv)
 {
     nob_log(NOB_INFO, "--- STAGE 2 ---");
-    nob_log(NOB_INFO, "Target: %s", MUSIALIZER_TARGET_NAME);
-#ifdef MUSIALIZER_HOTRELOAD
-    nob_log(NOB_INFO, "Hotreload: ENABLED");
-#else
-    nob_log(NOB_INFO, "Hotreload: DISABLED");
-#endif // MUSIALIZER_HOTRELOAD
-#ifdef MUSIALIZER_MICROPHONE
-    nob_log(NOB_INFO, "Microphone: ENABLED");
-#else
-    nob_log(NOB_INFO, "Microphone: DISABLED");
-#endif // MUSIALIZER_MICROPHONE
+    log_config(NOB_INFO);
     nob_log(NOB_INFO, "---");
 
     const char *program = nob_shift_args(&argc, &argv);
@@ -153,7 +158,7 @@ int main(int argc, char **argv)
 
 #else
 
-void generate_default_configuration(Nob_String_Builder *content)
+void generate_default_config(Nob_String_Builder *content)
 {
 #ifdef _WIN32
 #   if defined(_MSC_VER)
@@ -174,6 +179,7 @@ void generate_default_configuration(Nob_String_Builder *content)
 
 int main(int argc, char **argv)
 {
+    // TODO: check if ./build/build.config exists and inform the user about the build changes
     NOB_GO_REBUILD_URSELF(argc, argv);
 
     nob_log(NOB_INFO, "--- STAGE 1 ---");
@@ -187,7 +193,7 @@ int main(int argc, char **argv)
     if (config_exists == 0) {
         nob_log(NOB_INFO, "Generating %s", CONFIG_PATH);
         Nob_String_Builder content = {0};
-        generate_default_configuration(&content);
+        generate_default_config(&content);
         if (!nob_write_entire_file(CONFIG_PATH, content.items, content.count)) return 1;
     } else {
         nob_log(NOB_INFO, "file `%s` already exists", CONFIG_PATH);
