@@ -36,7 +36,7 @@ I really recommend to read [nob.c](./nob.c) and [nob.h](./src/nob.h) to get an i
 ### Linux
 
 ```console
-$ cc -o nob nob.c # only once
+$ cc -o nob nob.c # ONLY ONCE!!!
 $ ./nob
 $ ./build/musializer
 ```
@@ -48,7 +48,7 @@ Keep in mind that the application needs [./resources/](./resources/) to be prese
 From within `vcvarsall.bat` do
 
 ```console
-> cl.exe nob.c # only once
+> cl.exe nob.c # ONLY ONCE!!!
 > nob.exe
 > build\musializer.exe
 ```
@@ -58,8 +58,12 @@ From within `vcvarsall.bat` do
 Install [MinGW-w64](https://www.mingw-w64.org/) from your distro repository.
 
 ```console
-$ cc -o nob nob.c # only once
-$ ./nob config -t win64-mingw
+$ cc -o nob nob.c # ONLY ONCE!!!
+```
+
+Edit `./build/config.h` and set `MUSIALIZER_TARGET` to `TARGET_WIN64_MINGW`.
+
+```console
 $ ./nob
 $ wine ./build/musializer.exe
 ```
@@ -69,8 +73,12 @@ $ wine ./build/musializer.exe
 **Only on Linux for now**
 
 ```console
-$ cc -o nob nob.c # only once
-$ ./nob config -r
+$ cc -o nob nob.c # ONLY ONCE!!!
+```
+
+Edit `./build/config.h` and enable `MUSIALIZER_HOTRELOAD`.
+
+```console
 $ ./nob
 $ ./build/musializer
 ```
