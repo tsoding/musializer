@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     } else if (strcmp(subcommand, "dist") == 0) {
         if (!build_dist()) return 1;
     } else if (strcmp(subcommand, "config") == 0) {
-        nob_log(NOB_ERROR, "The `config` command does not exists anymore!");
+        nob_log(NOB_ERROR, "The `config` command does not exist anymore!");
         nob_log(NOB_ERROR, "Edit %s to configure the build!", CONFIG_PATH);
         return 1;
     } else if (strcmp(subcommand, "svg") == 0) {
