@@ -4,8 +4,9 @@
 #include <stdbool.h>
 
 #include "plug.h"
+#include "config.h"
 
-#ifdef HOTRELOAD
+#ifdef MUSIALIZER_HOTRELOAD
     #define PLUG(name, ...) extern name##_t *name;
     LIST_OF_PLUGS
     #undef PLUG
