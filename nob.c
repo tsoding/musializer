@@ -225,15 +225,8 @@ int main(int argc, char **argv)
 
     Nob_Cmd cmd = {0};
     const char *configured_binary = "./build/nob.configured";
-    const char *deps[] = { __FILE__, CONFIG_PATH };
-    int needs_rebuild = nob_needs_rebuild(configured_binary, deps, NOB_ARRAY_LEN(deps));
-    if (needs_rebuild < 0) return 1;
-    if (needs_rebuild) {
-        nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
-        if (!nob_cmd_run_sync(cmd)) return 1;
-    } else {
-        nob_log(NOB_INFO, "executable `%s` is up to date", configured_binary);
-    }
+    nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
+    if (!nob_cmd_run_sync(cmd)) return 1;
 
     cmd.count = 0;
     nob_cmd_append(&cmd, configured_binary);
