@@ -95,7 +95,7 @@ bool nob_mkdir_if_not_exists(const char *path);
 bool nob_copy_file(const char *src_path, const char *dst_path);
 bool nob_copy_directory_recursively(const char *src_path, const char *dst_path);
 bool nob_read_entire_dir(const char *parent, Nob_File_Paths *children);
-bool nob_write_entire_file(const char *path, void *data, size_t size);
+bool nob_write_entire_file(const char *path, const void *data, size_t size);
 Nob_File_Type nob_get_file_type(const char *path);
 
 #define nob_return_defer(value) do { result = (value); goto defer; } while(0)
@@ -679,7 +679,7 @@ defer:
     return result;
 }
 
-bool nob_write_entire_file(const char *path, void *data, size_t size)
+bool nob_write_entire_file(const char *path, const void *data, size_t size)
 {
     bool result = true;
 
@@ -695,7 +695,7 @@ bool nob_write_entire_file(const char *path, void *data, size_t size)
     //     ^
     //     data
 
-    char *buf = data;
+    const char *buf = data;
     while (size > 0) {
         size_t n = fwrite(buf, 1, size, f);
         if (ferror(f)) {
