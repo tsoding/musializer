@@ -89,6 +89,10 @@ int main(int argc, char **argv)
         if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
     } else if (strcmp(subcommand, "dist") == 0) {
         if (!build_dist()) return 1;
+    } else if (strcmp(subcommand, "config") == 0) {
+        nob_log(NOB_ERROR, "The `config` command does not exists anymore!");
+        nob_log(NOB_ERROR, "Edit %s to configure the build!", CONFIG_PATH);
+        return 1;
     } else if (strcmp(subcommand, "svg") == 0) {
         Nob_Procs procs = {0};
 
@@ -155,20 +159,37 @@ int main(int argc, char **argv)
 
 void generate_default_config(Nob_String_Builder *content)
 {
+    nob_sb_append_cstr(content, "//// Build target. Pick only one!\n");
 #ifdef _WIN32
 #   if defined(_MSC_VER)
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
     nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
 #   else
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
     nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
 #   endif
 #else
 #   if defined (__APPLE__) || defined (__MACH__)
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
     nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_MACOS\n");
 #   else
     nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
 #   endif
 #endif
+    nob_sb_append_cstr(content, "\n");
+    nob_sb_append_cstr(content, "//// Moves everything in src/plub.c to a separate \"DLL\" so it can be hotreloaded. Works only for Linux right now\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_HOTRELOAD\n");
+    nob_sb_append_cstr(content, "\n");
+    nob_sb_append_cstr(content, "//// Unfinished feature that enables capturing sound from the mic.\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_MICROPHONE\n");
 }
 
@@ -176,19 +197,18 @@ int main(int argc, char **argv)
 {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
+    const char *program = nob_shift_args(&argc, &argv);
     const char *build_conf_path = "./build/build.conf";
     int build_conf_exists = nob_file_exists(build_conf_path);
     if (build_conf_exists < 0) return 1;
     if (build_conf_exists) {
         nob_log(NOB_ERROR, "We found %s. That means your build folder has an old schema.", build_conf_path);
-        nob_log(NOB_ERROR, "Instead of %s you are suppose to use %s now to configure the build.", build_conf_path, CONFIG_PATH);
-        nob_log(NOB_ERROR, "Remove your ./build/ folder and try to build the project again to regenerate everything.");
+        nob_log(NOB_ERROR, "Instead of %s you are suppose to use %s to configure the build now.", build_conf_path, CONFIG_PATH);
+        nob_log(NOB_ERROR, "Remove your ./build/ folder and run %s again to regenerate the folder with the new schema.", program);
         return 1;
     }
 
     nob_log(NOB_INFO, "--- STAGE 1 ---");
-
-    const char *program = nob_shift_args(&argc, &argv);
 
     if (!nob_mkdir_if_not_exists("build")) return 1;
 
