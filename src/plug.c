@@ -844,6 +844,7 @@ static void preview_screen(void)
     if (track) { // The music is loaded and ready
         UpdateMusicStream(track->music);
 
+        // TODO: toggle play with mouse click on the preview window
         if (IsKeyPressed(KEY_TOGGLE_PLAY)) {
             if (IsMusicStreamPlaying(track->music)) {
                 PauseMusicStream(track->music);
