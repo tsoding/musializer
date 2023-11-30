@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 #include <string.h>
 #include <complex.h>
@@ -151,6 +152,8 @@ typedef struct {
     float out_log[FFT_SIZE];
     float out_smooth[FFT_SIZE];
     float out_smear[FFT_SIZE];
+
+    uint64_t active_ui;
 
 #ifdef MUSIALIZER_MICROPHONE
     // Microphone
@@ -452,7 +455,46 @@ static void timeline(Rectangle timeline_boundary, Track *track)
     // TODO: visualize sound wave on the timeline
 }
 
-static void tracks_panel(Rectangle panel_boundary)
+typedef enum {
+    BS_NONE      = 0, // 00
+    BS_HOVEROVER = 1, // 01
+    BS_CLICKED   = 2, // 10
+} Button_State;
+
+static int button(uint64_t id, Rectangle boundary)
+{
+    Vector2 mouse = GetMousePosition( );
+    int hoverover = CheckCollisionPointRec(mouse, boundary);
+    int clicked = 0;
+
+    if (p->active_ui == 0) {
+        if (hoverover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            p->active_ui = id;
+        }
+    } else if (p->active_ui == id) {
+        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            p->active_ui = 0;
+            if (hoverover) clicked = 1;
+        }
+    }
+
+    return (clicked<<1) | hoverover;
+}
+
+#define DJB2_INIT 5381
+
+uint64_t djb2(uint64_t hash, const void *buf, size_t buf_sz)
+{
+    const uint8_t *bytes = buf;
+    for (size_t i = 0; i < buf_sz; ++i) {
+        hash = hash*33 + bytes[i];
+    }
+    return hash;
+}
+
+#define tracks_panel(panel_boundary) \
+    tracks_panel_with_location(__FILE__, __LINE__, panel_boundary)
+static void tracks_panel_with_location(const char *file, int line, Rectangle panel_boundary)
 {
     DrawRectangleRec(panel_boundary, COLOR_TRACK_PANEL_BACKGROUND);
 
@@ -485,6 +527,10 @@ static void tracks_panel(Rectangle panel_boundary)
     if (panel_scroll > max_scroll) panel_scroll = max_scroll;
     float panel_padding = item_size*0.1;
 
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
+
     BeginScissorMode(panel_boundary.x, panel_boundary.y, panel_boundary.width, panel_boundary.height);
     for (size_t i = 0; i < p->tracks.count; ++i) {
         // TODO: tooltip with filepath on each item in the panel
@@ -496,16 +542,19 @@ static void tracks_panel(Rectangle panel_boundary)
         };
         Color color;
         if (((int) i != p->current_track)) {
-            if (CheckCollisionPointRec(mouse, panel_boundary) && CheckCollisionPointRec(mouse, item_boundary)) {
-                if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                    Track *track = current_track();
-                    if (track) StopMusicStream(track->music);
-                    PlayMusicStream(p->tracks.items[i].music);
-                    p->current_track = i;
-                }
+            uint64_t item_id = djb2(id, &i, sizeof(i));
+
+            int state = button(item_id, GetCollisionRec(panel_boundary, item_boundary));
+            if (state & BS_HOVEROVER) {
                 color = COLOR_TRACK_BUTTON_HOVEROVER;
             } else {
                 color = COLOR_TRACK_BUTTON_BACKGROUND;
+            }
+            if (state & BS_CLICKED) {
+                Track *track = current_track();
+                if (track) StopMusicStream(track->music);
+                PlayMusicStream(p->tracks.items[i].music);
+                p->current_track = i;
             }
         } else {
             color = COLOR_TRACK_BUTTON_SELECTED;
@@ -573,15 +622,13 @@ static void tracks_panel(Rectangle panel_boundary)
     EndScissorMode();
 }
 
-typedef enum {
-    BS_NONE      = 0, // 00
-    BS_HOVEROVER = 1, // 01
-    BS_CLICKED   = 2, // 10
-} Button_State;
-
-static int fullscreen_button(Rectangle preview_boundary)
+#define fullscreen_button(preview_boundary) \
+    fullscreen_button_with_loc(__FILE__, __LINE__, preview_boundary)
+static int fullscreen_button_with_loc(const char *file, int line, Rectangle preview_boundary)
 {
-    Vector2 mouse = GetMousePosition();
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
 
     Rectangle fullscreen_button_boundary = {
         preview_boundary.x + preview_boundary.width - HUD_BUTTON_SIZE - HUD_BUTTON_MARGIN,
@@ -590,10 +637,9 @@ static int fullscreen_button(Rectangle preview_boundary)
         HUD_BUTTON_SIZE,
     };
 
-    int hoverover = CheckCollisionPointRec(mouse, fullscreen_button_boundary);
-    int clicked = hoverover && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    int state = button(id, fullscreen_button_boundary);
 
-    Color color = hoverover ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
+    Color color = state & BS_HOVEROVER ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
 
     DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
     float icon_size = 512;
@@ -606,13 +652,13 @@ static int fullscreen_button(Rectangle preview_boundary)
     };
     size_t icon_index;
     if (!p->fullscreen) {
-        if (!hoverover) {
+        if (!(state & BS_HOVEROVER)) {
             icon_index = 0;
         } else {
             icon_index = 1;
         }
     } else {
-        if (!hoverover) {
+        if (!(state & BS_HOVEROVER)) {
             icon_index = 2;
         } else {
             icon_index = 3;
@@ -621,7 +667,7 @@ static int fullscreen_button(Rectangle preview_boundary)
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
-    return (clicked<<1) | hoverover;
+    return state;
 }
 
 static float slider_get_value(float x, float lox, float hix)
@@ -690,7 +736,9 @@ static bool horz_slider(Rectangle boundary, float *value, bool *dragging)
     return updated;
 }
 
-static bool volume_slider(Rectangle preview_boundary)
+#define volume_slider(preview_boundary) \
+    volume_slider_with_location(__FILE__, __LINE__, preview_boundary)
+static bool volume_slider_with_location(const char *file, int line, Rectangle preview_boundary)
 {
     Vector2 mouse = GetMousePosition();
 
@@ -763,10 +811,13 @@ static bool volume_slider(Rectangle preview_boundary)
     }
 
     // Toggle mute
+
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
     if (
         IsKeyPressed(KEY_TOGGLE_MUTE) ||
-        (CheckCollisionPointRec(mouse, volume_icon_boundary) &&
-         IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+        (button(id, volume_icon_boundary) & BS_CLICKED)
     ) {
         if (volume > 0) {
             saved_volume = volume;
@@ -912,12 +963,12 @@ static void preview_screen(void)
             fft_render(preview_boundary, m);
             EndScissorMode();
 
-            tracks_panel(CLITERAL(Rectangle) {
+            tracks_panel((CLITERAL(Rectangle) {
                 .x = 0,
                 .y = 0,
                 .width = tracks_panel_width,
                 .height = preview_boundary.height,
-            });
+            }));
 
             timeline(CLITERAL(Rectangle) {
                 .x = 0,
@@ -931,7 +982,6 @@ static void preview_screen(void)
             }
             volume_slider(preview_boundary);
         }
-
     } else { // We are waiting for the user to Drag&Drop the Music
         const char *label = "Drag&Drop Music Here";
         Color color = WHITE;
