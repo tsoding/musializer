@@ -1,16 +1,18 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
-- TODO: fullscreen button
-
-- Added master volume control. It controls the volume during the
-  preview. It does not affect the audio of the final rendered video.
-
 - Added timeline. Now you can jump to any place of the music during
   the preview.
 
 - Multiple Files Support: all the Drag&Drop-ed files are preserved
   and you can switch between them.
+
+- Added master volume control. It controls the volume during the
+  preview. It does not affect the audio of the final rendered video.
+
+- Added a fullscreen button that hides all of the controls introduces
+  recently to enable people using Musializer a backdrop for
+  screenshots, videos, etc.
 
 - Fixed crash on Windows 7 when rendering the video
   https://github.com/tsoding/musializer/pull/14
