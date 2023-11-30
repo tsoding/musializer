@@ -153,7 +153,7 @@ typedef struct {
     float out_smooth[FFT_SIZE];
     float out_smear[FFT_SIZE];
 
-    uint64_t active_ui;
+    uint64_t active_button_id;
 
 #ifdef MUSIALIZER_MICROPHONE
     // Microphone
@@ -463,17 +463,17 @@ typedef enum {
 
 static int button(uint64_t id, Rectangle boundary)
 {
-    Vector2 mouse = GetMousePosition( );
+    Vector2 mouse = GetMousePosition();
     int hoverover = CheckCollisionPointRec(mouse, boundary);
     int clicked = 0;
 
-    if (p->active_ui == 0) {
+    if (p->active_button_id == 0) {
         if (hoverover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            p->active_ui = id;
+            p->active_button_id = id;
         }
-    } else if (p->active_ui == id) {
+    } else if (p->active_button_id == id) {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            p->active_ui = 0;
+            p->active_button_id = 0;
             if (hoverover) clicked = 1;
         }
     }
