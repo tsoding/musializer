@@ -44,6 +44,7 @@
 #define HUD_BUTTON_MARGIN 50
 #define HUD_ICON_SCALE 0.5
 #define HUD_POPUP_LIFETIME_SECS 2.0f
+#define HUD_POPUP_SLIDEIN_SECS 0.1f
 
 #define KEY_TOGGLE_PLAY KEY_SPACE
 #define KEY_RENDER      KEY_R
@@ -131,11 +132,16 @@ typedef struct {
     float lifetime;
 } Popup;
 
+#define PT_GET(pt, index) (assert(index < (pt).count), (pt).items[((pt).begin + index)%POPUP_TRAY_CAPACITY])
+#define PT_FIRST(pt) PT_GET((pt), 0)
+#define PT_LAST(pt) PT_GET((pt), (pt).count - 1)
+
 #define POPUP_TRAY_CAPACITY 10
 typedef struct {
     Popup items[POPUP_TRAY_CAPACITY];
     size_t begin;
     size_t count;
+    float slide;
 } Popup_Tray;
 
 typedef struct {
@@ -449,6 +455,7 @@ static void popup_tray_push(void)
     }
 
     p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS;
+    p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
 }
 
 static void timeline(Rectangle timeline_boundary, Track *track)
@@ -860,7 +867,14 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
 static void popup_tray(Rectangle preview_boundary)
 {
     float dt = GetFrameTime();
-    float popup_width = 200;
+    if (p->pt.slide > 0) {
+        p->pt.slide -= dt;
+    }
+    if (p->pt.slide < 0) {
+        p->pt.slide = 0;
+    }
+
+    float popup_width = 250;
     float popup_height = 75;
     float popup_padding = 20;
     for (size_t i = 0; i < p->pt.count; ++i) {
@@ -870,9 +884,11 @@ static void popup_tray(Rectangle preview_boundary)
         float t = it->lifetime/HUD_POPUP_LIFETIME_SECS;
         float alpha = t >= 0.5f ? 1.0f : t/0.5f;
 
+        float q = p->pt.slide / HUD_POPUP_SLIDEIN_SECS;
+
         Rectangle popup_boundary = {
             .x = preview_boundary.x + preview_boundary.width - popup_width - popup_padding,
-            .y = preview_boundary.y + preview_boundary.height - (i + 1)*(popup_height + popup_padding),
+            .y = preview_boundary.y + preview_boundary.height - (i + 1 - q)*(popup_height + popup_padding),
             .width = popup_width,
             .height = popup_height,
         };
@@ -1023,6 +1039,7 @@ static void preview_screen(void)
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
+            popup_tray(preview_boundary);
             EndScissorMode();
 
             tracks_panel((CLITERAL(Rectangle) {
@@ -1043,7 +1060,6 @@ static void preview_screen(void)
                 p->fullscreen = !p->fullscreen;
             }
             volume_slider(preview_boundary);
-            popup_tray(preview_boundary);
         }
     } else { // We are waiting for the user to Drag&Drop the Music
         const char *label = "Drag&Drop Music Here";
