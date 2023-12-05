@@ -136,7 +136,7 @@ typedef struct {
 #define PT_FIRST(pt) PT_GET((pt), 0)
 #define PT_LAST(pt) PT_GET((pt), (pt).count - 1)
 
-#define POPUP_TRAY_CAPACITY 10
+#define POPUP_TRAY_CAPACITY 20
 typedef struct {
     Popup items[POPUP_TRAY_CAPACITY];
     size_t begin;
@@ -444,18 +444,17 @@ static Track *current_track(void)
 
 static void popup_tray_push(void)
 {
-    if (p->pt.begin == 0) {
-        p->pt.begin = POPUP_TRAY_CAPACITY - 1;
-    } else {
-        p->pt.begin -= 1;
-    }
-
     if (p->pt.count < POPUP_TRAY_CAPACITY) {
+        if (p->pt.begin == 0) {
+            p->pt.begin = POPUP_TRAY_CAPACITY - 1;
+        } else {
+            p->pt.begin -= 1;
+        }
         p->pt.count += 1;
-    }
 
-    p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
-    p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
+        p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
+        p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
+    }
 }
 
 static void timeline(Rectangle timeline_boundary, Track *track)
