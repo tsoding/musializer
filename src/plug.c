@@ -454,8 +454,8 @@ static void popup_tray_push(void)
         p->pt.count += 1;
     }
 
-    p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS;
     p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
+    p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
 }
 
 static void timeline(Rectangle timeline_boundary, Track *track)
