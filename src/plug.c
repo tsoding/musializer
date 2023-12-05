@@ -132,9 +132,9 @@ typedef struct {
     float lifetime;
 } Popup;
 
-#define PT_GET(pt, index) (assert(index < (pt).count), (pt).items[((pt).begin + index)%POPUP_TRAY_CAPACITY])
+#define PT_GET(pt, index) (assert(index < (pt)->count), &(pt)->items[((pt)->begin + index)%POPUP_TRAY_CAPACITY])
 #define PT_FIRST(pt) PT_GET((pt), 0)
-#define PT_LAST(pt) PT_GET((pt), (pt).count - 1)
+#define PT_LAST(pt) PT_GET((pt), (pt)->count - 1)
 
 #define POPUP_TRAY_CAPACITY 20
 typedef struct {
@@ -453,7 +453,7 @@ static void popup_tray_push_error(void)
         p->pt.count += 1;
 
         p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
-        p->pt.items[p->pt.begin].lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
+        PT_FIRST(&p->pt)->lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
     }
 }
 
@@ -877,7 +877,7 @@ static void popup_tray(Rectangle preview_boundary)
     float popup_height = 75;
     float popup_padding = 20;
     for (size_t i = 0; i < p->pt.count; ++i) {
-        Popup *it = &p->pt.items[(p->pt.begin + i)%POPUP_TRAY_CAPACITY];
+        Popup *it = PT_GET(&p->pt, i);
         it->lifetime -= dt;
 
         float t = it->lifetime/HUD_POPUP_LIFETIME_SECS;
@@ -902,7 +902,7 @@ static void popup_tray(Rectangle preview_boundary)
         DrawTextEx(p->font, text, position, fontSize, 0, ColorAlpha(WHITE, alpha));
     }
 
-    while (p->pt.count > 0 && p->pt.items[p->pt.begin + p->pt.count - 1].lifetime <= 0) {
+    while (p->pt.count > 0 && PT_LAST(&p->pt)->lifetime <= 0) {
         p->pt.count -= 1;
     }
 }
