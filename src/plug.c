@@ -1018,8 +1018,12 @@ static void preview_screen(void)
             };
             fft_render(preview_boundary, m);
 
+#if 0
             // TODO: there must be a visual clue that we paused the music.
             // Cause when you accidentally click on the preview it feels weird.
+            // TODO: Current UI paradigm can handle with the buttons overlap.
+            // The preview "button" overlaps with volume slider, fullscreen and other
+            // overlay UI elements
             if (button(preview_boundary) & BS_CLICKED) {
                 if (IsMusicStreamPlaying(track->music)) {
                     PauseMusicStream(track->music);
@@ -1027,6 +1031,9 @@ static void preview_screen(void)
                     ResumeMusicStream(track->music);
                 }
             }
+#else
+            (void) button_with_location; // NOTE: the disabled code is the only user of this functions right now
+#endif
 
             static float hud_timer = HUD_TIMER_SECS;
             if (hud_timer > 0.0) {
@@ -1052,6 +1059,12 @@ static void preview_screen(void)
                 .height = h - timeline_height
             };
 
+#if 0
+            // TODO: there must be a visual clue that we paused the music.
+            // Cause when you accidentally click on the preview it feels weird.
+            // TODO: Current UI paradigm can handle with the buttons overlap.
+            // The preview "button" overlaps with volume slider, fullscreen and other
+            // overlay UI elements
             if (button(preview_boundary) & BS_CLICKED) {
                 if (IsMusicStreamPlaying(track->music)) {
                     PauseMusicStream(track->music);
@@ -1059,6 +1072,9 @@ static void preview_screen(void)
                     ResumeMusicStream(track->music);
                 }
             }
+#else
+            (void) button_with_location; // NOTE: the disabled code is the only user of this functions right now
+#endif
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
