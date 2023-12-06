@@ -492,7 +492,7 @@ typedef enum {
     BS_CLICKED   = 2, // 10
 } Button_State;
 
-static int button(uint64_t id, Rectangle boundary)
+static int button_with_id(uint64_t id, Rectangle boundary)
 {
     Vector2 mouse = GetMousePosition();
     int hoverover = CheckCollisionPointRec(mouse, boundary);
@@ -514,7 +514,7 @@ static int button(uint64_t id, Rectangle boundary)
 
 #define DJB2_INIT 5381
 
-uint64_t djb2(uint64_t hash, const void *buf, size_t buf_sz)
+static uint64_t djb2(uint64_t hash, const void *buf, size_t buf_sz)
 {
     const uint8_t *bytes = buf;
     for (size_t i = 0; i < buf_sz; ++i) {
@@ -522,6 +522,16 @@ uint64_t djb2(uint64_t hash, const void *buf, size_t buf_sz)
     }
     return hash;
 }
+
+static int button_with_location(const char *file, int line, Rectangle boundary)
+{
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
+    return button_with_id(id, boundary);
+}
+
+#define button(boundary) button_with_location(__FILE__, __LINE__, boundary)
 
 #define tracks_panel(panel_boundary) \
     tracks_panel_with_location(__FILE__, __LINE__, panel_boundary)
@@ -575,7 +585,7 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
         if (((int) i != p->current_track)) {
             uint64_t item_id = djb2(id, &i, sizeof(i));
 
-            int state = button(item_id, GetCollisionRec(panel_boundary, item_boundary));
+            int state = button_with_id(item_id, GetCollisionRec(panel_boundary, item_boundary));
             if (state & BS_HOVEROVER) {
                 color = COLOR_TRACK_BUTTON_HOVEROVER;
             } else {
@@ -668,7 +678,7 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle prev
         HUD_BUTTON_SIZE,
     };
 
-    int state = button(id, fullscreen_button_boundary);
+    int state = button_with_id(id, fullscreen_button_boundary);
 
     Color color = state & BS_HOVEROVER ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
 
@@ -848,7 +858,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     id = djb2(id, &line, sizeof(line));
     if (
         IsKeyPressed(KEY_TOGGLE_MUTE) ||
-        (button(id, volume_icon_boundary) & BS_CLICKED)
+        (button_with_id(id, volume_icon_boundary) & BS_CLICKED)
     ) {
         if (volume > 0) {
             saved_volume = volume;
@@ -967,7 +977,6 @@ static void preview_screen(void)
     if (track) { // The music is loaded and ready
         UpdateMusicStream(track->music);
 
-        // TODO: toggle play with mouse click on the preview window
         if (IsKeyPressed(KEY_TOGGLE_PLAY)) {
             if (IsMusicStreamPlaying(track->music)) {
                 PauseMusicStream(track->music);
@@ -1009,6 +1018,16 @@ static void preview_screen(void)
             };
             fft_render(preview_boundary, m);
 
+            // TODO: there must be a visual clue that we paused the music.
+            // Cause when you accidentally click on the preview it feels weird.
+            if (button(preview_boundary) & BS_CLICKED) {
+                if (IsMusicStreamPlaying(track->music)) {
+                    PauseMusicStream(track->music);
+                } else {
+                    ResumeMusicStream(track->music);
+                }
+            }
+
             static float hud_timer = HUD_TIMER_SECS;
             if (hud_timer > 0.0) {
                 int state = fullscreen_button(preview_boundary);
@@ -1032,6 +1051,14 @@ static void preview_screen(void)
                 .width = w - tracks_panel_width,
                 .height = h - timeline_height
             };
+
+            if (button(preview_boundary) & BS_CLICKED) {
+                if (IsMusicStreamPlaying(track->music)) {
+                    PauseMusicStream(track->music);
+                } else {
+                    ResumeMusicStream(track->music);
+                }
+            }
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
