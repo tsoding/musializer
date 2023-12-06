@@ -442,18 +442,18 @@ static Track *current_track(void)
 }
 
 
-static void popup_tray_push_error(void)
+static void popup_tray_push(Popup_Tray *pt)
 {
-    if (p->pt.count < POPUP_TRAY_CAPACITY) {
-        if (p->pt.begin == 0) {
-            p->pt.begin = POPUP_TRAY_CAPACITY - 1;
+    if (pt->count < POPUP_TRAY_CAPACITY) {
+        if (pt->begin == 0) {
+            pt->begin = POPUP_TRAY_CAPACITY - 1;
         } else {
-            p->pt.begin -= 1;
+            pt->begin -= 1;
         }
-        p->pt.count += 1;
+        pt->count += 1;
 
-        p->pt.slide += HUD_POPUP_SLIDEIN_SECS;
-        PT_FIRST(&p->pt)->lifetime = HUD_POPUP_LIFETIME_SECS + p->pt.slide;
+        pt->slide += HUD_POPUP_SLIDEIN_SECS;
+        PT_FIRST(pt)->lifetime = HUD_POPUP_LIFETIME_SECS + pt->slide;
     }
 }
 
@@ -863,27 +863,27 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     return dragging || updated;
 }
 
-static void popup_tray(Rectangle preview_boundary)
+static void popup_tray(Popup_Tray *pt, Rectangle preview_boundary)
 {
     float dt = GetFrameTime();
-    if (p->pt.slide > 0) {
-        p->pt.slide -= dt;
+    if (pt->slide > 0) {
+        pt->slide -= dt;
     }
-    if (p->pt.slide < 0) {
-        p->pt.slide = 0;
+    if (pt->slide < 0) {
+        pt->slide = 0;
     }
 
     float popup_width = 250;
     float popup_height = 75;
     float popup_padding = 20;
-    for (size_t i = 0; i < p->pt.count; ++i) {
-        Popup *it = PT_GET(&p->pt, i);
+    for (size_t i = 0; i < pt->count; ++i) {
+        Popup *it = PT_GET(pt, i);
         it->lifetime -= dt;
 
         float t = it->lifetime/HUD_POPUP_LIFETIME_SECS;
         float alpha = t >= 0.5f ? 1.0f : t/0.5f;
 
-        float q = p->pt.slide / HUD_POPUP_SLIDEIN_SECS;
+        float q = pt->slide / HUD_POPUP_SLIDEIN_SECS;
 
         Rectangle popup_boundary = {
             .x = preview_boundary.x + preview_boundary.width - popup_width - popup_padding,
@@ -902,8 +902,8 @@ static void popup_tray(Rectangle preview_boundary)
         DrawTextEx(p->font, text, position, fontSize, 0, ColorAlpha(WHITE, alpha));
     }
 
-    while (p->pt.count > 0 && PT_LAST(&p->pt)->lifetime <= 0) {
-        p->pt.count -= 1;
+    while (pt->count > 0 && PT_LAST(pt)->lifetime <= 0) {
+        pt->count -= 1;
     }
 }
 
@@ -925,7 +925,7 @@ static void preview_screen(void)
                     .music = music,
                 }));
             } else {
-                popup_tray_push_error();
+                popup_tray_push(&p->pt);
             }
         }
         UnloadDroppedFiles(droppedFiles);
@@ -1022,7 +1022,7 @@ static void preview_screen(void)
                 hud_timer = HUD_TIMER_SECS;
             }
 
-            popup_tray(preview_boundary);
+            popup_tray(&p->pt, preview_boundary);
         } else {
             float tracks_panel_width = w*0.25;
             float timeline_height = h*0.20;
@@ -1035,7 +1035,7 @@ static void preview_screen(void)
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
-            popup_tray(preview_boundary);
+            popup_tray(&p->pt, preview_boundary);
             EndScissorMode();
 
             tracks_panel((CLITERAL(Rectangle) {
@@ -1066,7 +1066,7 @@ static void preview_screen(void)
             h/2 - size.y/2,
         };
         DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
-        popup_tray(CLITERAL(Rectangle) {
+        popup_tray(&p->pt, CLITERAL(Rectangle) {
             .x = 0,
             .y = 0,
             .width = w,
@@ -1117,7 +1117,7 @@ static void capture_screen(void)
 }
 #endif // MUSIALIZER_MICROPHONE
 
-void rendering_screen(void)
+static void rendering_screen(void)
 {
     int w = GetRenderWidth();
     int h = GetRenderHeight();
