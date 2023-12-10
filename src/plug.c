@@ -919,8 +919,8 @@ static void popup_tray(Popup_Tray *pt, Rectangle preview_boundary)
 
 static void preview_screen(void)
 {
-    int w = GetRenderWidth();
-    int h = GetRenderHeight();
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
 
     if (IsFileDropped()) {
         FilePathList droppedFiles = LoadDroppedFiles();
@@ -1121,8 +1121,8 @@ static void preview_screen(void)
 #ifdef MUSIALIZER_MICROPHONE
 static void capture_screen(void)
 {
-    int w = GetRenderWidth();
-    int h = GetRenderHeight();
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
 
     if (p->microphone != NULL) {
         if (IsKeyPressed(KEY_CAPTURE) || IsKeyPressed(KEY_ESCAPE)) {
@@ -1162,8 +1162,8 @@ static void capture_screen(void)
 
 static void rendering_screen(void)
 {
-    int w = GetRenderWidth();
-    int h = GetRenderHeight();
+    int w = GetScreenWidth();
+    int h = GetScreenHeight();
 
     Track *track = current_track();
     NOB_ASSERT(track != NULL);
