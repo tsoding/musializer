@@ -1,4 +1,3 @@
-// TODO: confirm that MacOS build works on MacOS
 #define MUSIALIZER_TARGET_NAME "macos"
 
 bool build_musializer(void)
@@ -23,6 +22,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd,
             nob_temp_sprintf("./build/raylib/%s/libraylib.dylib", MUSIALIZER_TARGET_NAME));
 
+        nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
       if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 
       cmd.count = 0;
@@ -36,15 +36,20 @@ bool build_musializer(void)
             "./src/musializer.c",
             "./src/hotreload_mac.c");
         nob_cmd_append(&cmd,
-            "-Wl,-rpath,./build/",
-            "-Wl,-rpath,./",
-            nob_temp_sprintf("-Wl,-rpath,./build/raylib/%s/", MUSIALIZER_TARGET_NAME),
-            // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
-            nob_temp_sprintf("-Wl,-rpath,./raylib/%s", MUSIALIZER_TARGET_NAME));
+            nob_temp_sprintf("./build/raylib/%s/libraylib.dylib", MUSIALIZER_TARGET_NAME));
+        nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
+
+      if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+
+      // NOTE: with mac you have to use install_name_tool to add rpath to the executable
+      cmd.count = 0;
+        nob_cmd_append(&cmd, "install_name_tool");
+        nob_cmd_append(&cmd, "-change");
         nob_cmd_append(&cmd,
             nob_temp_sprintf("./build/raylib/%s/libraylib.dylib", MUSIALIZER_TARGET_NAME),
-            "./build/libplug.dylib");
-        nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
+            nob_temp_sprintf("@executable_path/raylib/%s/libraylib.dylib", MUSIALIZER_TARGET_NAME));
+        nob_cmd_append(&cmd, "./build/musializer");
+
       if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 #else
     cmd.count = 0;
