@@ -155,7 +155,7 @@ bool build_dist()
     // TODO: should we pack ffmpeg with Linux build?
     // There are some static executables for Linux
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "tar", "fvc", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
+    nob_cmd_append(&cmd, "tar", "fvcz", "./musializer-linux-x86_64.tar.gz", "./musializer-linux-x86_64");
     bool ok = nob_cmd_run_sync(cmd);
     nob_cmd_free(cmd);
     if (!ok) return false;
