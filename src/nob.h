@@ -370,8 +370,6 @@ int closedir(DIR *dirp);
 #endif // _WIN32
 // minirent.h HEADER END ////////////////////////////////////////
 
-#endif // NOB_H_
-
 #ifdef NOB_IMPLEMENTATION
 
 static size_t nob_temp_size = 0;
@@ -1155,3 +1153,4 @@ int closedir(DIR *dirp)
 // minirent.h SOURCE END ////////////////////////////////////////
 
 #endif
+#endif // NOB_H_
