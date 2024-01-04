@@ -463,7 +463,7 @@ static void timeline(Rectangle timeline_boundary, Track *track)
 
     float played = GetMusicTimePlayed(track->music);
     float len = GetMusicTimeLength(track->music);
-    float x = played/len*GetRenderWidth();
+    float x = played/len*GetScreenWidth();
     Vector2 startPos = {
         .x = x,
         .y = timeline_boundary.y
