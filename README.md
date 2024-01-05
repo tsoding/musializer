@@ -43,6 +43,20 @@ $ ./build/musializer
 
 Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
 
+If the build fails because of missing header files, you may need to install the X11 dev packages.
+
+On Debian, Ubuntu, etc, do this:
+
+```console
+$ sudo apt install libx11-dev
+$ sudo apt install libxcursor-dev
+$ sudo apt install libxrandr-dev
+$ sudo apt install libxinerama-dev
+$ sudo apt install libxi-dev
+```
+
+On other distro's, use the appropriate package manager.
+
 ### Windows MSVC
 
 From within `vcvarsall.bat` do
