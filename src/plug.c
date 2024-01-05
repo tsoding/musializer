@@ -463,7 +463,7 @@ static void timeline(Rectangle timeline_boundary, Track *track)
 
     float played = GetMusicTimePlayed(track->music);
     float len = GetMusicTimeLength(track->music);
-    float x = played/len*GetRenderWidth();
+    float x = played/len*GetScreenWidth();
     Vector2 startPos = {
         .x = x,
         .y = timeline_boundary.y
@@ -1133,7 +1133,7 @@ static void capture_screen(void)
 
         size_t m = fft_analyze(GetFrameTime());
         fft_render(CLITERAL(Rectangle) {
-            0, 0, GetRenderWidth(), GetRenderHeight()
+            0, 0, GetScreenWidth(), GetScreenHeight()
         }, m);
     } else {
         if (IsKeyPressed(KEY_ESCAPE)) {
