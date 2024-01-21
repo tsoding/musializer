@@ -222,7 +222,7 @@ int nob_file_exists(const char *file_path);
 
 // TODO: add MinGW support for Go Rebuild Urself™ Technology
 #ifndef NOB_REBUILD_URSELF
-#  if _WIN32
+#  ifdef _WIN32
 #    if defined(__GNUC__)
 #       define NOB_REBUILD_URSELF(binary_path, source_path) "gcc", "-o", binary_path, source_path
 #    elif defined(__clang__)
@@ -1054,10 +1054,25 @@ bool nob_sv_eq(Nob_String_View a, Nob_String_View b)
 // -1 - error while checking if file exists. The error is logged
 int nob_file_exists(const char *file_path)
 {
-#if _WIN32
-    // TODO: distinguish between "does not exists" and other errors
+#ifdef _WIN32    
     DWORD dwAttrib = GetFileAttributesA(file_path);
-    return dwAttrib != INVALID_FILE_ATTRIBUTES;
+    if (dwAttrib == INVALID_FILE_ATTRIBUTES) {
+        if (GetLastError() == 2) return 0;
+
+        LPTSTR errorText = NULL;
+        FormatMessage(
+            FORMAT_MESSAGE_FROM_SYSTEM
+           |FORMAT_MESSAGE_ALLOCATE_BUFFER
+           |FORMAT_MESSAGE_IGNORE_INSERTS,
+           NULL, GetLastError(),
+           MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+           (LPTSTR)&errorText, 0, NULL);
+           
+        nob_log(NOB_ERROR, "Could not check if file %s exists: %s", file_path, errorText);
+        LocalFree(errorText);
+        return -1;
+    }
+    return 1;
 #else
     struct stat statbuf;
     if (stat(file_path, &statbuf) < 0) {
