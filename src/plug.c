@@ -461,28 +461,29 @@ static void popup_tray_push(Popup_Tray *pt)
     }
 }
 
-static void tooltip(Rectangle boundary, const char *text)
+static void tooltip(Rectangle boundary, const char *text, float *timeout)
 {
-    static float timeout = TOOLTIP_TIMEOUT;
-
     Vector2 mouse = GetMousePosition();
 
-    if (!CheckCollisionPointRec(mouse, boundary)) return;
+    if (!CheckCollisionPointRec(mouse, boundary)) {
+        *timeout = TOOLTIP_TIMEOUT;
+        return;
+    }
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        timeout = TOOLTIP_TIMEOUT;
+        *timeout = TOOLTIP_TIMEOUT;
         return;
     }
 
-    if (Vector2Length(GetMouseDelta()) > 20.0) {
-        timeout = TOOLTIP_TIMEOUT;
+    if (Vector2Length(GetMouseDelta()) > 0.0) {
+        *timeout = TOOLTIP_TIMEOUT;
         return;
     }
 
-    timeout -= GetFrameTime();
+    *timeout -= GetFrameTime();
 
-    if (timeout > 0.0f) return;
-    timeout = 0.0;
+    if (*timeout > 0.0f) return;
+    *timeout = 0.0;
 
     float fontSize = 30;
     float spacing = 0.0;
@@ -541,7 +542,9 @@ static void timeline(Rectangle timeline_boundary, Track *track)
 
     }
 
-    tooltip(timeline_boundary, "Timeline");
+    static float timeout = TOOLTIP_TIMEOUT;
+
+    tooltip(timeline_boundary, "Timeline", &timeout);
 
     // TODO: enable the user to render a specific region instead of the whole song.
     // TODO: visualize sound wave on the timeline
@@ -769,10 +772,12 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle prev
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
+    static float timeout = TOOLTIP_TIMEOUT;
+
     if (p->fullscreen) {
-        tooltip(fullscreen_button_boundary, "Collapse the Preview [F]");
+        tooltip(fullscreen_button_boundary, "Collapse the Preview [F]", &timeout);
     } else {
-        tooltip(fullscreen_button_boundary, "Expand the Preview [F]");
+        tooltip(fullscreen_button_boundary, "Expand the Preview [F]", &timeout);
     }
 
     return state;
@@ -918,7 +923,8 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         if (volume > 1) volume = 1;
         SetMasterVolume(volume);
 
-        tooltip(slider_boundary, "Adjust Volume");
+        static float timeout = TOOLTIP_TIMEOUT;
+        tooltip(slider_boundary, "Adjust Volume", &timeout);
     }
 
     // Toggle mute
@@ -941,10 +947,13 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         updated = true;
     }
 
-    if (volume <= 0.0) {
-        tooltip(volume_icon_boundary, "Unmute [M]");
-    } else {
-        tooltip(volume_icon_boundary, "Mute [M]");
+    {
+        static float timeout = TOOLTIP_TIMEOUT;
+        if (volume <= 0.0) {
+            tooltip(volume_icon_boundary, "Unmute [M]", &timeout);
+        } else {
+            tooltip(volume_icon_boundary, "Mute [M]", &timeout);
+        }
     }
 
     return dragging || updated;
