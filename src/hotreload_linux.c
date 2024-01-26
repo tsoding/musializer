@@ -2,7 +2,6 @@
 #include <dlfcn.h>
 
 #include <raylib.h>
-
 #include "hotreload.h"
 
 static const char *libplug_file_name = "libplug.so";

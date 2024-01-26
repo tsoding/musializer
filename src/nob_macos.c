@@ -8,8 +8,49 @@ bool build_musializer(void)
     Nob_Procs procs = {0};
 
 #ifdef MUSIALIZER_HOTRELOAD
-    nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-    nob_return_defer(false);
+    procs.count = 0;
+            cmd.count = 0;
+                nob_cmd_append(&cmd, "clang");
+                nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                nob_cmd_append(&cmd, "-I./build/");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
+                nob_cmd_append(&cmd, "-fPIC", "-shared");
+                nob_cmd_append(&cmd, "-o", "./build/libplug.so");
+                nob_cmd_append(&cmd,
+                    "./src/plug.c",
+                    "./src/ffmpeg_linux.c");
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
+                    "-lraylib");
+                nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+
+            cmd.count = 0;
+                nob_cmd_append(&cmd, "clang");
+                nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+                nob_cmd_append(&cmd, "-I./build/");
+                nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
+                nob_cmd_append(&cmd, "-o", "./build/musializer");
+                nob_cmd_append(&cmd,
+                    "./src/musializer.c",
+                    "./src/hotreload_linux.c");
+                nob_cmd_append(&cmd,
+                    "-Wl,-rpath,./build/",
+                    "-Wl,-rpath,./",
+                    nob_temp_sprintf("-Wl,-rpath,./build/raylib/%s", MUSIALIZER_TARGET_NAME),
+                    // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
+                    nob_temp_sprintf("-Wl,-rpath,./raylib/%s", MUSIALIZER_TARGET_NAME));
+                nob_cmd_append(&cmd,
+                    nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
+                    "-lraylib");
+                nob_cmd_append(&cmd, "-framework", "CoreVideo");
+                nob_cmd_append(&cmd, "-framework", "IOKit");
+                nob_cmd_append(&cmd, "-framework", "Cocoa");
+                nob_cmd_append(&cmd, "-framework", "GLUT");
+                nob_cmd_append(&cmd, "-framework", "OpenGL");
+                nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        if (!nob_procs_wait(procs)) nob_return_defer(false);
 #else
     cmd.count = 0;
         nob_cmd_append(&cmd, "clang");
@@ -97,20 +138,21 @@ bool build_raylib(void)
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 #else
-    const char *libraylib_path = nob_temp_sprintf("%s/libraylib.so", build_path);
+    const char *libraylib_path = nob_temp_sprintf("%s/libraylib.dylib", build_path);
 
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
-        if (config.target != TARGET_LINUX) {
-            nob_log(NOB_ERROR, "TODO: dynamic raylib for %s is not supported yet", NOB_ARRAY_GET(target_names, config.target));
-            nob_return_defer(false);
-        }
-        nob_cmd_append(&cmd, "cc");
-        nob_cmd_append(&cmd, "-shared");
+        nob_cmd_append(&cmd, "clang");
+        nob_cmd_append(&cmd, "-dynamiclib");
         nob_cmd_append(&cmd, "-o", libraylib_path);
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);
         }
+        nob_cmd_append(&cmd, "-framework", "CoreVideo");
+        nob_cmd_append(&cmd, "-framework", "IOKit");
+        nob_cmd_append(&cmd, "-framework", "Cocoa");
+        nob_cmd_append(&cmd, "-framework", "GLUT");
+        nob_cmd_append(&cmd, "-framework", "OpenGL");
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 #endif // MUSIALIZER_HOTRELOAD
