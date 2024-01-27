@@ -33,7 +33,7 @@ bool build_musializer(void)
                     "./src/ffmpeg_windows.c");
                 nob_cmd_append(&cmd,
                     "-L./build",
-                    "-l:libraylib.dll");
+                    "-l:raylib.dll");
                 nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
             nob_da_append(&procs, nob_cmd_run_async(cmd));
 
@@ -54,7 +54,7 @@ bool build_musializer(void)
                     nob_temp_sprintf("-Wl,-rpath=./raylib/%s", MUSIALIZER_TARGET_NAME));
                 nob_cmd_append(&cmd,
                     "-L./build",
-                    "-l:libraylib.dll");
+                    "-l:raylib.dll");
                 nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
             nob_da_append(&procs, nob_cmd_run_async(cmd));
         if (!nob_procs_wait(procs)) nob_return_defer(false);
@@ -141,7 +141,7 @@ bool build_raylib()
     }
 #else
     // it cannot load the raylib dll if it not in the same folder as the executable
-    const char *libraylib_path = "./build/libraylib.dll";
+    const char *libraylib_path = "./build/raylib.dll";
 
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
         nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");

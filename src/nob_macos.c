@@ -14,8 +14,8 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
                 nob_cmd_append(&cmd, "-I./build/");
                 nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
-                nob_cmd_append(&cmd, "-fPIC", "-shared");
-                nob_cmd_append(&cmd, "-o", "./build/libplug.so");
+                nob_cmd_append(&cmd, "-fPIC", "-dynamiclib");
+                nob_cmd_append(&cmd, "-o", "./build/libplug.dylib");
                 nob_cmd_append(&cmd,
                     "./src/plug.c",
                     "./src/ffmpeg_linux.c");

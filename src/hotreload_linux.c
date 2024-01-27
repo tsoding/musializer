@@ -4,7 +4,11 @@
 #include <raylib.h>
 #include "hotreload.h"
 
+#if defined(__APPLE__) || defined(__MACH__)
+static const char *libplug_file_name = "libplug.dylib";
+#else
 static const char *libplug_file_name = "libplug.so";
+#endif
 static void *libplug = NULL;
 
 #define PLUG(name, ...) name##_t *name = NULL;
