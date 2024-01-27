@@ -13,7 +13,8 @@
 #include "nob.h"
 
 #include <raylib.h>
-#include <raymath.h>
+// // TODO: we can't include raymath.h on Windows because of the name collisions from windows.h
+// #include <raymath.h>
 #include <rlgl.h>
 
 #define _WINDOWS_
@@ -475,7 +476,7 @@ static void tooltip(Rectangle boundary, const char *text, float *timeout)
         return;
     }
 
-    if (Vector2Length(GetMouseDelta()) > 0.0) {
+    if (Vector2Length(GetMouseDelta()) > 20.0) {
         *timeout = TOOLTIP_TIMEOUT;
         return;
     }
