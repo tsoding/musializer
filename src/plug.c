@@ -977,6 +977,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         if (volume > 1) volume = 1;
         SetMasterVolume(volume);
 
+        // TODO: if while dragging the volume slider you hoverout of it, the tooltip disappears
         tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_BOTTOM);
     }
 
