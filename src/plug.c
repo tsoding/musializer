@@ -39,12 +39,16 @@
 #define COLOR_HUD_BUTTON_BACKGROUND   COLOR_TRACK_BUTTON_BACKGROUND
 #define COLOR_HUD_BUTTON_HOVEROVER    COLOR_TRACK_BUTTON_HOVEROVER
 #define COLOR_POPUP_BACKGROUND        ColorFromHSV(0, 0.75, 0.8)
+#define COLOR_TOOLTIP_BACKGROUND      COLOR_HUD_BUTTON_BACKGROUND
+#define COLOR_TOOLTIP_FOREGROUND      WHITE
 #define HUD_TIMER_SECS 1.0f
 #define HUD_BUTTON_SIZE 50
 #define HUD_BUTTON_MARGIN 50
 #define HUD_ICON_SCALE 0.5
 #define HUD_POPUP_LIFETIME_SECS 2.0f
 #define HUD_POPUP_SLIDEIN_SECS 0.1f
+#define TOOLTIP_TIMEOUT 0.7f
+#define TOOLTIP_PADDING 20.0f
 
 #define KEY_TOGGLE_PLAY KEY_SPACE
 #define KEY_RENDER      KEY_R
@@ -463,6 +467,122 @@ static void popup_tray_push(Popup_Tray *pt)
     }
 }
 
+static inline float signf(float x)
+{
+    if (x < 0.0) return -1;
+    if (x > 0.0) return 1;
+    return 0.0;
+}
+
+void snap_boundary_inside_screen(Rectangle *boundary)
+{
+    Rectangle screen_boundary = {0};
+    screen_boundary.width = GetScreenWidth();
+    screen_boundary.height = GetScreenHeight();
+
+    Rectangle diff = GetCollisionRec(screen_boundary, *boundary);
+
+    float dx = diff.x - boundary->x;
+    float dy = diff.y - boundary->y;
+    float dw = boundary->width - diff.width;
+    float dh = boundary->height - diff.height;
+    boundary->x += dx;
+    boundary->y += dy;
+    boundary->x -= dw;
+    boundary->y -= dh;
+    // TODO: snapping does not work if tooltips don't have any intersection
+}
+
+typedef enum {
+    SIDE_LEFT,
+    SIDE_RIGHT,
+    SIDE_TOP,
+    SIDE_BOTTOM,
+} Side;
+
+void align_to_side_of_rect(Rectangle who, Rectangle *what, Side where)
+{
+    switch (where) {
+        case SIDE_BOTTOM: {
+            float cx = who.x + who.width/2;
+            float cy = who.y + who.height + TOOLTIP_PADDING;
+            what->x = cx - what->width/2;
+            what->y = cy;
+        } break;
+
+        case SIDE_TOP: {
+            float cx = who.x + who.width/2;
+            float cy = who.y - TOOLTIP_PADDING - what->height;
+            what->x = cx - what->width/2;
+            what->y = cy;
+        } break;
+
+        case SIDE_RIGHT: {
+            float cx = who.x + who.width + TOOLTIP_PADDING;
+            float cy = who.y + who.height/2;
+            what->x = cx;
+            what->y = cy - what->height/2;
+        } break;
+
+        case SIDE_LEFT: {
+            float cx = who.x - TOOLTIP_PADDING - what->width;
+            float cy = who.y + who.height/2;
+            what->x = cx;
+            what->y = cy - what->height/2;
+        } break;
+
+        default: {
+            assert(0 && "unreachable");
+        }
+    }
+}
+
+static void tooltip(Rectangle boundary, const char *text, Side align, float *timeout)
+{
+    Vector2 mouse = GetMousePosition();
+
+    if (!CheckCollisionPointRec(mouse, boundary)) {
+        *timeout = TOOLTIP_TIMEOUT;
+        return;
+    }
+
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        *timeout = TOOLTIP_TIMEOUT;
+        return;
+    }
+
+    Vector2 delta = GetMouseDelta();
+    if (fabsf(delta.x) + fabsf(delta.y) > 0) {
+        *timeout = TOOLTIP_TIMEOUT;
+        return;
+    }
+
+    *timeout -= GetFrameTime();
+
+    if (*timeout > 0.0f) return;
+    *timeout = 0.0;
+
+    float fontSize = 30;
+    float spacing = 0.0;
+    Vector2 margin = {20.0, 10.0};
+    Vector2 text_size = MeasureTextEx(p->font, text, fontSize, spacing);
+
+    Rectangle tooltip_boundary = {
+        .width = text_size.x + margin.x*2.0,
+        .height = text_size.y + margin.y*2.0,
+    };
+
+    align_to_side_of_rect(boundary, &tooltip_boundary, align);
+    snap_boundary_inside_screen(&tooltip_boundary);
+
+    DrawRectangleRounded(tooltip_boundary, 0.4, 20, COLOR_TOOLTIP_BACKGROUND);
+    Vector2 position = {
+        .x = tooltip_boundary.x + tooltip_boundary.width/2 - text_size.x/2,
+        .y = tooltip_boundary.y + tooltip_boundary.height/2 - text_size.y/2,
+    };
+    DrawTextEx(p->font, text, position, fontSize, spacing, COLOR_TOOLTIP_FOREGROUND);
+}
+
 static void timeline(Rectangle timeline_boundary, Track *track)
 {
     DrawRectangleRec(timeline_boundary, COLOR_TIMELINE_BACKGROUND);
@@ -486,7 +606,12 @@ static void timeline(Rectangle timeline_boundary, Track *track)
             float t = (mouse.x - timeline_boundary.x)/timeline_boundary.width;
             SeekMusicStream(track->music, t*len);
         }
+
     }
+
+    static float timeout = TOOLTIP_TIMEOUT;
+
+    tooltip(timeline_boundary, "Timeline", SIDE_TOP, &timeout);
 
     // TODO: enable the user to render a specific region instead of the whole song.
     // TODO: visualize sound wave on the timeline
@@ -667,6 +792,9 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
     }
 
     EndScissorMode();
+
+    static float timeout = TOOLTIP_TIMEOUT;
+    tooltip(panel_boundary, "Panel", SIDE_RIGHT, &timeout);
 }
 
 #define fullscreen_button(preview_boundary) \
@@ -713,6 +841,14 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle prev
     }
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+
+    static float timeout = TOOLTIP_TIMEOUT;
+
+    if (p->fullscreen) {
+        tooltip(fullscreen_button_boundary, "Collapse the Preview [F]", SIDE_LEFT, &timeout);
+    } else {
+        tooltip(fullscreen_button_boundary, "Expand the Preview [F]", SIDE_LEFT, &timeout);
+    }
 
     return state;
 }
@@ -843,18 +979,22 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     bool updated = false;
 
     if (expanded) {
-        updated = horz_slider(CLITERAL(Rectangle) {
+        Rectangle slider_boundary = {
             .x = volume_slider_boundary.x + HUD_BUTTON_SIZE,
             .y = volume_slider_boundary.y,
             .width = (expanded_slots - 1)*HUD_BUTTON_SIZE,
             .height = HUD_BUTTON_SIZE,
-        }, &volume, &dragging);
+        };
+        updated = horz_slider(slider_boundary, &volume, &dragging);
         float mouse_wheel_step = 0.05;
         float wheel_delta = GetMouseWheelMove();
         volume += wheel_delta*mouse_wheel_step;
         if (volume < 0) volume = 0;
         if (volume > 1) volume = 1;
         SetMasterVolume(volume);
+
+        static float timeout = TOOLTIP_TIMEOUT;
+        tooltip(slider_boundary, "Adjust Volume", SIDE_RIGHT, &timeout);
     }
 
     // Toggle mute
@@ -862,9 +1002,10 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     uint64_t id = DJB2_INIT;
     id = djb2(id, file, strlen(file));
     id = djb2(id, &line, sizeof(line));
+    int volume_icon_state = button_with_id(id, volume_icon_boundary);
     if (
         IsKeyPressed(KEY_TOGGLE_MUTE) ||
-        (button_with_id(id, volume_icon_boundary) & BS_CLICKED)
+        (volume_icon_state & BS_CLICKED)
     ) {
         if (volume > 0) {
             saved_volume = volume;
@@ -874,6 +1015,15 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         }
         SetMasterVolume(volume);
         updated = true;
+    }
+
+    {
+        static float timeout = TOOLTIP_TIMEOUT;
+        if (volume <= 0.0) {
+            tooltip(volume_icon_boundary, "Unmute [M]", SIDE_BOTTOM, &timeout);
+        } else {
+            tooltip(volume_icon_boundary, "Mute [M]", SIDE_BOTTOM, &timeout);
+        }
     }
 
     return dragging || updated;
