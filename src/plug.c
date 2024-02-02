@@ -1141,7 +1141,6 @@ static void preview_screen(void)
         }
 
         // TODO: add button to start rendering
-        // TODO: add tooltips to all the buttons tha describe their function and associated keyboard shortcuts
 
         size_t m = fft_analyze(GetFrameTime());
 
