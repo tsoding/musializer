@@ -48,6 +48,7 @@
 #define HUD_POPUP_LIFETIME_SECS 2.0f
 #define HUD_POPUP_SLIDEIN_SECS 0.1f
 #define TOOLTIP_TIMEOUT 0.7f
+#define TOOLTIP_PADDING 20.0f
 
 #define KEY_TOGGLE_PLAY KEY_SPACE
 #define KEY_RENDER      KEY_R
@@ -460,7 +461,77 @@ static void popup_tray_push(Popup_Tray *pt)
     }
 }
 
-static void tooltip(Rectangle boundary, const char *text, float *timeout)
+static inline float signf(float x)
+{
+    if (x < 0.0) return -1;
+    if (x > 0.0) return 1;
+    return 0.0;
+}
+
+void snap_boundary_inside_screen(Rectangle *boundary)
+{
+    Rectangle screen_boundary = {0};
+    screen_boundary.width = GetScreenWidth();
+    screen_boundary.height = GetScreenHeight();
+
+    Rectangle diff = GetCollisionRec(screen_boundary, *boundary);
+
+    float dx = diff.x - boundary->x;
+    float dy = diff.y - boundary->y;
+    float dw = boundary->width - diff.width;
+    float dh = boundary->height - diff.height;
+    boundary->x += dx;
+    boundary->y += dy;
+    boundary->x -= dw;
+    boundary->y -= dh;
+    // TODO: snapping does not work if tooltips don't have any intersection
+}
+
+typedef enum {
+    SIDE_LEFT,
+    SIDE_RIGHT,
+    SIDE_TOP,
+    SIDE_BOTTOM,
+} Side;
+
+void align_to_side_of_rect(Rectangle who, Rectangle *what, Side where)
+{
+    switch (where) {
+        case SIDE_BOTTOM: {
+            float cx = who.x + who.width/2;
+            float cy = who.y + who.height + TOOLTIP_PADDING;
+            what->x = cx - what->width/2;
+            what->y = cy;
+        } break;
+
+        case SIDE_TOP: {
+            float cx = who.x + who.width/2;
+            float cy = who.y - TOOLTIP_PADDING - what->height;
+            what->x = cx - what->width/2;
+            what->y = cy;
+        } break;
+
+        case SIDE_RIGHT: {
+            float cx = who.x + who.width + TOOLTIP_PADDING;
+            float cy = who.y + who.height/2;
+            what->x = cx;
+            what->y = cy - what->height/2;
+        } break;
+
+        case SIDE_LEFT: {
+            float cx = who.x - TOOLTIP_PADDING - what->width;
+            float cy = who.y + who.height/2;
+            what->x = cx;
+            what->y = cy - what->height/2;
+        } break;
+
+        default: {
+            assert(0 && "unreachable");
+        }
+    }
+}
+
+static void tooltip(Rectangle boundary, const char *text, Side align, float *timeout)
 {
     Vector2 mouse = GetMousePosition();
 
@@ -489,24 +560,14 @@ static void tooltip(Rectangle boundary, const char *text, float *timeout)
     float spacing = 0.0;
     Vector2 margin = {20.0, 10.0};
     Vector2 text_size = MeasureTextEx(p->font, text, fontSize, spacing);
+
     Rectangle tooltip_boundary = {
-        .x = mouse.x,
-        .y = mouse.y,
         .width = text_size.x + margin.x*2.0,
         .height = text_size.y + margin.y*2.0,
     };
-    Rectangle screen_boundary = {0};
-    screen_boundary.width = GetScreenWidth();
-    screen_boundary.height = GetScreenHeight();
 
-    Rectangle diff = GetCollisionRec(screen_boundary, tooltip_boundary);
-
-    int dx = tooltip_boundary.x - diff.x;
-    int dy = tooltip_boundary.y - diff.y;
-    int dw = tooltip_boundary.width - diff.width;
-    int dh = tooltip_boundary.height - diff.height;
-    tooltip_boundary.x -= dx/abs(dx)*dw;
-    tooltip_boundary.y -= dy/abs(dy)*dh;
+    align_to_side_of_rect(boundary, &tooltip_boundary, align);
+    snap_boundary_inside_screen(&tooltip_boundary);
 
     DrawRectangleRounded(tooltip_boundary, 0.4, 20, COLOR_TOOLTIP_BACKGROUND);
     Vector2 position = {
@@ -544,7 +605,7 @@ static void timeline(Rectangle timeline_boundary, Track *track)
 
     static float timeout = TOOLTIP_TIMEOUT;
 
-    tooltip(timeline_boundary, "Timeline", &timeout);
+    tooltip(timeline_boundary, "Timeline", SIDE_TOP, &timeout);
 
     // TODO: enable the user to render a specific region instead of the whole song.
     // TODO: visualize sound wave on the timeline
@@ -725,6 +786,9 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
     }
 
     EndScissorMode();
+
+    static float timeout = TOOLTIP_TIMEOUT;
+    tooltip(panel_boundary, "Panel", SIDE_RIGHT, &timeout);
 }
 
 #define fullscreen_button(preview_boundary) \
@@ -775,9 +839,9 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle prev
     static float timeout = TOOLTIP_TIMEOUT;
 
     if (p->fullscreen) {
-        tooltip(fullscreen_button_boundary, "Collapse the Preview [F]", &timeout);
+        tooltip(fullscreen_button_boundary, "Collapse the Preview [F]", SIDE_LEFT, &timeout);
     } else {
-        tooltip(fullscreen_button_boundary, "Expand the Preview [F]", &timeout);
+        tooltip(fullscreen_button_boundary, "Expand the Preview [F]", SIDE_LEFT, &timeout);
     }
 
     return state;
@@ -924,7 +988,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         SetMasterVolume(volume);
 
         static float timeout = TOOLTIP_TIMEOUT;
-        tooltip(slider_boundary, "Adjust Volume", &timeout);
+        tooltip(slider_boundary, "Adjust Volume", SIDE_RIGHT, &timeout);
     }
 
     // Toggle mute
@@ -950,9 +1014,9 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     {
         static float timeout = TOOLTIP_TIMEOUT;
         if (volume <= 0.0) {
-            tooltip(volume_icon_boundary, "Unmute [M]", &timeout);
+            tooltip(volume_icon_boundary, "Unmute [M]", SIDE_BOTTOM, &timeout);
         } else {
-            tooltip(volume_icon_boundary, "Mute [M]", &timeout);
+            tooltip(volume_icon_boundary, "Mute [M]", SIDE_BOTTOM, &timeout);
         }
     }
 
