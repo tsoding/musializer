@@ -187,6 +187,7 @@ typedef struct {
 
     Popup_Tray pt;
 
+    bool tooltip_show;
     char tooltip_buffer[32];
     Side tooltip_align;
     Rectangle tooltip_element_boundary;
@@ -537,12 +538,12 @@ void align_to_side_of_rect(Rectangle who, Rectangle *what, Side where)
 
 static void begin_tooltip_frame(void)
 {
-    memset(p->tooltip_buffer, 0, sizeof(p->tooltip_buffer));
+    p->tooltip_show = false;
 }
 
 static void end_tooltip_frame(void)
 {
-    if (strlen(p->tooltip_buffer) == 0) return;
+    if (!p->tooltip_show) return;
 
     float fontSize = 30;
     float spacing = 0.0;
@@ -568,6 +569,8 @@ static void end_tooltip_frame(void)
 static void tooltip(Rectangle boundary, const char *text, Side align)
 {
     if (!CheckCollisionPointRec(GetMousePosition(), boundary)) return;
+    p->tooltip_show = true;
+    // TODO: this may not work properly if text contains UTF-8
     snprintf(p->tooltip_buffer, sizeof(p->tooltip_buffer), "%s", text);
     p->tooltip_align = align;
     p->tooltip_element_boundary = boundary;
