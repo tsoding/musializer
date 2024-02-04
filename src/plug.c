@@ -693,7 +693,6 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
 
     BeginScissorMode(panel_boundary.x, panel_boundary.y, panel_boundary.width, panel_boundary.height);
     for (size_t i = 0; i < p->tracks.count; ++i) {
-        // TODO: tooltip with filepath on each item in the panel
         Rectangle item_boundary = {
             .x = panel_boundary.x + panel_padding,
             .y = i*item_size + panel_boundary.y + panel_padding - panel_scroll,
