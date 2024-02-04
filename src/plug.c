@@ -662,7 +662,6 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
     Vector2 mouse = GetMousePosition();
 
     float scroll_bar_width = panel_boundary.width*0.03;
-    // TODO: don't scale item_size relative to the panel width
     float item_size = panel_boundary.width*0.2;
     float visible_area_size = panel_boundary.height;
     float entire_scrollable_area = item_size*p->tracks.count;
@@ -1187,7 +1186,7 @@ static void preview_screen(void)
             popup_tray(&p->pt, preview_boundary);
         } else {
             float tracks_panel_width = 320.0f;
-            float timeline_height = 144.0f;
+            float timeline_height = 150.0f;
             Rectangle preview_boundary = {
                 .x = tracks_panel_width,
                 .y = 0,
