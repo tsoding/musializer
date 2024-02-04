@@ -1186,8 +1186,8 @@ static void preview_screen(void)
 
             popup_tray(&p->pt, preview_boundary);
         } else {
-            float tracks_panel_width = w*0.25;
-            float timeline_height = h*0.20;
+            float tracks_panel_width = 320.0f;
+            float timeline_height = 144.0f;
             Rectangle preview_boundary = {
                 .x = tracks_panel_width,
                 .y = 0,
