@@ -1060,6 +1060,34 @@ static int play_button_with_location(const char *file, int line, Track *track, R
     return state;
 }
 
+#define render_button(boundary) \
+    render_button_with_location(__FILE__, __LINE__, (boundary))
+static int render_button_with_location(const char *file, int line, Rectangle boundary)
+{
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
+
+    int state = button_with_id(id, boundary);
+    size_t icon_index = 0;
+
+    float icon_size = 512;
+    float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
+    Rectangle dest = {
+        boundary.x + boundary.width/2 - icon_size*scale/2,
+        boundary.y + boundary.height/2 - icon_size*scale/2,
+        icon_size*scale,
+        icon_size*scale
+    };
+
+    Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
+    DrawTexturePro(assets_texture("./resources/icons/render.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+
+    tooltip(boundary, "Render [R]", SIDE_TOP);
+
+    return state;
+}
+
 static void toggle_track_playing(Track *track)
 {
     if (IsMusicStreamPlaying(track->music)) {
@@ -1069,13 +1097,29 @@ static void toggle_track_playing(Track *track)
     }
 }
 
+static void start_rendering_track(Track *track)
+{
+    StopMusicStream(track->music);
+
+    fft_clean();
+    // TODO: LoadWave is pretty slow on big files
+    p->wave = LoadWave(track->file_path);
+    p->wave_cursor = 0;
+    p->wave_samples = LoadWaveSamples(p->wave);
+    // TODO: set the rendering output path based on the input path
+    // Basically output into the same folder
+    p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
+    p->rendering = true;
+    SetTraceLogLevel(LOG_WARNING);
+}
+
 // TODO: adapt toolbar to narrow widths
 static bool toolbar(Track *track, Rectangle boundary)
 {
     bool interacted = false;
     int state = 0;
 
-    if (boundary.width < HUD_BUTTON_SIZE*3) return interacted;
+    if (boundary.width < HUD_BUTTON_SIZE*4) return interacted;
 
     DrawRectangleRec(boundary, COLOR_TRACK_PANEL_BACKGROUND);
 
@@ -1085,14 +1129,24 @@ static bool toolbar(Track *track, Rectangle boundary)
         HUD_BUTTON_SIZE,
         HUD_BUTTON_SIZE,
     }));
-
     if (state & BS_CLICKED) {
         interacted = true;
         toggle_track_playing(track);
     }
 
+    state = render_button((CLITERAL(Rectangle) {
+        boundary.x + HUD_BUTTON_SIZE*1,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    if (state & BS_CLICKED) {
+        interacted = true;
+        start_rendering_track(track);
+    }
+
     interacted = interacted || volume_slider((CLITERAL(Rectangle) {
-        boundary.x + HUD_BUTTON_SIZE,
+        boundary.x + HUD_BUTTON_SIZE*2,
         boundary.y,
         HUD_BUTTON_SIZE,
         HUD_BUTTON_SIZE,
@@ -1177,18 +1231,7 @@ static void preview_screen(void)
         }
 
         if (IsKeyPressed(KEY_RENDER)) {
-            StopMusicStream(track->music);
-
-            fft_clean();
-            // TODO: LoadWave is pretty slow on big files
-            p->wave = LoadWave(track->file_path);
-            p->wave_cursor = 0;
-            p->wave_samples = LoadWaveSamples(p->wave);
-            // TODO: set the rendering output path based on the input path
-            // Basically output into the same folder
-            p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
-            p->rendering = true;
-            SetTraceLogLevel(LOG_WARNING);
+            start_rendering_track(track);
         }
 
         if (IsKeyPressed(KEY_FULLSCREEN)) {
