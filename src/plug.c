@@ -39,7 +39,7 @@
 #define COLOR_HUD_BUTTON_BACKGROUND   COLOR_TRACK_BUTTON_BACKGROUND
 #define COLOR_HUD_BUTTON_HOVEROVER    COLOR_TRACK_BUTTON_HOVEROVER
 #define COLOR_POPUP_BACKGROUND        ColorFromHSV(0, 0.75, 0.8)
-#define COLOR_TOOLTIP_BACKGROUND      COLOR_HUD_BUTTON_BACKGROUND
+#define COLOR_TOOLTIP_BACKGROUND      COLOR_TRACK_PANEL_BACKGROUND
 #define COLOR_TOOLTIP_FOREGROUND      WHITE
 #define HUD_TIMER_SECS 1.0f
 #define HUD_BUTTON_SIZE 50
@@ -783,24 +783,14 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
 
 #define fullscreen_button(preview_boundary) \
     fullscreen_button_with_loc(__FILE__, __LINE__, preview_boundary)
-static int fullscreen_button_with_loc(const char *file, int line, Rectangle preview_boundary)
+static int fullscreen_button_with_loc(const char *file, int line, Rectangle fullscreen_button_boundary)
 {
     uint64_t id = DJB2_INIT;
     id = djb2(id, file, strlen(file));
     id = djb2(id, &line, sizeof(line));
 
-    Rectangle fullscreen_button_boundary = {
-        preview_boundary.x + preview_boundary.width - HUD_BUTTON_SIZE - HUD_BUTTON_MARGIN,
-        preview_boundary.y + HUD_BUTTON_MARGIN,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    };
-
     int state = button_with_id(id, fullscreen_button_boundary);
 
-    Color color = state & BS_HOVEROVER ? COLOR_HUD_BUTTON_HOVEROVER : COLOR_HUD_BUTTON_BACKGROUND;
-
-    DrawRectangleRounded(fullscreen_button_boundary, 0.5, 20, color);
     float icon_size = 512;
     float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
     Rectangle dest = {
@@ -827,9 +817,9 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle prev
     DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     if (p->fullscreen) {
-        tooltip(fullscreen_button_boundary, "Collapse [F]", SIDE_BOTTOM);
+        tooltip(fullscreen_button_boundary, "Collapse [F]", SIDE_TOP);
     } else {
-        tooltip(fullscreen_button_boundary, "Expand [F]", SIDE_BOTTOM);
+        tooltip(fullscreen_button_boundary, "Expand [F]", SIDE_TOP);
     }
 
     return state;
@@ -902,8 +892,8 @@ static bool horz_slider(Rectangle boundary, float *value, bool *dragging)
 }
 
 #define volume_slider(preview_boundary) \
-    volume_slider_with_location(__FILE__, __LINE__, preview_boundary)
-static bool volume_slider_with_location(const char *file, int line, Rectangle preview_boundary)
+    volume_slider_with_location(__FILE__, __LINE__, (preview_boundary))
+static bool volume_slider_with_location(const char *file, int line, Rectangle volume_icon_boundary)
 {
     Vector2 mouse = GetMousePosition();
 
@@ -911,26 +901,12 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     static bool dragging = false;
     static float saved_volume = 0.0f;
 
-    Rectangle volume_icon_boundary = {
-        preview_boundary.x + HUD_BUTTON_MARGIN,
-        preview_boundary.y + HUD_BUTTON_MARGIN,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    };
     Rectangle volume_slider_boundary = volume_icon_boundary;
 
     size_t expanded_slots = 6;
     if (expanded) volume_slider_boundary.width = expanded_slots*HUD_BUTTON_SIZE;
 
     expanded = dragging || CheckCollisionPointRec(mouse, volume_slider_boundary);
-
-    Color color;
-    if (expanded) {
-        color = COLOR_HUD_BUTTON_HOVEROVER;
-    } else {
-        color = COLOR_HUD_BUTTON_BACKGROUND;
-    }
-    DrawRectangleRounded(volume_slider_boundary, 0.5, 20, color);
 
     float icon_size = 512;
     float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
@@ -976,7 +952,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
         SetMasterVolume(volume);
 
         // TODO: if while dragging the volume slider you hoverout of it, the tooltip disappears
-        tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_BOTTOM);
+        tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_TOP);
     }
 
     // Toggle mute
@@ -1000,9 +976,9 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle pr
     }
 
     if (volume <= 0.0) {
-        tooltip(volume_icon_boundary, "Unmute [M]", SIDE_BOTTOM);
+        tooltip(volume_icon_boundary, "Unmute [M]", SIDE_TOP);
     } else {
-        tooltip(volume_icon_boundary, "Mute [M]", SIDE_BOTTOM);
+        tooltip(volume_icon_boundary, "Mute [M]", SIDE_TOP);
     }
 
     return dragging || updated;
@@ -1050,6 +1026,86 @@ static void popup_tray(Popup_Tray *pt, Rectangle preview_boundary)
     while (pt->count > 0 && PT_LAST(pt)->lifetime <= 0) {
         pt->count -= 1;
     }
+}
+
+#define play_button(track, boundary) \
+    play_button_with_location(__FILE__, __LINE__, (track), (boundary))
+static int play_button_with_location(const char *file, int line, Track *track, Rectangle boundary)
+{
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
+
+    int state = button_with_id(id, boundary);
+    size_t icon_index = IsMusicStreamPlaying(track->music) ? 1 : 0;
+
+    float icon_size = 512;
+    float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
+    Rectangle dest = {
+        boundary.x + boundary.width/2 - icon_size*scale/2,
+        boundary.y + boundary.height/2 - icon_size*scale/2,
+        icon_size*scale,
+        icon_size*scale
+    };
+
+    Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
+    DrawTexturePro(assets_texture("./resources/icons/play.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+
+    if (IsMusicStreamPlaying(track->music)) {
+        tooltip(boundary, "Pause [SPACE]", SIDE_TOP);
+    } else {
+        tooltip(boundary, "Play [SPACE]", SIDE_TOP);
+    }
+
+    return state;
+}
+
+// TODO: adapt toolbar to narrow widths
+static bool toolbar(Track *track, Rectangle boundary)
+{
+    bool interacted = false;
+    int state = 0;
+
+    if (boundary.width < HUD_BUTTON_SIZE*3) return interacted;
+
+    DrawRectangleRec(boundary, COLOR_TRACK_PANEL_BACKGROUND);
+
+    state = play_button(track, (CLITERAL(Rectangle) {
+        boundary.x,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+
+    if (state & BS_CLICKED) {
+        interacted = true;
+
+        if (IsMusicStreamPlaying(track->music)) {
+            PauseMusicStream(track->music);
+        } else {
+            ResumeMusicStream(track->music);
+        }
+    }
+
+    interacted = interacted || volume_slider((CLITERAL(Rectangle) {
+        boundary.x + HUD_BUTTON_SIZE,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+
+    state = fullscreen_button((CLITERAL(Rectangle) {
+        boundary.x + boundary.width - HUD_BUTTON_SIZE,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    if (state & BS_CLICKED) {
+        interacted = true;
+        p->fullscreen = !p->fullscreen;
+    }
+
+    return interacted;
 }
 
 static void preview_screen(void)
@@ -1143,43 +1199,43 @@ static void preview_screen(void)
 
         size_t m = fft_analyze(GetFrameTime());
 
+        float toolbar_height = HUD_BUTTON_SIZE;
         if (p->fullscreen) {
+            static float hud_timer = HUD_TIMER_SECS;
+
             Rectangle preview_boundary = {
                 .x = 0,
                 .y = 0,
                 .width = w,
                 .height = h,
             };
+
+            if (hud_timer > 0.0) {
+                hud_timer -= GetFrameTime();
+
+                preview_boundary.height -= toolbar_height;
+                bool interacted = toolbar(track, CLITERAL(Rectangle) {
+                    .x = 0,
+                    .y = preview_boundary.height,
+                    .width = preview_boundary.width,
+                    .height = toolbar_height,
+                });
+
+                if (interacted) hud_timer = HUD_TIMER_SECS;
+            }
+
+            Vector2 delta = GetMouseDelta();
+            bool moved = fabsf(delta.x) + fabsf(delta.y) > 0.0;
+            if (moved) hud_timer = HUD_TIMER_SECS;
+
             fft_render(preview_boundary, m);
 
-#if 0
-            // TODO: there must be a visual clue that we paused the music.
-            // Cause when you accidentally click on the preview it feels weird.
-            // TODO: Current UI paradigm can handle with the buttons overlap.
-            // The preview "button" overlaps with volume slider, fullscreen and other
-            // overlay UI elements
             if (button(preview_boundary) & BS_CLICKED) {
                 if (IsMusicStreamPlaying(track->music)) {
                     PauseMusicStream(track->music);
                 } else {
                     ResumeMusicStream(track->music);
                 }
-            }
-#else
-            (void) button_with_location; // NOTE: the disabled code is the only user of this functions right now
-#endif
-
-            static float hud_timer = HUD_TIMER_SECS;
-            if (hud_timer > 0.0) {
-                int state = fullscreen_button(preview_boundary);
-                if (state & BS_CLICKED) p->fullscreen = !p->fullscreen;
-                if (!(state & BS_HOVEROVER)) hud_timer -= GetFrameTime();
-                if (volume_slider(preview_boundary)) hud_timer = HUD_TIMER_SECS;
-            }
-
-            Vector2 delta = GetMouseDelta();
-            if (fabsf(delta.x) + fabsf(delta.y) > 0.0) {
-                hud_timer = HUD_TIMER_SECS;
             }
 
             popup_tray(&p->pt, preview_boundary);
@@ -1190,15 +1246,9 @@ static void preview_screen(void)
                 .x = tracks_panel_width,
                 .y = 0,
                 .width = w - tracks_panel_width,
-                .height = h - timeline_height
+                .height = h - timeline_height - toolbar_height,
             };
 
-#if 0
-            // TODO: there must be a visual clue that we paused the music.
-            // Cause when you accidentally click on the preview it feels weird.
-            // TODO: Current UI paradigm can handle with the buttons overlap.
-            // The preview "button" overlaps with volume slider, fullscreen and other
-            // overlay UI elements
             if (button(preview_boundary) & BS_CLICKED) {
                 if (IsMusicStreamPlaying(track->music)) {
                     PauseMusicStream(track->music);
@@ -1206,9 +1256,6 @@ static void preview_screen(void)
                     ResumeMusicStream(track->music);
                 }
             }
-#else
-            (void) button_with_location; // NOTE: the disabled code is the only user of this functions right now
-#endif
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
@@ -1219,20 +1266,22 @@ static void preview_screen(void)
                 .x = 0,
                 .y = 0,
                 .width = tracks_panel_width,
-                .height = preview_boundary.height,
+                .height = h - timeline_height,
             }));
 
             timeline(CLITERAL(Rectangle) {
                 .x = 0,
-                .y = preview_boundary.height,
+                .y = h - timeline_height,
                 .width = w,
                 .height = timeline_height,
             }, track);
 
-            if (fullscreen_button(preview_boundary) & BS_CLICKED) {
-                p->fullscreen = !p->fullscreen;
-            }
-            volume_slider(preview_boundary);
+            toolbar(track, CLITERAL(Rectangle) {
+                .x = tracks_panel_width,
+                .y = preview_boundary.height,
+                .width = preview_boundary.width,
+                .height = toolbar_height,
+            });
         }
     } else { // We are waiting for the user to Drag&Drop the Music
         const char *label = "Drag&Drop Music Here";
