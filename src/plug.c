@@ -480,26 +480,42 @@ static inline float signf(float x)
     return 0.0;
 }
 
-void snap_boundary_inside_screen(Rectangle *boundary)
+static void snap_segment_inside_other_segment(float ls, float rs, float *lt, float *rt)
 {
-    Rectangle screen_boundary = {0};
-    screen_boundary.width = GetScreenWidth();
-    screen_boundary.height = GetScreenHeight();
+    float dt = *rt - *lt;
+    if (rs < *lt || rs < *rt) {
+        *rt = rs;
+        *lt = rs - dt;
+    }
 
-    Rectangle diff = GetCollisionRec(screen_boundary, *boundary);
-
-    float dx = diff.x - boundary->x;
-    float dy = diff.y - boundary->y;
-    float dw = boundary->width - diff.width;
-    float dh = boundary->height - diff.height;
-    boundary->x += dx;
-    boundary->y += dy;
-    boundary->x -= dw;
-    boundary->y -= dh;
-    // TODO: snapping does not work if tooltips don't have any intersection
+    if (*lt < ls || *rt < ls) {
+        *lt = ls;
+        *rt = ls + dt;
+    }
 }
 
-void align_to_side_of_rect(Rectangle who, Rectangle *what, Side where)
+static void snap_boundary_inside_screen(Rectangle *boundary)
+{
+    float ls = 0;
+    float rs = GetScreenWidth();
+    float ts = 0;
+    float bs = GetScreenHeight();
+
+    float lt = boundary->x;
+    float rt = boundary->x + boundary->width;
+    float tt = boundary->y;
+    float bt = boundary->y + boundary->height;
+
+    snap_segment_inside_other_segment(ls, rs, &lt, &rt);
+    snap_segment_inside_other_segment(ts, bs, &tt, &bt);
+
+    boundary->x = lt;
+    boundary->y = tt;
+    boundary->width = rt - lt;
+    boundary->height = bt - tt;
+}
+
+static void align_to_side_of_rect(Rectangle who, Rectangle *what, Side where)
 {
     switch (where) {
         case SIDE_BOTTOM: {
@@ -1238,12 +1254,11 @@ static void preview_screen(void)
             p->fullscreen = !p->fullscreen;
         }
 
-        // TODO: add button to start rendering
-
         size_t m = fft_analyze(GetFrameTime());
 
         float toolbar_height = HUD_BUTTON_SIZE;
         if (p->fullscreen) {
+            // TODO: make timeline somehow visible in fullscreen mode (maybe miniversion of it on the toolbar)
             static float hud_timer = HUD_TIMER_SECS;
 
             Rectangle preview_boundary = {
