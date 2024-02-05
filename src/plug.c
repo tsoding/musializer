@@ -1060,6 +1060,15 @@ static int play_button_with_location(const char *file, int line, Track *track, R
     return state;
 }
 
+static void toggle_track_playing(Track *track)
+{
+    if (IsMusicStreamPlaying(track->music)) {
+        PauseMusicStream(track->music);
+    } else {
+        ResumeMusicStream(track->music);
+    }
+}
+
 // TODO: adapt toolbar to narrow widths
 static bool toolbar(Track *track, Rectangle boundary)
 {
@@ -1079,12 +1088,7 @@ static bool toolbar(Track *track, Rectangle boundary)
 
     if (state & BS_CLICKED) {
         interacted = true;
-
-        if (IsMusicStreamPlaying(track->music)) {
-            PauseMusicStream(track->music);
-        } else {
-            ResumeMusicStream(track->music);
-        }
+        toggle_track_playing(track);
     }
 
     interacted = interacted || volume_slider((CLITERAL(Rectangle) {
@@ -1169,11 +1173,7 @@ static void preview_screen(void)
         UpdateMusicStream(track->music);
 
         if (IsKeyPressed(KEY_TOGGLE_PLAY)) {
-            if (IsMusicStreamPlaying(track->music)) {
-                PauseMusicStream(track->music);
-            } else {
-                ResumeMusicStream(track->music);
-            }
+            toggle_track_playing(track);
         }
 
         if (IsKeyPressed(KEY_RENDER)) {
@@ -1231,11 +1231,7 @@ static void preview_screen(void)
             fft_render(preview_boundary, m);
 
             if (button(preview_boundary) & BS_CLICKED) {
-                if (IsMusicStreamPlaying(track->music)) {
-                    PauseMusicStream(track->music);
-                } else {
-                    ResumeMusicStream(track->music);
-                }
+                toggle_track_playing(track);
             }
 
             popup_tray(&p->pt, preview_boundary);
@@ -1250,11 +1246,7 @@ static void preview_screen(void)
             };
 
             if (button(preview_boundary) & BS_CLICKED) {
-                if (IsMusicStreamPlaying(track->music)) {
-                    PauseMusicStream(track->music);
-                } else {
-                    ResumeMusicStream(track->music);
-                }
+                toggle_track_playing(track);
             }
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
