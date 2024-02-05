@@ -155,6 +155,17 @@ int main(int argc, char **argv)
             nob_log(NOB_INFO, "./resources/icons/play.png is up to date");
         }
 
+        if (nob_needs_rebuild1("./resources/icons/render.png", "./resources/icons/render.svg")) {
+            cmd.count = 0;
+            nob_cmd_append(&cmd, "convert");
+            nob_cmd_append(&cmd, "-background", "None");
+            nob_cmd_append(&cmd, "./resources/icons/render.svg");
+            nob_cmd_append(&cmd, "./resources/icons/render.png");
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        } else {
+            nob_log(NOB_INFO, "./resources/icons/render.png is up to date");
+        }
+
         if (!nob_procs_wait(procs)) return 1;
     } else if (strcmp(subcommand, "help") == 0){
         log_available_subcommands(program, NOB_INFO);
