@@ -192,6 +192,8 @@ typedef struct {
     Side tooltip_align;
     Rectangle tooltip_element_boundary;
 
+    bool top_toolbar;
+
 #ifdef MUSIALIZER_MICROPHONE
     // Microphone
     bool capturing;
@@ -833,9 +835,9 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle full
     DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     if (p->fullscreen) {
-        tooltip(fullscreen_button_boundary, "Collapse [F]", SIDE_TOP);
+        tooltip(fullscreen_button_boundary, "Collapse [F]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     } else {
-        tooltip(fullscreen_button_boundary, "Expand [F]", SIDE_TOP);
+        tooltip(fullscreen_button_boundary, "Expand [F]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     }
 
     return state;
@@ -968,7 +970,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle vo
         SetMasterVolume(volume);
 
         // TODO: if while dragging the volume slider you hoverout of it, the tooltip disappears
-        tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_TOP);
+        tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     }
 
     // Toggle mute
@@ -992,9 +994,9 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle vo
     }
 
     if (volume <= 0.0) {
-        tooltip(volume_icon_boundary, "Unmute [M]", SIDE_TOP);
+        tooltip(volume_icon_boundary, "Unmute [M]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     } else {
-        tooltip(volume_icon_boundary, "Mute [M]", SIDE_TOP);
+        tooltip(volume_icon_boundary, "Mute [M]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     }
 
     return dragging || updated;
@@ -1068,9 +1070,9 @@ static int play_button_with_location(const char *file, int line, Track *track, R
     DrawTexturePro(assets_texture("./resources/icons/play.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     if (IsMusicStreamPlaying(track->music)) {
-        tooltip(boundary, "Pause [SPACE]", SIDE_TOP);
+        tooltip(boundary, "Pause [SPACE]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     } else {
-        tooltip(boundary, "Play [SPACE]", SIDE_TOP);
+        tooltip(boundary, "Play [SPACE]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
     }
 
     return state;
@@ -1099,7 +1101,7 @@ static int render_button_with_location(const char *file, int line, Rectangle bou
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(assets_texture("./resources/icons/render.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
-    tooltip(boundary, "Render [R]", SIDE_TOP);
+    tooltip(boundary, "Render [R]", p->top_toolbar ? SIDE_BOTTOM : SIDE_TOP);
 
     return state;
 }
@@ -1242,6 +1244,10 @@ static void preview_screen(void)
     if (track) { // The music is loaded and ready
         UpdateMusicStream(track->music);
 
+        if (IsKeyPressed(KEY_Z)) {
+            p->top_toolbar = !p->top_toolbar;
+        }
+
         if (IsKeyPressed(KEY_TOGGLE_PLAY)) {
             toggle_track_playing(track);
         }
@@ -1271,13 +1277,25 @@ static void preview_screen(void)
             if (hud_timer > 0.0) {
                 hud_timer -= GetFrameTime();
 
-                preview_boundary.height -= toolbar_height;
-                bool interacted = toolbar(track, CLITERAL(Rectangle) {
-                    .x = 0,
-                    .y = preview_boundary.height,
-                    .width = preview_boundary.width,
-                    .height = toolbar_height,
-                });
+                bool interacted;
+                if (p->top_toolbar) {
+                    preview_boundary.y += toolbar_height;
+                    preview_boundary.height -= toolbar_height;
+                    interacted = toolbar(track, CLITERAL(Rectangle) {
+                        .x = 0,
+                        .y = 0,
+                        .width = preview_boundary.width,
+                        .height = toolbar_height,
+                    });
+                } else {
+                    preview_boundary.height -= toolbar_height;
+                    interacted = toolbar(track, CLITERAL(Rectangle) {
+                        .x = 0,
+                        .y = preview_boundary.height,
+                        .width = preview_boundary.width,
+                        .height = toolbar_height,
+                    });
+                }
 
                 if (interacted) hud_timer = HUD_TIMER_SECS;
             }
@@ -1298,7 +1316,7 @@ static void preview_screen(void)
             float timeline_height = 150.0f;
             Rectangle preview_boundary = {
                 .x = tracks_panel_width,
-                .y = 0,
+                .y = p->top_toolbar ? toolbar_height : 0,
                 .width = w - tracks_panel_width,
                 .height = h - timeline_height - toolbar_height,
             };
@@ -1326,12 +1344,21 @@ static void preview_screen(void)
                 .height = timeline_height,
             }, track);
 
-            toolbar(track, CLITERAL(Rectangle) {
-                .x = tracks_panel_width,
-                .y = preview_boundary.height,
-                .width = preview_boundary.width,
-                .height = toolbar_height,
-            });
+            if (p->top_toolbar) {
+                toolbar(track, CLITERAL(Rectangle) {
+                    .x = tracks_panel_width,
+                    .y = 0,
+                    .width = preview_boundary.width,
+                    .height = toolbar_height,
+                });
+            } else {
+                toolbar(track, CLITERAL(Rectangle) {
+                    .x = tracks_panel_width,
+                    .y = preview_boundary.height,
+                    .width = preview_boundary.width,
+                    .height = toolbar_height,
+                });
+            }
         }
     } else { // We are waiting for the user to Drag&Drop the Music
         const char *label = "Drag&Drop Music Here";
