@@ -930,6 +930,7 @@ static bool horz_slider(Rectangle boundary, float *value, bool *dragging)
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                     *value = slider_get_value(mouse.x, startPos.x, endPos.x);
                     updated = true;
+                    *dragging = true;
                 }
             }
         }
