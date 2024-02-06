@@ -1325,9 +1325,14 @@ static void preview_screen(void)
 
             fft_render(preview_boundary, m);
 
+#if 0
+            // TODO: toggle track playing on right mouse click on the preview
             if (button(preview_boundary) & BS_CLICKED) {
                 toggle_track_playing(track);
             }
+#else
+            (void) button_with_location;
+#endif
 
             popup_tray(&p->pt, preview_boundary);
         } else {
@@ -1340,9 +1345,14 @@ static void preview_screen(void)
                 .height = h - timeline_height - toolbar_height,
             };
 
+#if 0
+            // TODO: toggle track playing on right mouse click on the preview
             if (button(preview_boundary) & BS_CLICKED) {
                 toggle_track_playing(track);
             }
+#else
+            (void) button_with_location;
+#endif
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
             fft_render(preview_boundary, m);
