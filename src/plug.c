@@ -669,6 +669,42 @@ static int button_with_location(const char *file, int line, Rectangle boundary)
 
 #define button(boundary) button_with_location(__FILE__, __LINE__, boundary)
 
+// NOTE: This is literally DrawTextEx() copy-pasted from Raylib itself but with the
+// max_width support and without newlines
+void track_label(Font font, const char *text, Vector2 position, float fontSize, Color tint, float max_width)
+{
+    if (font.texture.id == 0) font = GetFontDefault();  // Security check in case of not valid font
+
+    float spacing = 0;
+
+    int size = TextLength(text);    // Total size in bytes of the text, scanned by codepoints in loop
+
+    int textOffsetY = 0;            // Offset between lines (on linebreak '\n')
+    float textOffsetX = 0.0f;       // Offset X to next character to draw
+
+    float scaleFactor = fontSize/font.baseSize;         // Character quad scaling factor
+
+    for (int i = 0; i < size && textOffsetX < max_width;)
+    {
+        // Get next codepoint from byte string and glyph index in font
+        int codepointByteCount = 0;
+        int codepoint = GetCodepointNext(&text[i], &codepointByteCount);
+        int index = GetGlyphIndex(font, codepoint);
+
+        if (codepoint == '\n') codepoint = ' '; // Treat newlines as spaces
+
+        if ((codepoint != ' ') && (codepoint != '\t'))
+        {
+            DrawTextCodepoint(font, codepoint, (Vector2){ position.x + textOffsetX, position.y + textOffsetY }, fontSize, tint);
+        }
+
+        if (font.glyphs[index].advanceX == 0) textOffsetX += ((float)font.recs[index].width*scaleFactor + spacing);
+        else textOffsetX += ((float)font.glyphs[index].advanceX*scaleFactor + spacing);
+
+        i += codepointByteCount;   // Move text bytes counter to next codepoint
+    }
+}
+
 #define tracks_panel(panel_boundary) \
     tracks_panel_with_location(__FILE__, __LINE__, panel_boundary)
 static void tracks_panel_with_location(const char *file, int line, Rectangle panel_boundary)
@@ -746,9 +782,10 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
             .x = item_boundary.x + text_padding,
             .y = item_boundary.y + item_boundary.height*0.5 - size.y*0.5,
         };
-        // TODO: cut out overflown text
         // TODO: use SDF fonts
-        DrawTextEx(p->font, text, position, fontSize, 0, WHITE);
+        // TODO: we need a better indication that the label was cut out because of the overflow
+        // I was think about some sort of gradient. Ideally, we need to scroll the label on hover.
+        track_label(p->font, text, position, fontSize, WHITE, item_boundary.width - text_padding*2);
     }
 
     // TODO: up and down clickable buttons on the scrollbar
