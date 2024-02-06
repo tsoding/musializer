@@ -1,6 +1,5 @@
 // This is a complete backward incompatible rewrite of https://github.com/tsoding/nobuild
 // because I'm really unhappy with the direction it is going. It's gonna sit in this repo
-// [Sir_Lurksal0t] I hereby yoink, repo referenced: https://github.com/tsoding/musializer
 // until it's matured enough and then I'll probably extract it to its own repo.
 
 // Copyright 2023 Alexey Kutepov <reximkut@gmail.com>
