@@ -1199,12 +1199,13 @@ static bool toolbar(Track *track, Rectangle boundary)
         start_rendering_track(track);
     }
 
-    interacted = interacted || volume_slider((CLITERAL(Rectangle) {
+    bool volume_slider_interacted = volume_slider((CLITERAL(Rectangle) {
         boundary.x + HUD_BUTTON_SIZE*2,
         boundary.y,
         HUD_BUTTON_SIZE,
         HUD_BUTTON_SIZE,
     }));
+    interacted = interacted || volume_slider_interacted;
 
     state = fullscreen_button((CLITERAL(Rectangle) {
         boundary.x + boundary.width - HUD_BUTTON_SIZE,
