@@ -430,6 +430,7 @@ static void fft_push(float frame)
     p->in_raw[FFT_SIZE-1] = frame;
 }
 
+// TODO: make sure the audio callback is thread-safe
 static void callback(void *bufferData, unsigned int frames)
 {
     // https://cdecl.org/?q=float+%28*fs%29%5B2%5D
@@ -1228,6 +1229,8 @@ static void preview_screen(void)
 
     if (IsFileDropped()) {
         FilePathList droppedFiles = LoadDroppedFiles();
+        // TODO: loading files synchronously like that actually blocks the UI thread
+        // Maybe we should do that in a separate thread.
         for (size_t i = 0; i < droppedFiles.count; ++i) {
             Music music = LoadMusicStream(droppedFiles.paths[i]);
             if (IsMusicReady(music)) {
