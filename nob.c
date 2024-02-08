@@ -246,7 +246,7 @@ int main(int argc, char **argv)
     }
 
     Nob_Cmd cmd = {0};
-    const char *configured_binary = "./build/nob.configured";
+    const char *configured_binary = "build/nob.configured";
     nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "nob.c"), "-DCONFIGURED");
     if (!nob_cmd_run_sync(cmd)) return 1;
 
