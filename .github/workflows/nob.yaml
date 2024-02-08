@@ -51,10 +51,11 @@ jobs:
           cl.exe -o nob.exe nob.c
       - name: Run nob
         shell: cmd
-        run: nob.exe
+        run: |
+          call "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat"
+          nob.exe
       - name: Upload build folder
         uses: actions/upload-artifact@v3
         with:
           name: windows-build-folder
           path: build/
-
