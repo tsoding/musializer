@@ -7,8 +7,7 @@ bool build_musializer(void)
     Nob_Procs procs = {0};
 
 #ifdef MUSIALIZER_HOTRELOAD
-    nob_log(NOB_ERROR, "TODO: hotreloading is not supported on %s yet", NOB_ARRAY_GET(target_names, config.target));
-    nob_return_defer(false);
+#error "TODO: hotreloading is not supported on TARGET_WIN64_MINGW yet"
 #else
     cmd.count = 0;
     #ifdef _WIN32
@@ -25,7 +24,7 @@ bool build_musializer(void)
 
     cmd.count = 0;
         nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
-        nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+        nob_cmd_append(&cmd, "-mwindows", "-Wall", "-Wextra", "-ggdb");
         nob_cmd_append(&cmd, "-I./build/");
         nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
         nob_cmd_append(&cmd, "-o", "./build/musializer");
