@@ -30,6 +30,8 @@ bool build_musializer(void)
             );
         nob_cmd_append(&cmd,
             "/link",
+            "/SUBSYSTEM:WINDOWS",
+            "/entry:mainCRTStartup",
             nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
             "raylib.lib");
         nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "./build/musializer.res");
