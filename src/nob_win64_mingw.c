@@ -125,10 +125,12 @@ bool build_dist(void)
     // TODO: pack ffmpeg.exe with windows build
     //if (!nob_copy_file("ffmpeg.exe", "./musializer-win64-mingw/ffmpeg.exe")) return false;
     Nob_Cmd cmd = {0};
-    nob_cmd_append(&cmd, "zip", "-r", "./musializer-win64-mingw.zip", "./musializer-win64-mingw/");
+    const char *dist_path = "./musializer-win64-mingw.zip";
+    nob_cmd_append(&cmd, "zip", "-r", dist_path, "./musializer-win64-mingw/");
     bool ok = nob_cmd_run_sync(cmd);
     nob_cmd_free(cmd);
     if (!ok) return false;
+    nob_log(NOB_INFO, "Created %s", dist_path);
     return true;
 #endif // MUSIALIZER_HOTRELOAD
 }
