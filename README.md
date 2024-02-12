@@ -17,6 +17,16 @@ The project aims to make a tool for creating beautiful music visualizations and 
 
 https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338fa19af071
 
+## Supported Audio Formats
+
+- wav
+- ogg
+- mp3
+- qoa
+- xm
+- mod
+- flac (in development)
+
 ## Download Binaries
 
 - Windows: [musializer-alpha1-win64.zip](https://github.com/tsoding/musializer/releases/download/alpha1/musializer-alpha1-win64.zip)
