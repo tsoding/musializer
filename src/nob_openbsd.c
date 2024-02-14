@@ -103,7 +103,7 @@ bool build_raylib(void)
             nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
             nob_cmd_append(&cmd, "-c", input_path);
             nob_cmd_append(&cmd, "-o", output_path);
-            nob_cmd_append(&cmd, "-I/usr/X11R6/include", "-L/usr/X11R6/lib");
+            nob_cmd_append(&cmd, "-I/usr/X11R6/include");
             Nob_Proc proc = nob_cmd_run_async(cmd);
             nob_da_append(&procs, proc);
         }
