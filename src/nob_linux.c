@@ -34,7 +34,7 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
                 nob_cmd_append(&cmd,
                     "./src/musializer.c",
-                    "./src/hotreload_linux.c");
+                    "./src/hotreload_posix.c");
                 nob_cmd_append(&cmd,
                     "-Wl,-rpath=./build/",
                     "-Wl,-rpath=./",
