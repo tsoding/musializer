@@ -120,18 +120,18 @@ Nob_File_Type nob_get_file_type(const char *path);
 // Append several items to a dynamic array
 #define nob_da_append_many(da, new_items, new_items_count)                                  \
     do {                                                                                    \
-        if ((da)->count + new_items_count > (da)->capacity) {                               \
+        if ((da)->count + (new_items_count) > (da)->capacity) {                               \
             if ((da)->capacity == 0) {                                                      \
                 (da)->capacity = NOB_DA_INIT_CAP;                                           \
             }                                                                               \
-            while ((da)->count + new_items_count > (da)->capacity) {                        \
+            while ((da)->count + (new_items_count) > (da)->capacity) {                        \
                 (da)->capacity *= 2;                                                        \
             }                                                                               \
             (da)->items = NOB_REALLOC((da)->items, (da)->capacity*sizeof(*(da)->items)); \
             NOB_ASSERT((da)->items != NULL && "Buy more RAM lol");                          \
         }                                                                                   \
-        memcpy((da)->items + (da)->count, new_items, new_items_count*sizeof(*(da)->items)); \
-        (da)->count += new_items_count;                                                     \
+        memcpy((da)->items + (da)->count, (new_items), (new_items_count)*sizeof(*(da)->items)); \
+        (da)->count += (new_items_count);                                                     \
     } while (0)
 
 typedef struct {
