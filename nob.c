@@ -13,14 +13,10 @@
 
 #ifdef CONFIGURED
 
+#include "./src/targets.h"
 #include CONFIG_PATH
 
 #define RAYLIB_VERSION "5.0"
-
-#define TARGET_LINUX 0
-#define TARGET_WIN64_MINGW 1
-#define TARGET_WIN64_MSVC 2
-#define TARGET_MACOS 3
 
 static const char *raylib_modules[] = {
     "rcore",

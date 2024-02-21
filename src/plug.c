@@ -6,6 +6,7 @@
 #include <string.h>
 #include <complex.h>
 
+#include "targets.h"
 #include "config.h"
 #include "plug.h"
 #include "ffmpeg.h"
