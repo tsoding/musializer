@@ -603,9 +603,7 @@ bool nob_proc_wait(Nob_Proc proc)
     }
 
     if (exit_status != 0) {
-        LPTSTR errorText = nob_get_last_windows_error_name();
-        nob_log(NOB_ERROR, "Command exited with exit code: %s", errorText);
-        LocalFree(errorText);
+        nob_log(NOB_ERROR, "Command exited with exit code: %d", exit_status);
         return false;
     }
 
