@@ -1,3 +1,8 @@
+Alpha Release 3
+----------------------------------------------------------------------
+
+- Finally bundle resource/ folder with the executable
+
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 

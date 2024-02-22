@@ -16,6 +16,41 @@
 #include <raylib.h>
 #include <rlgl.h>
 
+#ifndef MUSIALIZER_UNBUNDLE
+#include "bundle.h"
+
+void free_resource_data(void *data)
+{
+    (void) data;
+}
+
+void *load_resource_data(const char *file_path, size_t *size)
+{
+    for (size_t i = 0; i < resources_count; ++i) {
+        if (strcmp(resources[i].file_path, file_path) == 0) {
+            *size = resources[i].size;
+            return &bundle[resources[i].offset];
+        }
+    }
+    return NULL;
+}
+
+#else
+
+void free_resource_data(void *data)
+{
+    UnloadFileData(data);
+}
+
+void *load_resource_data(const char *file_path, size_t *size)
+{
+    int dataSize;
+    void *data = LoadFileData(file_path, &dataSize);
+    *size = dataSize;
+    return data;
+}
+#endif
+
 #define _WINDOWS_
 #include "miniaudio.h"
 
@@ -209,7 +244,12 @@ static Image assets_image(const char *file_path)
 
     Image_Item item = {0};
     item.key = file_path;
-    item.value = LoadImage(file_path);
+
+    size_t data_size;
+    void *data = load_resource_data(file_path, &data_size);
+    item.value = LoadImageFromMemory(GetFileExtension(file_path), data, data_size);
+    free_resource_data(data);
+
     nob_da_append(&p->assets.images, item);
     return item.value;
 }
@@ -1578,7 +1618,13 @@ void plug_init(void)
     assert(p != NULL && "Buy more RAM lol");
     memset(p, 0, sizeof(*p));
 
-    p->font = LoadFontEx("./resources/fonts/Alegreya-Regular.ttf", FONT_SIZE, NULL, 0);
+    const char *alegreya_path = "./resources/fonts/Alegreya-Regular.ttf";
+    {
+        size_t data_size;
+        void *data = load_resource_data(alegreya_path, &data_size);
+        p->font = LoadFontFromMemory(GetFileExtension(alegreya_path), data, data_size, FONT_SIZE, NULL, 0);
+        free_resource_data(data);
+    }
     GenTextureMipmaps(&p->font.texture);
     SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
     // TODO: Maybe we should try to keep compiling different versions of shaders
@@ -1587,7 +1633,12 @@ void plug_init(void)
     // If the shader can not be compiled maybe we could fallback to software rendering
     // of the texture of a fuzzy circle? The shader does not really do anything particularly
     // special.
-    p->circle = LoadShader(NULL, TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION));
+    {
+        size_t data_size;
+        void *data = load_resource_data(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
+        p->circle = LoadShaderFromMemory(NULL, data);
+        free_resource_data(data);
+    }
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
@@ -1615,7 +1666,11 @@ void plug_post_reload(Plug *pp)
         AttachAudioStreamProcessor(it->music.stream, callback);
     }
     UnloadShader(p->circle);
-    p->circle = LoadShader(NULL, TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION));
+
+    size_t data_size;
+    void *data = load_resource_data(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
+    p->circle = LoadShaderFromMemory(NULL, data);
+    free_resource_data(data);
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
 }
