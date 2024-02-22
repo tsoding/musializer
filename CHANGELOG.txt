@@ -1,7 +1,20 @@
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
-- Added timeline. Now you can jump to any place of the music during
+Hello! After 6 months of active work (actually no, I personally was
+not actively working on Musializer during those 6 months, I have
+shedton of other projects to worry about, sorry :D) we finally shipped
+the Second Alpha Release on Windows! \o/
+
+In this release we focused on adding proper UI that will eventually
+tie together an ability to render specific local files that you
+Drag&Drop on the window and recording from your microphone and
+speakers (which is not available yet but we hope to deliver it in the
+forthcoming releases).
+
+Here are the notable changes:
+
+- Added timeline. Now you can jump to any place of the song during
   the preview.
 
 - Multiple Files Support: all the Drag&Drop-ed files are preserved
@@ -10,7 +23,7 @@ Windows Alpha Release 2
 - Added master Volume Control. It controls the volume during the
   preview. It does not affect the audio of the final rendered video.
 
-- Added a Fullscreen Button that hides all of the controls introduces
+- Added a Fullscreen Button that hides all of the controls introduced
   recently to enable people using Musializer a backdrop for
   screenshots, videos, etc.
 
