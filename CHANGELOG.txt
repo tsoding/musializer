@@ -7,12 +7,17 @@ Windows Alpha Release 2
 - Multiple Files Support: all the Drag&Drop-ed files are preserved
   and you can switch between them.
 
-- Added master volume control. It controls the volume during the
+- Added master Volume Control. It controls the volume during the
   preview. It does not affect the audio of the final rendered video.
 
-- Added a fullscreen button that hides all of the controls introduces
+- Added a Fullscreen Button that hides all of the controls introduces
   recently to enable people using Musializer a backdrop for
   screenshots, videos, etc.
+
+- Added a Play Button to pause/unpause the previewed song.
+
+- Added a Render Button to start rendering. IMPORTANT! The shortcut
+  for Rendering is now R, not F!
 
 - Fixed crash on Windows 7 when rendering the video
   https://github.com/tsoding/musializer/pull/14
