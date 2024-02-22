@@ -1645,3 +1645,6 @@ void plug_update(void)
 
     EndDrawing();
 }
+
+// TODO: about page that includes current commit, version and the platforms
+// We may also include licenses and contributors there.
