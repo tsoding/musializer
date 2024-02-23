@@ -1,7 +1,8 @@
 Alpha Release 3
 ----------------------------------------------------------------------
 
-- Finally bundle resource/ folder with the executable
+- Finally got rid of the resource/ folder. It's now part of the
+  executable
 
 Windows Alpha Release 2
 ----------------------------------------------------------------------
