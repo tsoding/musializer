@@ -182,7 +182,6 @@ int main(int argc, char **argv)
         if (!generate_resource_bundle()) return 1;
 #endif // MUSIALIZER_UNBUNDLE
         if (!build_musializer()) return 1;
-        if (!nob_copy_directory_recursively("./resources/", "./build/resources/")) return 1;
     } else if (strcmp(subcommand, "dist") == 0) {
         if (!build_dist()) return 1;
     } else if (strcmp(subcommand, "config") == 0) {
