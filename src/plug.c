@@ -19,12 +19,12 @@
 #ifndef MUSIALIZER_UNBUNDLE
 #include "bundle.h"
 
-void free_resource_data(void *data)
+void plug_free_resource(void *data)
 {
     (void) data;
 }
 
-void *load_resource_data(const char *file_path, size_t *size)
+void *plug_load_resource(const char *file_path, size_t *size)
 {
     for (size_t i = 0; i < resources_count; ++i) {
         if (strcmp(resources[i].file_path, file_path) == 0) {
@@ -37,12 +37,12 @@ void *load_resource_data(const char *file_path, size_t *size)
 
 #else
 
-void free_resource_data(void *data)
+void plug_free_resource(void *data)
 {
     UnloadFileData(data);
 }
 
-void *load_resource_data(const char *file_path, size_t *size)
+void *plug_load_resource(const char *file_path, size_t *size)
 {
     int dataSize;
     void *data = LoadFileData(file_path, &dataSize);
@@ -246,9 +246,9 @@ static Image assets_image(const char *file_path)
     item.key = file_path;
 
     size_t data_size;
-    void *data = load_resource_data(file_path, &data_size);
+    void *data = plug_load_resource(file_path, &data_size);
     item.value = LoadImageFromMemory(GetFileExtension(file_path), data, data_size);
-    free_resource_data(data);
+    plug_free_resource(data);
 
     nob_da_append(&p->assets.images, item);
     return item.value;
@@ -1621,9 +1621,9 @@ void plug_init(void)
     const char *alegreya_path = "./resources/fonts/Alegreya-Regular.ttf";
     {
         size_t data_size;
-        void *data = load_resource_data(alegreya_path, &data_size);
+        void *data = plug_load_resource(alegreya_path, &data_size);
         p->font = LoadFontFromMemory(GetFileExtension(alegreya_path), data, data_size, FONT_SIZE, NULL, 0);
-        free_resource_data(data);
+        plug_free_resource(data);
     }
     GenTextureMipmaps(&p->font.texture);
     SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
@@ -1635,9 +1635,9 @@ void plug_init(void)
     // special.
     {
         size_t data_size;
-        void *data = load_resource_data(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
+        void *data = plug_load_resource(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
         p->circle = LoadShaderFromMemory(NULL, data);
-        free_resource_data(data);
+        plug_free_resource(data);
     }
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
@@ -1668,9 +1668,9 @@ void plug_post_reload(Plug *pp)
     UnloadShader(p->circle);
 
     size_t data_size;
-    void *data = load_resource_data(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
+    void *data = plug_load_resource(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
     p->circle = LoadShaderFromMemory(NULL, data);
-    free_resource_data(data);
+    plug_free_resource(data);
     p->circle_radius_location = GetShaderLocation(p->circle, "radius");
     p->circle_power_location = GetShaderLocation(p->circle, "power");
 }
