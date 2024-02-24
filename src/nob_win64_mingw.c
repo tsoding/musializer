@@ -7,7 +7,58 @@ bool build_musializer(void)
     Nob_Procs procs = {0};
 
 #ifdef MUSIALIZER_HOTRELOAD
-#error "TODO: hotreloading is not supported on TARGET_WIN64_MINGW yet"
+    cmd.count = 0;
+    #ifdef _WIN32
+        // On windows, mingw doesn't have the `x86_64-w64-mingw32-` prefix for windres.
+        // For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
+        nob_cmd_append(&cmd, "windres");
+    #else
+        nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
+    #endif // _WIN32
+        nob_cmd_append(&cmd, "./src/musializer.rc");
+        nob_cmd_append(&cmd, "-O", "coff");
+        nob_cmd_append(&cmd, "-o", "./build/musializer.res");
+    if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+
+    cmd.count = 0;
+    // TODO: add a way to replace `cc` with something else GCC compatible on POSIX
+    // Like `clang` for instance
+    nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
+    nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+    nob_cmd_append(&cmd, "-I./build/");
+    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
+    nob_cmd_append(&cmd, "-fPIC", "-shared");
+    nob_cmd_append(&cmd, "-o", "./build/libplug.lib");
+    nob_cmd_append(&cmd,
+        "./src/plug.c",
+        "./src/ffmpeg_windows.c");
+    nob_cmd_append(&cmd,
+        nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME));
+    nob_cmd_append(&cmd, "-lm", "-lpthread", "-lwinmm", "-lgdi32","-l:raylib.dll");
+    nob_da_append(&procs, nob_cmd_run_async(cmd));
+
+    cmd.count = 0;
+    nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
+    nob_cmd_append(&cmd, "-Wall", "-Wextra", "-ggdb");
+    nob_cmd_append(&cmd, "-I./build/");
+    nob_cmd_append(&cmd, "-I./src/");
+    nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
+    nob_cmd_append(&cmd, "-o", "./build/musializer");
+    nob_cmd_append(&cmd,
+        "./src/musializer.c",
+        "./build/musializer.res",
+        "./src/hotreload_posix.c",
+        "./src/dlfcn.c");
+    nob_cmd_append(&cmd,
+        "-Wl,-rpath=./build/",
+        "-Wl,-rpath=./",
+        nob_temp_sprintf("-Wl,-rpath=./build/raylib/%s", MUSIALIZER_TARGET_NAME),
+        // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
+        nob_temp_sprintf("-Wl,-rpath=./raylib/%s", MUSIALIZER_TARGET_NAME));
+    nob_cmd_append(&cmd,
+        nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME));
+    nob_cmd_append(&cmd, "-lm", "-lpthread", "-lwinmm", "-lgdi32", "-l:raylib.dll");
+    if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 #else
     cmd.count = 0;
     #ifdef _WIN32
@@ -15,7 +66,7 @@ bool build_musializer(void)
         // For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
         nob_cmd_append(&cmd, "windres");
     #else
-        nob_cmd_append(&cmd, "x86_64-w64-mingw32-windres");
+        nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
     #endif // _WIN32
         nob_cmd_append(&cmd, "./src/musializer.rc");
         nob_cmd_append(&cmd, "-O", "coff");
@@ -103,7 +154,20 @@ bool build_raylib()
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 #else
-#error "TODO: dynamic raylib is not supported for TARGET_WIN64_MINGW"
+    //./raylib.dll.rc.data  -L. -L../src -Wl,--out-implib,../src/libraylibdll.a -static-libgcc -lopengl32 -lgdi32 -lwinmm
+    const char *libraylib_path = nob_temp_sprintf("%s/raylib.dll", build_path);
+    if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
+        nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc", "-shared", "-o", libraylib_path);
+        for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
+            const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
+            nob_cmd_append(&cmd, input_path);
+        }
+        const char *rc_data = nob_temp_sprintf("./src/raylib.dll.rc.data", libraylib_path);
+        nob_cmd_append(&cmd, rc_data);
+        nob_cmd_append(&cmd, "-static-libgcc", "-lopengl32", "-lgdi32", "-lwinmm");
+        if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
+    }
+    nob_copy_file(libraylib_path, "./build/raylib.dll");
 #endif // MUSIALIZER_HOTRELOAD
 
 defer:
