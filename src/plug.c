@@ -231,7 +231,8 @@ typedef struct {
 #ifdef MUSIALIZER_MICROPHONE
     // Microphone
     bool capturing;
-    ma_device *microphone;
+    ma_device microphone;
+    bool microphone_ok;
 #endif // MUSIALIZER_MICROPHONE
 } Plug;
 
@@ -1296,6 +1297,7 @@ static void preview_screen(void)
 
 #ifdef MUSIALIZER_MICROPHONE
     if (IsKeyPressed(KEY_CAPTURE)) {
+        p->microphone_ok = true;
         // TODO: let the user choose their mic
         ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
         deviceConfig.capture.format = ma_format_f32;
@@ -1303,18 +1305,17 @@ static void preview_screen(void)
         deviceConfig.sampleRate = 44100;
         deviceConfig.dataCallback = ma_callback;
         deviceConfig.pUserData = NULL;
-        p->microphone = malloc(sizeof(ma_device));
-        assert(p->microphone != NULL && "Buy MORE RAM lol!!");
-        ma_result result = ma_device_init(NULL, &deviceConfig, p->microphone);
+        ma_result result = ma_device_init(NULL, &deviceConfig, &p->microphone);
         if (result != MA_SUCCESS) {
             TraceLog(LOG_ERROR,"MINIAUDIO: Failed to initialize capture device: %s",ma_result_description(result));
+            p->microphone_ok = false;
         }
-        if (p->microphone != NULL) {
-            ma_result result = ma_device_start(p->microphone);
+        if (p->microphone_ok) {
+            ma_result result = ma_device_start(&p->microphone);
             if (result != MA_SUCCESS) {
                 TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s",ma_result_description(result));
-                ma_device_uninit(p->microphone);
-                p->microphone = NULL;
+                ma_device_uninit(&p->microphone);
+                p->microphone_ok = false;
             }
         }
         p->capturing = true;
@@ -1450,10 +1451,10 @@ static void capture_screen(void)
     int w = GetScreenWidth();
     int h = GetScreenHeight();
 
-    if (p->microphone != NULL) {
+    if (p->microphone_ok) {
         if (IsKeyPressed(KEY_CAPTURE) || IsKeyPressed(KEY_ESCAPE)) {
-            ma_device_uninit(p->microphone);
-            p->microphone = NULL;
+            ma_device_uninit(&p->microphone);
+            p->microphone_ok = false;
             p->capturing = false;
         }
 
