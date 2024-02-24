@@ -7,6 +7,8 @@
 
 #if MUSIALIZER_TARGET == TARGET_MACOS
     static const char *libplug_file_name = "libplug.dylib";
+#elif MUSIALIZER_TARGET == TARGET_WIN64_MINGW || MUSIALIZER_TARGET == TARGET_WIN64_MSVC
+    static const char *libplug_file_name = "libplug.lib";
 #else
     static const char *libplug_file_name = "libplug.so";
 #endif
