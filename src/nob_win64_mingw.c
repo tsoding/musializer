@@ -179,8 +179,8 @@ defer:
 bool build_dist(void)
 {
 #ifdef MUSIALIZER_HOTRELOAD
-    nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
-    return false;
+    nob_log(NOB_INFO, "Hot reload is finally supported");
+    return true;
 #else
     if (!nob_mkdir_if_not_exists("./musializer-win64-mingw/")) return false;
     if (!nob_copy_file("./build/musializer.exe", "./musializer-win64-mingw/musializer.exe")) return false;
