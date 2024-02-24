@@ -154,7 +154,6 @@ bool build_raylib()
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 #else
-    //./raylib.dll.rc.data  -L. -L../src -Wl,--out-implib,../src/libraylibdll.a -static-libgcc -lopengl32 -lgdi32 -lwinmm
     const char *libraylib_path = nob_temp_sprintf("%s/raylib.dll", build_path);
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
         nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc", "-shared", "-o", libraylib_path);
