@@ -43,7 +43,7 @@ Before using `nob` you need to bootstrap it. Just compile it with the available 
 
 I really recommend to read [nob.c](./nob.c) and [nob.h](./src/nob.h) to get an idea of how it all actually works. The Build System is a work in progress, so if something breaks be ready to dive into it.
 
-### Linux
+### Linux and OpenBSD
 
 ```console
 $ cc -o nob nob.c # ONLY ONCE!!!
@@ -86,7 +86,7 @@ $ wine ./build/musializer.exe
 
 ## Hot Reloading
 
-**Only on Linux for now**
+**Only on Linux and OpenBSD for now**
 
 Edit `./build/config.h` and enable `MUSIALIZER_HOTRELOAD`.
 
