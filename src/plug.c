@@ -232,7 +232,7 @@ typedef struct {
     // Microphone
     bool capturing;
     ma_device microphone;
-    bool microphone_ok;
+    bool microphone_working;
 #endif // MUSIALIZER_MICROPHONE
 } Plug;
 
@@ -1264,6 +1264,40 @@ static bool toolbar(Track *track, Rectangle boundary)
     return interacted;
 }
 
+#ifdef MUSIALIZER_MICROPHONE
+static void start_capture(void)
+{
+    ma_result result = MA_SUCCESS;
+
+    assert(!p->capturing);
+    assert(!p->microphone_working);
+
+    p->capturing = true;
+
+    // TODO: let the user choose their mic
+    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
+    deviceConfig.capture.format = ma_format_f32;
+    deviceConfig.capture.channels = 2;
+    deviceConfig.sampleRate = 44100;
+    deviceConfig.dataCallback = ma_callback;
+    deviceConfig.pUserData = NULL;
+    result = ma_device_init(NULL, &deviceConfig, &p->microphone);
+    if (result != MA_SUCCESS) {
+        TraceLog(LOG_ERROR, "MINIAUDIO: Failed to initialize capture device: %s", ma_result_description(result));
+        return;
+    }
+
+    result = ma_device_start(&p->microphone);
+    if (result != MA_SUCCESS) {
+        TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s", ma_result_description(result));
+        ma_device_uninit(&p->microphone);
+        return;
+    }
+
+    p->microphone_working = true;
+}
+#endif // MUSIALIZER_MICROPHONE
+
 static void preview_screen(void)
 {
     int w = GetScreenWidth();
@@ -1296,30 +1330,7 @@ static void preview_screen(void)
     }
 
 #ifdef MUSIALIZER_MICROPHONE
-    if (IsKeyPressed(KEY_CAPTURE)) {
-        p->microphone_ok = true;
-        // TODO: let the user choose their mic
-        ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
-        deviceConfig.capture.format = ma_format_f32;
-        deviceConfig.capture.channels = 2;
-        deviceConfig.sampleRate = 44100;
-        deviceConfig.dataCallback = ma_callback;
-        deviceConfig.pUserData = NULL;
-        ma_result result = ma_device_init(NULL, &deviceConfig, &p->microphone);
-        if (result != MA_SUCCESS) {
-            TraceLog(LOG_ERROR,"MINIAUDIO: Failed to initialize capture device: %s",ma_result_description(result));
-            p->microphone_ok = false;
-        }
-        if (p->microphone_ok) {
-            ma_result result = ma_device_start(&p->microphone);
-            if (result != MA_SUCCESS) {
-                TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s",ma_result_description(result));
-                ma_device_uninit(&p->microphone);
-                p->microphone_ok = false;
-            }
-        }
-        p->capturing = true;
-    }
+    if (IsKeyPressed(KEY_CAPTURE)) start_capture();
 #endif // MUSIALIZER_MICROPHONE
 
     Track *track = current_track();
@@ -1451,10 +1462,11 @@ static void capture_screen(void)
     int w = GetScreenWidth();
     int h = GetScreenHeight();
 
-    if (p->microphone_ok) {
+    if (p->microphone_working) {
         if (IsKeyPressed(KEY_CAPTURE) || IsKeyPressed(KEY_ESCAPE)) {
+            // Microphone is working, so it needs to be uninited
             ma_device_uninit(&p->microphone);
-            p->microphone_ok = false;
+            p->microphone_working = false;
             p->capturing = false;
         }
 
@@ -1464,9 +1476,11 @@ static void capture_screen(void)
         }, m);
     } else {
         if (IsKeyPressed(KEY_ESCAPE)) {
+            // Microphone is not working, so it does no need to be uninited
             p->capturing = false;
         }
 
+        // TODO: report capture device error via the popup mechanism.
         const char *label = "Capture Device Error: Check the Logs";
         Color color = RED;
         int fontSize = p->font.baseSize;
