@@ -110,6 +110,12 @@ void *plug_load_resource(const char *file_path, size_t *size)
 #    define subcc(a, b) ((a)-(b))
 #endif
 
+#ifdef _WIN32
+#define MUSIALIZER_PLUG __declspec(dllexport)
+#else
+#define MUSIALIZER_PLUG
+#endif
+
 typedef struct {
     char *file_path;
     Music music;
@@ -1726,7 +1732,7 @@ static void rendering_screen(void)
     }
 }
 
-void plug_init(void)
+MUSIALIZER_PLUG void plug_init(void)
 {
     p = malloc(sizeof(*p));
     assert(p != NULL && "Buy more RAM lol");
@@ -1762,7 +1768,7 @@ void plug_init(void)
     SetMasterVolume(0.5);
 }
 
-Plug *plug_pre_reload(void)
+MUSIALIZER_PLUG Plug *plug_pre_reload(void)
 {
     for (size_t i = 0; i < p->tracks.count; ++i) {
         Track *it = &p->tracks.items[i];
@@ -1772,7 +1778,7 @@ Plug *plug_pre_reload(void)
     return p;
 }
 
-void plug_post_reload(Plug *pp)
+MUSIALIZER_PLUG void plug_post_reload(Plug *pp)
 {
     p = pp;
     for (size_t i = 0; i < p->tracks.count; ++i) {
@@ -1789,7 +1795,7 @@ void plug_post_reload(Plug *pp)
     p->circle_power_location = GetShaderLocation(p->circle, "power");
 }
 
-void plug_update(void)
+MUSIALIZER_PLUG void plug_update(void)
 {
     BeginDrawing();
     ClearBackground(COLOR_BACKGROUND);
