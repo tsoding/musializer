@@ -321,7 +321,7 @@ void generate_default_config(Nob_String_Builder *content)
 #endif
 
     nob_sb_append_cstr(content, "\n");
-    nob_sb_append_cstr(content, "//// Moves everything in src/plub.c to a separate \"DLL\" so it can be hotreloaded. Works only for Linux right now\n");
+    nob_sb_append_cstr(content, "//// Moves everything in src/plug.c to a separate \"DLL\" so it can be hotreloaded. Works only for Linux right now\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_HOTRELOAD\n");
     nob_sb_append_cstr(content, "\n");
     nob_sb_append_cstr(content, "//// Don't bundle resources/ folder with the executable and load the resources directly from the folder.\n");
