@@ -141,22 +141,10 @@ bool generate_resource_bundle(void)
 
     genf(out, "unsigned char bundle[] = {");
     size_t row_size = 20;
-    for (size_t row = 0; row < bundle.count/row_size; ++row){
-        fprintf(out, "     ");
-        for (size_t col = 0; col < row_size; ++col) {
-            size_t i = row*row_size + col;
-            fprintf(out, "0x%02X, ", (unsigned char)bundle.items[i]);
-        }
-        genf(out, "");
-    }
-    size_t remainder = bundle.count%row_size;
-    if (remainder > 0) {
-        fprintf(out, "     ");
-        for (size_t col = 0; col < remainder; ++col) {
-            size_t i = bundle.count/row_size*row_size + col;
-            fprintf(out, "0x%02X, ", (unsigned char)bundle.items[i]);
-        }
-        genf(out, "");
+    for (size_t i = 0; i < bundle.count; ++i){
+        if (i % row_size == 0) fprintf(out, "     ");
+        fprintf(out, "0x%02X, ", (unsigned char)bundle.items[i]);
+        if ((i + 1) % row_size == 0 || i == bundle.count - 1) genf(out, "");
     }
     genf(out, "};");
     genf(out, "#endif // BUNDLE_H_");
