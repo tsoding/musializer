@@ -230,7 +230,6 @@ typedef struct {
     Rectangle tooltip_element_boundary;
 
 #ifdef MUSIALIZER_MICROPHONE
-    // Microphone
     bool capturing;
     ma_device microphone;
     drwav wav;
@@ -1195,6 +1194,36 @@ static int render_button_with_location(const char *file, int line, Rectangle bou
     return state;
 }
 
+#ifdef MUSIALIZER_MICROPHONE
+#define microphone_button(boundary) \
+    microphone_button_with_location(__FILE__, __LINE__, (boundary))
+static int microphone_button_with_location(const char *file, int line, Rectangle boundary)
+{
+    uint64_t id = DJB2_INIT;
+    id = djb2(id, file, strlen(file));
+    id = djb2(id, &line, sizeof(line));
+
+    int state = button_with_id(id, boundary);
+    size_t icon_index = 0;
+
+    float icon_size = 512;
+    float scale = HUD_BUTTON_SIZE/icon_size*HUD_ICON_SCALE;
+    Rectangle dest = {
+        boundary.x + boundary.width/2 - icon_size*scale/2,
+        boundary.y + boundary.height/2 - icon_size*scale/2,
+        icon_size*scale,
+        icon_size*scale
+    };
+
+    Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
+    DrawTexturePro(assets_texture("./resources/icons/microphone.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+
+    tooltip(boundary, "Microphone [C]", SIDE_TOP);
+
+    return state;
+}
+#endif // MUSIALIZER_MICROPHONE
+
 static void toggle_track_playing(Track *track)
 {
     if (IsMusicStreamPlaying(track->music)) {
@@ -1218,60 +1247,6 @@ static void start_rendering_track(Track *track)
     p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
     p->rendering = true;
     SetTraceLogLevel(LOG_WARNING);
-}
-
-// TODO: adapt toolbar to narrow widths
-static bool toolbar(Track *track, Rectangle boundary)
-{
-    bool interacted = false;
-    int state = 0;
-
-    if (boundary.width < HUD_BUTTON_SIZE*4) return interacted;
-
-    DrawRectangleRec(boundary, COLOR_TRACK_PANEL_BACKGROUND);
-
-    state = play_button(track, (CLITERAL(Rectangle) {
-        boundary.x,
-        boundary.y,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    }));
-    if (state & BS_CLICKED) {
-        interacted = true;
-        toggle_track_playing(track);
-    }
-
-    state = render_button((CLITERAL(Rectangle) {
-        boundary.x + HUD_BUTTON_SIZE*1,
-        boundary.y,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    }));
-    if (state & BS_CLICKED) {
-        interacted = true;
-        start_rendering_track(track);
-    }
-
-    bool volume_slider_interacted = volume_slider((CLITERAL(Rectangle) {
-        boundary.x + HUD_BUTTON_SIZE*2,
-        boundary.y,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    }));
-    interacted = interacted || volume_slider_interacted;
-
-    state = fullscreen_button((CLITERAL(Rectangle) {
-        boundary.x + boundary.width - HUD_BUTTON_SIZE,
-        boundary.y,
-        HUD_BUTTON_SIZE,
-        HUD_BUTTON_SIZE,
-    }));
-    if (state & BS_CLICKED) {
-        interacted = true;
-        p->fullscreen = !p->fullscreen;
-    }
-
-    return interacted;
 }
 
 #ifdef MUSIALIZER_MICROPHONE
@@ -1322,6 +1297,79 @@ static void start_capture(void)
     p->microphone_working = true;
 }
 #endif // MUSIALIZER_MICROPHONE
+
+// TODO: adapt toolbar to narrow widths
+static bool toolbar(Track *track, Rectangle boundary)
+{
+    bool interacted = false;
+    int state = 0;
+
+    if (boundary.width < HUD_BUTTON_SIZE*4) return interacted;
+
+    DrawRectangleRec(boundary, COLOR_TRACK_PANEL_BACKGROUND);
+
+    float x = boundary.x;
+
+    state = play_button(track, (CLITERAL(Rectangle) {
+        x,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    x += HUD_BUTTON_SIZE;
+    if (state & BS_CLICKED) {
+        interacted = true;
+        toggle_track_playing(track);
+    }
+
+    state = render_button((CLITERAL(Rectangle) {
+        x,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    x += HUD_BUTTON_SIZE;
+    if (state & BS_CLICKED) {
+        interacted = true;
+        start_rendering_track(track);
+    }
+
+#ifdef MUSIALIZER_MICROPHONE
+    state = microphone_button((CLITERAL(Rectangle) {
+        x,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    x += HUD_BUTTON_SIZE;
+    if (state & BS_CLICKED) {
+        interacted = true;
+        start_capture();
+    }
+#endif // MUSIALIZER_MICROPHONE
+
+    bool volume_slider_interacted = volume_slider((CLITERAL(Rectangle) {
+        x,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    x += HUD_BUTTON_SIZE;
+    interacted = interacted || volume_slider_interacted;
+
+    state = fullscreen_button((CLITERAL(Rectangle) {
+        boundary.x + boundary.width - HUD_BUTTON_SIZE,
+        boundary.y,
+        HUD_BUTTON_SIZE,
+        HUD_BUTTON_SIZE,
+    }));
+    if (state & BS_CLICKED) {
+        interacted = true;
+        p->fullscreen = !p->fullscreen;
+    }
+
+    return interacted;
+}
 
 static void preview_screen(void)
 {

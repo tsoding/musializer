@@ -93,6 +93,7 @@ Resource resources[] = {
     { .file_path = "./resources/icons/play.png" },
     { .file_path = "./resources/icons/render.png" },
     { .file_path = "./resources/icons/fullscreen.png" },
+    { .file_path = "./resources/icons/microphone.png" },
     { .file_path = "./resources/fonts/Alegreya-Regular.ttf" },
 };
 
@@ -202,72 +203,36 @@ int main(int argc, char **argv)
 
         Nob_Cmd cmd = {0};
 
-        if (nob_needs_rebuild1("./resources/logo/logo-256.ico", "./resources/logo/logo.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/logo/logo.svg");
-            nob_cmd_append(&cmd, "-resize", "256");
-            nob_cmd_append(&cmd, "./resources/logo/logo-256.ico");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/logo/logo-256.ico is up to date");
-        }
+        typedef struct {
+            const char *in_path;
+            const char *out_path;
+            int resize;
+        } Svg;
 
-        if (nob_needs_rebuild1("./resources/logo/logo-256.png", "./resources/logo/logo.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/logo/logo.svg");
-            nob_cmd_append(&cmd, "-resize", "256");
-            nob_cmd_append(&cmd, "./resources/logo/logo-256.png");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/logo/logo-256.png is up to date");
-        }
+        Svg svgs[] = {
+            {.out_path = "./resources/logo/logo-256.ico",    .in_path = "./resources/logo/logo.svg", .resize = 256, },
+            {.out_path = "./resources/logo/logo-256.png",    .in_path = "./resources/logo/logo.svg", .resize = 256, },
+            {.out_path = "./resources/icons/fullscreen.png", .in_path = "./resources/icons/fullscreen.svg"          },
+            {.out_path = "./resources/icons/volume.png",     .in_path = "./resources/icons/volume.svg"              },
+            {.out_path = "./resources/icons/play.png",       .in_path = "./resources/icons/play.svg"                },
+            {.out_path = "./resources/icons/render.png",     .in_path = "./resources/icons/render.svg"              },
+            {.out_path = "./resources/icons/microphone.png", .in_path = "./resources/icons/microphone.svg"          },
+        };
 
-        if (nob_needs_rebuild1("./resources/icons/fullscreen.png", "./resources/icons/fullscreen.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/icons/fullscreen.svg");
-            nob_cmd_append(&cmd, "./resources/icons/fullscreen.png");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/icons/fullscreen.png is up to date");
-        }
-
-        if (nob_needs_rebuild1("./resources/icons/volume.png", "./resources/icons/volume.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/icons/volume.svg");
-            nob_cmd_append(&cmd, "./resources/icons/volume.png");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/icons/volume.png is up to date");
-        }
-
-        if (nob_needs_rebuild1("./resources/icons/play.png", "./resources/icons/play.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/icons/play.svg");
-            nob_cmd_append(&cmd, "./resources/icons/play.png");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/icons/play.png is up to date");
-        }
-
-        if (nob_needs_rebuild1("./resources/icons/render.png", "./resources/icons/render.svg")) {
-            cmd.count = 0;
-            nob_cmd_append(&cmd, "convert");
-            nob_cmd_append(&cmd, "-background", "None");
-            nob_cmd_append(&cmd, "./resources/icons/render.svg");
-            nob_cmd_append(&cmd, "./resources/icons/render.png");
-            nob_da_append(&procs, nob_cmd_run_async(cmd));
-        } else {
-            nob_log(NOB_INFO, "./resources/icons/render.png is up to date");
+        for (size_t i = 0; i < NOB_ARRAY_LEN(svgs); ++i) {
+            if (nob_needs_rebuild1(svgs[i].out_path, svgs[i].in_path)) {
+                cmd.count = 0;
+                nob_cmd_append(&cmd, "convert");
+                nob_cmd_append(&cmd, "-background", "None");
+                nob_cmd_append(&cmd, svgs[i].in_path);
+                if (svgs[i].resize) {
+                    nob_cmd_append(&cmd, "-resize", nob_temp_sprintf("%d", svgs[i].resize));
+                }
+                nob_cmd_append(&cmd, svgs[i].out_path);
+                nob_da_append(&procs, nob_cmd_run_async(cmd));
+            } else {
+                nob_log(NOB_INFO, "%s is up to date", svgs[i].out_path);
+            }
         }
 
         if (!nob_procs_wait(procs)) return 1;

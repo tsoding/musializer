@@ -3,6 +3,7 @@ music/
 
 # Musializer output
 *.mp4
+*.wav
 
 # Vim
 *.swp
