@@ -1304,7 +1304,13 @@ static bool toolbar(Track *track, Rectangle boundary)
     bool interacted = false;
     int state = 0;
 
-    if (boundary.width < HUD_BUTTON_SIZE*4) return interacted;
+#ifdef MUSIALIZER_MICROPHONE
+    size_t buttons_count = 5;
+#else
+    size_t buttons_count = 4;
+#endif // MUSIALIZER_MICROPHONE
+
+    if (boundary.width < HUD_BUTTON_SIZE*buttons_count) return interacted;
 
     DrawRectangleRec(boundary, COLOR_TRACK_PANEL_BACKGROUND);
 
