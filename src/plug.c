@@ -53,6 +53,7 @@ void *plug_load_resource(const char *file_path, size_t *size)
 
 #define _WINDOWS_
 #include "miniaudio.h"
+#include "dr_wav.h"
 
 #define GLSL_VERSION 330
 
@@ -232,6 +233,7 @@ typedef struct {
     // Microphone
     bool capturing;
     ma_device microphone;
+    drwav wav;
     bool microphone_working;
 #endif // MUSIALIZER_MICROPHONE
 } Plug;
@@ -481,6 +483,14 @@ static void callback(void *bufferData, unsigned int frames)
     for (size_t i = 0; i < frames; ++i) {
         fft_push(fs[i][0]);
     }
+
+#ifdef MUSIALIZER_MICROPHONE
+    if (p->capturing) {
+        // TODO: according to documentation drwav_write_pcm_frames may not write all the frames.
+        // Make sure it does.
+        drwav_write_pcm_frames(&p->wav, frames, bufferData);
+    }
+#endif // MUSIALIZER_MICROPHONE
 }
 
 #ifdef MUSIALIZER_MICROPHONE
@@ -1274,6 +1284,19 @@ static void start_capture(void)
 
     p->capturing = true;
 
+    const char *recording_file_path = "recording.wav";
+
+    drwav_data_format format = {0};
+    format.container = drwav_container_riff;
+    format.format = DR_WAVE_FORMAT_IEEE_FLOAT;
+    format.channels = 2;
+    format.sampleRate = 44100;
+    format.bitsPerSample = 32;
+    if (!drwav_init_file_write(&p->wav, recording_file_path, &format, NULL)) {
+        TraceLog(LOG_ERROR, "DRWAVE: Failed to initialize output file %s", recording_file_path);
+        return;
+    }
+
     // TODO: let the user choose their mic
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
     deviceConfig.capture.format = ma_format_f32;
@@ -1284,6 +1307,7 @@ static void start_capture(void)
     result = ma_device_init(NULL, &deviceConfig, &p->microphone);
     if (result != MA_SUCCESS) {
         TraceLog(LOG_ERROR, "MINIAUDIO: Failed to initialize capture device: %s", ma_result_description(result));
+        drwav_uninit(&p->wav);
         return;
     }
 
@@ -1291,6 +1315,7 @@ static void start_capture(void)
     if (result != MA_SUCCESS) {
         TraceLog(LOG_ERROR, "MINIAUDIO: Failed to start device: %s", ma_result_description(result));
         ma_device_uninit(&p->microphone);
+        drwav_uninit(&p->wav);
         return;
     }
 
@@ -1466,9 +1491,30 @@ static void capture_screen(void)
         if (IsKeyPressed(KEY_CAPTURE) || IsKeyPressed(KEY_ESCAPE)) {
             // Microphone is working, so it needs to be uninited
             ma_device_uninit(&p->microphone);
+            drwav_uninit(&p->wav);
             p->microphone_working = false;
             p->capturing = false;
+
+            const char *recording_file_path = "recording.wav";
+            Music music = LoadMusicStream(recording_file_path);
+            if (IsMusicReady(music)) {
+                AttachAudioStreamProcessor(music.stream, callback);
+                char *file_path = strdup(recording_file_path);
+                assert(file_path != NULL);
+                nob_da_append(&p->tracks, (CLITERAL(Track) {
+                    .file_path = file_path,
+                    .music = music,
+                }));
+            } else {
+                popup_tray_push(&p->pt);
+            }
+
+            if (current_track() == NULL && p->tracks.count > 0) {
+                p->current_track = 0;
+                PlayMusicStream(p->tracks.items[0].music);
+            }
         }
+
 
         size_t m = fft_analyze(GetFrameTime());
         fft_render(CLITERAL(Rectangle) {
