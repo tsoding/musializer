@@ -76,7 +76,7 @@ void log_config(Nob_Log_Level level)
 #define genf(out, ...) \
     do { \
         fprintf((out), __VA_ARGS__); \
-        fprintf((out), " // %s:%d\n", __FILE__, __LINE__ - 1); \
+        fprintf((out), " // %s:%d\n", __FILE__, __LINE__); \
     } while(0)
 
 typedef struct {
