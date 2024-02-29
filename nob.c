@@ -315,15 +315,6 @@ void generate_default_config(Nob_String_Builder *content)
 
 int main(int argc, char **argv)
 {
-    #ifdef _WIN32
-    if (strstr(argv[0], ".exe") == NULL) {
-        char* temp = malloc(strlen(argv[0]) + 5);
-        strcpy(temp, argv[0]);
-        strcat(temp, ".exe");
-        argv[0] = temp;
-    }
-    #endif // _WIN32
-    
     NOB_GO_REBUILD_URSELF(argc, argv);
 
     const char *program = nob_shift_args(&argc, &argv);
