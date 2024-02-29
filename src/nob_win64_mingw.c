@@ -76,7 +76,7 @@ bool build_raylib()
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             cmd.count = 0;
             nob_cmd_append(&cmd, "x86_64-w64-mingw32-gcc");
-            nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC");
+            nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1");
             nob_cmd_append(&cmd, "-DPLATFORM_DESKTOP");
             nob_cmd_append(&cmd, "-fPIC");
             nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
