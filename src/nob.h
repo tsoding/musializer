@@ -236,7 +236,7 @@ int nob_file_exists(const char *file_path);
 #endif
 
 #ifdef _WIN32
-#define FIX_ARGV(argv)                                 \
+#define NOB_FIX_ARGV(argv)                             \
     do {                                               \
         if (strstr(argv[0], ".exe") == NULL) {         \
             char* temp = malloc(strlen(argv[0]) + 5);  \
@@ -246,7 +246,7 @@ int nob_file_exists(const char *file_path);
         }                                              \
     } while(0)
 #else
-#define FIX_ARGV(argv)
+#define NOB_FIX_ARGV(argv)
 #endif
 
 // Go Rebuild Urself™ Technology
@@ -273,7 +273,7 @@ int nob_file_exists(const char *file_path);
 //
 #define NOB_GO_REBUILD_URSELF(argc, argv)                                                    \
     do {                                                                                     \
-        FIX_ARGV(argv);                                                                      \
+        NOB_FIX_ARGV(argv);                                                                  \
         const char *source_path = __FILE__;                                                  \
         assert(argc >= 1);                                                                   \
         const char *binary_path = argv[0];                                                   \
