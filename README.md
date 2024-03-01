@@ -25,7 +25,7 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 - qoa
 - xm
 - mod
-- flac (in development)
+- flac
 
 ## Download Binaries
 
