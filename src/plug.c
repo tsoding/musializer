@@ -644,6 +644,16 @@ static void tooltip(Rectangle boundary, const char *text, Side align)
     p->tooltip_element_boundary = boundary;
 }
 
+static void tooltip_persistent(Rectangle boundary, const char *text, Side align, bool persists)
+{
+    if (!CheckCollisionPointRec(GetMousePosition(), boundary) && !persists) return;
+    p->tooltip_show = true;
+    // TODO: this may not work properly if text contains UTF-8
+    snprintf(p->tooltip_buffer, sizeof(p->tooltip_buffer), "%s", text);
+    p->tooltip_align = align;
+    p->tooltip_element_boundary = boundary;
+}
+
 static void timeline(Rectangle timeline_boundary, Track *track)
 {
     DrawRectangleRec(timeline_boundary, COLOR_TIMELINE_BACKGROUND);
@@ -1057,8 +1067,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle vo
         if (volume > 1) volume = 1;
         SetMasterVolume(volume);
 
-        // TODO: if while dragging the volume slider you hoverout of it, the tooltip disappears
-        tooltip(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_TOP);
+        tooltip_persistent(slider_boundary, TextFormat("Volume %d%%", (int)floorf(volume*100.0f)), SIDE_TOP, dragging);
     }
 
     // Toggle mute
