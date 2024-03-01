@@ -98,7 +98,7 @@ bool build_raylib(void)
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             cmd.count = 0;
             nob_cmd_append(&cmd, "clang");
-            nob_cmd_append(&cmd, "-g", "-DPLATFORM_DESKTOP", "-fPIC");
+            nob_cmd_append(&cmd, "-g", "-DPLATFORM_DESKTOP", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1");
             nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
             nob_cmd_append(&cmd, "-Iexternal/glfw/deps/ming");
             nob_cmd_append(&cmd, "-DGRAPHICS_API_OPENGL_33");

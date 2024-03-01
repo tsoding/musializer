@@ -4,6 +4,8 @@ Alpha Release 3
 - Finally got rid of the resource/ folder. It's now part of the
   executable
 
+- Added FLAC support
+
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
