@@ -85,6 +85,11 @@ defer:
     return result;
 }
 
+int command_exists(const char *command) {
+    TCHAR szPath[MAX_PATH];
+    DWORD dwResult = SearchPath(NULL, command, ".exe", MAX_PATH, szPath, NULL);
+    return dwResult != 0;
+}
 bool build_raylib()
 {
     bool result = true;
@@ -132,7 +137,13 @@ bool build_raylib()
     const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
 
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
-        nob_cmd_append(&cmd, "x86_64-w64-mingw32-ar", "-crs", libraylib_path);
+        char *ar_name;
+        if (command_exists("x86_64-w64-mingw32-ar")) {
+            ar_name = "x86_64-w64-mingw32-ar";
+        } else {
+            ar_name = "ar";
+        }
+        nob_cmd_append(&cmd, ar_name, "-crs", libraylib_path);
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);
