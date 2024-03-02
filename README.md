@@ -35,7 +35,7 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 ## Build from Source
 
 External Dependencies:
-- [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. (it is called as a child process)
+- [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. It is called as a child process during the rendering of the videos. So if you don't plan to render any videos it's completely **optional**.
 
 We are using Custom Build System written entirely in C called `nob`. It is similar to [nobuild](https://github.com/tsoding/nobuild) in spirit. [nob.h](./src/nob.h) is the Build System and [nob.c](./nob.c) is the program that builds Musializer.
 
