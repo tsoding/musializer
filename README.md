@@ -86,8 +86,6 @@ $ wine ./build/musializer.exe
 
 ## Hot Reloading
 
-**Only on Linux and OpenBSD for now**
-
 Edit `./build/config.h` and enable `MUSIALIZER_HOTRELOAD`.
 
 ```console
