@@ -25,7 +25,7 @@ bool reload_libplug(void)
     }
 
     #define PLUG(name, ...) \
-        name = GetProcAddress(libplug, #name); \
+        name = (void*)GetProcAddress(libplug, #name); \
         if (name == NULL) { \
             TraceLog(LOG_ERROR, "HOTRELOAD: could not find %s symbol in %s: %s", \
                      #name, libplug_file_name, GetLastError()); \
