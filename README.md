@@ -29,7 +29,7 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 
 ## Download Binaries
 
-- Windows: [musializer-alpha1-win64.zip](https://github.com/tsoding/musializer/releases/download/alpha1/musializer-alpha1-win64.zip)
+- Windows: [musializer-alpha2-win64.zip](https://github.com/tsoding/musializer/releases/download/alpha2/musializer-alpha2-win64.zip)
 - Linux: *in progress*
 
 ## Build from Source
