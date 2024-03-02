@@ -1821,3 +1821,4 @@ void plug_update(void)
 // TODO: Actual Fullscreen Mode
 // We do have fullscreen button, but apparently there is a demand on a fullscreen fullscreen mode.
 // Raylib does have ToggleFullscreen(). Let's see how we can integrate it into the current UI/UX
+// TODO: Adding Files by Ctrl+C, Ctrl+V
