@@ -646,7 +646,7 @@ static void tooltip(Rectangle boundary, const char *text, Side align)
 
 static void tooltip_persistent(Rectangle boundary, const char *text, Side align, bool persists)
 {
-    if (!CheckCollisionPointRec(GetMousePosition(), boundary) && !persists) return;
+    if (!(CheckCollisionPointRec(GetMousePosition(), boundary) || persists)) return;
     p->tooltip_show = true;
     // TODO: this may not work properly if text contains UTF-8
     snprintf(p->tooltip_buffer, sizeof(p->tooltip_buffer), "%s", text);
