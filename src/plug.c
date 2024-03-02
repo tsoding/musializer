@@ -1816,5 +1816,8 @@ void plug_update(void)
     EndDrawing();
 }
 
-// TODO: about page that includes current commit, version and the platforms
+// TODO: About Page that includes current commit, version and the platforms
 // We may also include licenses and contributors there.
+// TODO: Actual Fullscreen Mode
+// We do have fullscreen button, but apparently there is a demand on a fullscreen fullscreen mode.
+// Raylib does have ToggleFullscreen(). Let's see how we can integrate it into the current UI/UX
