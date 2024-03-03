@@ -132,7 +132,12 @@ bool build_raylib()
     const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
 
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
+#ifdef _WIN32
+        // on windows mingw does not have ar as a prefix for ar
+        nob_cmd_append(&cmd, "ar", "-crs", libraylib_path);
+#else
         nob_cmd_append(&cmd, "x86_64-w64-mingw32-ar", "-crs", libraylib_path);
+#endif // _WIN32
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);
