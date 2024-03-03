@@ -771,6 +771,10 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
 
     Vector2 mouse = GetMousePosition();
 
+    static float dt = 0;
+    static uint64_t hovered_label_id = 0;
+    static int char_shift = 0;
+
     float scroll_bar_width = panel_boundary.width*0.03;
     float item_size = panel_boundary.width*0.2;
     float visible_area_size = panel_boundary.height;
@@ -841,9 +845,32 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
             .y = item_boundary.y + item_boundary.height*0.5 - size.y*0.5,
         };
         // TODO: use SDF fonts
-        // TODO: we need a better indication that the label was cut out because of the overflow
-        // I was think about some sort of gradient. Ideally, we need to scroll the label on hover.
-        track_label(p->font, text, position, fontSize, WHITE, item_boundary.width - text_padding*2);
+        // Label overflow scroll handler
+        float max_width = item_boundary.width - text_padding*2;
+        uint64_t item_id = djb2(id, &i, sizeof(i));
+        int state = button_with_id(item_id, GetCollisionRec(panel_boundary, item_boundary));
+
+        if (state & BS_HOVEROVER) { // <-- Current item is being hovered on
+            dt += GetFrameTime();
+            if (item_id != hovered_label_id) { // <-- But it is not same as the last hovered item, so reset the shift
+                char_shift = 0;
+                hovered_label_id = item_id;
+            } else { // <-- it is same as the last hovered item, so count the shift
+                if (dt > 0.5f) {
+                    dt = 0;
+                    size = MeasureTextEx(p->font, text + char_shift, fontSize, 0);
+                    if (size.x < max_width - 10) { // <-- End of scroll, reset shift
+                        char_shift = 0;
+                    } else {
+                        char_shift += 1;
+                    }
+                }
+            }
+            track_label(p->font, text + char_shift, position, fontSize, WHITE, max_width);
+
+        } else { // <-- No hovering, so draw label with no shift applied
+            track_label(p->font, text, position, fontSize, WHITE, max_width);
+        }
     }
 
     // TODO: up and down clickable buttons on the scrollbar
