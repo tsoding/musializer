@@ -16,14 +16,14 @@
 #include <raylib.h>
 #include <rlgl.h>
 
-#ifndef MUSIALIZER_UNBUNDLE
-#include "bundle.h"
-
 #ifdef _WIN32
 #define MUSIALIZER_PLUG __declspec(dllexport)
 #else
 #define MUSIALIZER_PLUG
 #endif
+
+#ifndef MUSIALIZER_UNBUNDLE
+#include "bundle.h"
 
 MUSIALIZER_PLUG void plug_free_resource(void *data)
 {
