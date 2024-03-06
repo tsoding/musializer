@@ -91,6 +91,7 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #define HUD_POPUP_LIFETIME_SECS 2.0f
 #define HUD_POPUP_SLIDEIN_SECS 0.1f
 #define TOOLTIP_PADDING 20.0f
+#define TRACKLABEL_SCROLL_SECS 0.05f
 
 #define KEY_TOGGLE_PLAY KEY_SPACE
 #define KEY_RENDER      KEY_R
@@ -742,7 +743,7 @@ void track_label(Font font, const char *text, Vector2 position, float fontSize, 
 
     float scaleFactor = fontSize/font.baseSize;         // Character quad scaling factor
 
-    for (int i = 0; i < size && textOffsetX < max_width;)
+    for (int i = 0; i < size;)
     {
         // Get next codepoint from byte string and glyph index in font
         int codepointByteCount = 0;
@@ -770,6 +771,11 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
     DrawRectangleRec(panel_boundary, COLOR_TRACK_PANEL_BACKGROUND);
 
     Vector2 mouse = GetMousePosition();
+
+    static float dt = 0;
+    static uint64_t hovered_label_id = 0;
+    static int px_shift = 0;
+    static bool scroll_left = true;
 
     float scroll_bar_width = panel_boundary.width*0.03;
     float item_size = panel_boundary.width*0.2;
@@ -801,7 +807,6 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
     id = djb2(id, file, strlen(file));
     id = djb2(id, &line, sizeof(line));
 
-    BeginScissorMode(panel_boundary.x, panel_boundary.y, panel_boundary.width, panel_boundary.height);
     for (size_t i = 0; i < p->tracks.count; ++i) {
         Rectangle item_boundary = {
             .x = panel_boundary.x + panel_padding,
@@ -841,9 +846,37 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
             .y = item_boundary.y + item_boundary.height*0.5 - size.y*0.5,
         };
         // TODO: use SDF fonts
-        // TODO: we need a better indication that the label was cut out because of the overflow
-        // I was think about some sort of gradient. Ideally, we need to scroll the label on hover.
-        track_label(p->font, text, position, fontSize, WHITE, item_boundary.width - text_padding*2);
+        // Label overflow scroll handler
+        float max_width = item_boundary.width - text_padding*2;
+        uint64_t item_id = djb2(id, &i, sizeof(i));
+        int state = button_with_id(item_id, GetCollisionRec(panel_boundary, item_boundary));
+
+        if ((size.x > max_width)) { // <-- Item needs ScissorMode
+            BeginScissorMode(position.x, position.y, max_width, item_boundary.height);
+
+            if (state & BS_HOVEROVER) { // <-- Current item is being hovered on and needs scrolling
+                dt += GetFrameTime();
+                if (item_id != hovered_label_id) { // <-- But it is not same as the last hovered item, so reset the shift
+                    px_shift = 0;
+                    scroll_left = true;
+                    hovered_label_id = item_id;
+                } else { // <-- it is same as the last hovered item, so count the shift
+                    if (dt > TRACKLABEL_SCROLL_SECS) {
+                        dt = 0.0f;
+                        if ((abs(px_shift) >= size.x - max_width + 10) || (px_shift == 10)) { // <-- End of scroll (with 10 padding)
+                            scroll_left = !scroll_left; // <-- flip direction
+                        }
+                        scroll_left ? --px_shift : ++px_shift;
+                    }
+                }
+                position.x += px_shift; // <-- Apply the shift
+            }
+            track_label(p->font, text, position, fontSize, WHITE, max_width);
+            EndScissorMode();
+
+        } else { // <-- No need for ScissorMode
+            track_label(p->font, text, position, fontSize, WHITE, max_width);
+        }
     }
 
     // TODO: up and down clickable buttons on the scrollbar
@@ -889,7 +922,6 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
         }
     }
 
-    EndScissorMode();
 }
 
 #define fullscreen_button(preview_boundary) \
