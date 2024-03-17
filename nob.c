@@ -284,6 +284,9 @@ void generate_default_config(Nob_String_Builder *content)
     nob_sb_append_cstr(content, "\n");
     nob_sb_append_cstr(content, "//// Unfinished feature that enables capturing sound from the mic.\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_MICROPHONE\n");
+    nob_sb_append_cstr(content, "\n");
+    nob_sb_append_cstr(content, "// Desired rendering FPS of the application.\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_FPS 60\n");
 }
 
 int main(int argc, char **argv)

@@ -9,6 +9,7 @@
 #include <signal.h> // needed for sigaction()
 #endif // _WIN32
 
+#include "config.h"
 #include "./hotreload.h"
 
 int main(void)
@@ -36,7 +37,7 @@ int main(void)
         SetWindowIcon(logo);
         plug_free_resource(data);
     }
-    SetTargetFPS(60);
+    SetTargetFPS(MUSIALIZER_TARGET_FPS);
     SetExitKey(KEY_NULL);
     InitAudioDevice();
 
