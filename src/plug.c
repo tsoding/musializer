@@ -1250,8 +1250,19 @@ static void start_rendering_track(Track *track)
     // TODO: set the rendering output path based on the input path
     // Basically output into the same folder
     p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
+    SetTargetFPS(0);
     p->rendering = true;
     SetTraceLogLevel(LOG_WARNING);
+}
+
+static void finish_rendering_track(Track *track) {
+    SetTraceLogLevel(LOG_INFO);
+    UnloadWave(p->wave);
+    UnloadWaveSamples(p->wave_samples);
+    SetTargetFPS(MUSIALIZER_TARGET_FPS);
+    p->rendering = false;
+    fft_clean();
+    PlayMusicStream(track->music);
 }
 
 #ifdef MUSIALIZER_MICROPHONE
@@ -1615,12 +1626,7 @@ static void rendering_screen(void)
     NOB_ASSERT(track != NULL);
     if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
         if (IsKeyPressed(KEY_ESCAPE)) {
-            SetTraceLogLevel(LOG_INFO);
-            UnloadWave(p->wave);
-            UnloadWaveSamples(p->wave_samples);
-            p->rendering = false;
-            fft_clean();
-            PlayMusicStream(track->music);
+            finish_rendering_track(track);
         }
 
         const char *label = "FFmpeg Failure: Check the Logs";
@@ -1654,12 +1660,7 @@ static void rendering_screen(void)
                 // cause it should deallocate all the resources even in case of a failure.
                 p->ffmpeg = NULL;
             } else {
-                SetTraceLogLevel(LOG_INFO);
-                UnloadWave(p->wave);
-                UnloadWaveSamples(p->wave_samples);
-                p->rendering = false;
-                fft_clean();
-                PlayMusicStream(track->music);
+                finish_rendering_track(track);
             }
         } else { // Rendering is going...
             // Label
