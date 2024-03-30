@@ -10,20 +10,81 @@
 #include <unistd.h>
 
 #include <raylib.h>
-
+#include <ctype.h>
 #define READ_END 0
 #define WRITE_END 1
+#define PATH_MAX 1024
 
 typedef struct {
     int pipe;
     pid_t pid;
 } FFMPEG;
 
+char *get_file_name_as_mp4(const char *sound_file_path) {
+
+    // NOTE: This function generates output names that can be used by ffmpeg tool.
+    // At least the spaces and punctuations are removed from the path.. 
+    // example:
+    // input  -> 'hello)!world.mp3' 
+    // output -> 'helloworld.mp3'
+    
+    size_t path_tail_index = 0;
+    char *output_mp4  = NULL; 
+    char *extension = ".mp4";
+
+    if (!sound_file_path)
+        return strdup("output.mp4");
+
+    output_mp4 = malloc(PATH_MAX);
+    path_tail_index = strlen(sound_file_path) - 1;
+    
+    // Consume the extension.
+    while (true) {
+        path_tail_index--;
+        if (path_tail_index == 0 || sound_file_path[path_tail_index + 1] == '.') break;
+    }
+
+    // Populate the output_mp4 for ffmpeg
+    strcat(output_mp4 + PATH_MAX - strlen(extension), extension);
+    size_t i = PATH_MAX - strlen(extension) - 1;
+
+    while (sound_file_path[path_tail_index] != '/') {
+ 
+        // Skip the spaces since ffmpeg does not support output paths that include spaces.
+        while (isspace(sound_file_path[path_tail_index]) || ispunct(sound_file_path[path_tail_index])) 
+        {
+            if (path_tail_index == 0)
+                break;
+            path_tail_index--;
+        }
+        
+        // We reached the first character and it is an invalid ffmpeg path character.
+        if (isspace(sound_file_path[path_tail_index]) || ispunct(sound_file_path[path_tail_index])) break;
+        
+        output_mp4[i] = sound_file_path[path_tail_index];    
+
+        // Consume the current character
+        path_tail_index--;
+        if (path_tail_index == 0 || i == 0) break;
+        if (sound_file_path[path_tail_index] == '/') break;
+        i--;
+    }
+
+    // Move the path into the first columns of the buffer so free does not yell att us when we try freeing.
+    memmove(output_mp4, 
+        output_mp4 + i,
+        PATH_MAX   - i
+    );
+
+    return output_mp4;
+}
 
 FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *sound_file_path)
 {
     int pipefd[2];
-
+    // OutPut file Path.
+    char *out = NULL;
+    
     if (pipe(pipefd) < 0) {
         TraceLog(LOG_ERROR, "FFMPEG: Could not create a pipe: %s", strerror(errno));
         return NULL;
@@ -46,33 +107,33 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
         snprintf(resolution, sizeof(resolution), "%zux%zu", width, height);
         char framerate[64];
         snprintf(framerate, sizeof(framerate), "%zu", fps);
-
+        out = get_file_name_as_mp4(sound_file_path);
         int ret = execlp("ffmpeg",
             "ffmpeg",
             "-loglevel", "verbose",
             "-y",
-
             "-f", "rawvideo",
             "-pix_fmt", "rgba",
             "-s", resolution,
             "-r", framerate,
             "-i", "-",
             "-i", sound_file_path,
-
             "-c:v", "libx264",
             "-vb", "2500k",
             "-c:a", "aac",
             "-ab", "200k",
             "-pix_fmt", "yuv420p",
-            "output.mp4",
-
+            out,
             NULL
         );
         if (ret < 0) {
+            free(out);
             TraceLog(LOG_ERROR, "FFMPEG CHILD: could not run ffmpeg as a child process: %s", strerror(errno));
             exit(1);
         }
+        
         assert(0 && "unreachable");
+        free(out);
         exit(1);
     }
 
@@ -134,4 +195,38 @@ bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t 
         }
     }
     return true;
+}
+
+
+void _get_file_name_tests() {
+    // TEST: get_file_name_as_mp4 tests.
+    {
+        char *out = get_file_name_as_mp4(NULL); 
+        printf("%s\n", out); // should return output.mp4
+        free(out);
+    }
+    
+    {
+        char *out = get_file_name_as_mp4("./hello.mp3"); 
+        printf("%s\n", out); // should return hello.mp4
+        free(out);
+    }
+    
+    {
+        char *out = get_file_name_as_mp4("C:/x/y/z/hello.mp3"); 
+        printf("%s\n", out); // should return hello.mp4
+        free(out);
+    }
+
+    {
+        char *out = get_file_name_as_mp4("/home/usr0/x/y/z/hello.mp3"); 
+        printf("%s\n", out); // should return hello.mp4
+        free(out);
+    }
+ 
+    {
+        char *out = get_file_name_as_mp4("/Some_vidoe01239238.mp3"); 
+        printf("%s\n", out); // should return hello.mp4
+        free(out);
+    }
 }
