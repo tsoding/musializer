@@ -6,6 +6,8 @@ Alpha Release 3
 
 - Added FLAC support
 
+- Added Cancel Rendering button
+
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
