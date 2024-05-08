@@ -1756,11 +1756,12 @@ static void rendering_screen(void)
 
             {
                 Rectangle boundary = {
-                    .x = 25,
-                    .y = 25,
-                    .width = 50,
-                    .height = 50,
+                    .width = HUD_BUTTON_SIZE,
+                    .height = HUD_BUTTON_SIZE,
                 };
+                boundary.x = w - boundary.width - HUD_BUTTON_SIZE*0.5;
+                boundary.y = HUD_BUTTON_SIZE*0.5;
+                tooltip(boundary, "Cancel [Esc]", SIDE_LEFT, false);
                 if (cancel_rendering_button(boundary) & BS_CLICKED) {
                     p->cancel_rendering = true;
                 }
