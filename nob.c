@@ -284,6 +284,9 @@ void generate_default_config(Nob_String_Builder *content)
     nob_sb_append_cstr(content, "\n");
     nob_sb_append_cstr(content, "//// Unfinished feature that enables capturing sound from the mic.\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_MICROPHONE\n");
+    nob_sb_append_cstr(content, "\n");
+    nob_sb_append_cstr(content, "//// Activate UI buttons on Press instead of Release just as John Carmack explained https://twitter.com/ID_AA_Carmack/status/1787850053912064005\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_ACT_ON_PRESS\n");
 }
 
 int main(int argc, char **argv)
