@@ -11,14 +11,15 @@
 
 #include <raylib.h>
 
+#include "ffmpeg.h"
+
 #define READ_END 0
 #define WRITE_END 1
 
-typedef struct {
+struct FFMPEG {
     int pipe;
     pid_t pid;
-} FFMPEG;
-
+};
 
 FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *sound_file_path)
 {
@@ -87,7 +88,7 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     return ffmpeg;
 }
 
-bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
+bool ffmpeg_end_rendering(FFMPEG *ffmpeg, bool cancel)
 {
     int pipe = ffmpeg->pipe;
     pid_t pid = ffmpeg->pid;
@@ -97,6 +98,8 @@ bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
     if (close(pipe) < 0) {
         TraceLog(LOG_WARNING, "FFMPEG: could not close write end of the pipe on the parent's end: %s", strerror(errno));
     }
+
+    if (cancel) kill(pid, SIGKILL);
 
     for (;;) {
         int wstatus = 0;
