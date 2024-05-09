@@ -886,7 +886,12 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
                     scrolling_mouse_offset = mouse.y - scroll_bar_boundary.y;
                 }
             } else if (CheckCollisionPointRec(mouse, scroll_bar_area)) {
-                if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+#ifndef MUSIALIZER_ACT_ON_PRESS
+                bool act = IsMouseButtonReleased(MOUSE_LEFT_BUTTON);
+#else
+                bool act = IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+#endif // MUSIALIZER_ACT_ON_PRESS
+                if (act) {
                     if (mouse.y < scroll_bar_boundary.y) {
                         panel_velocity += item_size*16;
                     } else if (scroll_bar_boundary.y + scroll_bar_boundary.height < mouse.y){
