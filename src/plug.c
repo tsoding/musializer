@@ -1275,7 +1275,7 @@ static int microphone_button_with_location(const char *file, int line, Rectangle
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
     DrawTexturePro(assets_texture("./resources/icons/microphone.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
-    tooltip(boundary, "Microphone [C]", SIDE_TOP);
+    tooltip(boundary, "Microphone [C]", SIDE_TOP, false);
 
     return state;
 }
