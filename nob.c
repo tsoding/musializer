@@ -71,6 +71,16 @@ void log_config(Nob_Log_Level level)
 #else
     nob_log(level, "Microphone: DISABLED");
 #endif // MUSIALIZER_MICROPHONE
+#ifdef MUSIALIZER_UNBUNDLE
+    nob_log(level, "Unbundle: ENABLED");
+#else
+    nob_log(level, "Unbundle: DISABLED");
+#endif // MUSIALIZER_UNBUNDLE
+#ifdef MUSIALIZER_ACT_ON_PRESS
+    nob_log(level, "Act on Press: ENABLED");
+#else
+    nob_log(level, "Act on Press: DISABLED");
+#endif // MUSIALIZER_ACT_ON_PRESS
 }
 
 #define genf(out, ...) \
