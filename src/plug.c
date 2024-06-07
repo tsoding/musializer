@@ -128,53 +128,6 @@ typedef struct {
 } Tracks;
 
 typedef struct {
-    const char *key;
-    Image value;
-} Image_Item;
-
-typedef struct {
-    Image_Item *items;
-    size_t count;
-    size_t capacity;
-} Images;
-
-typedef struct {
-    const char *key;
-    Texture value;
-} Texture_Item;
-
-typedef struct {
-    Texture_Item *items;
-    size_t count;
-    size_t capacity;
-} Textures;
-
-static void *assoc_find_(void *items, size_t item_size, size_t items_count, size_t item_value_offset, const char *key)
-{
-    for (size_t i = 0; i < items_count; ++i) {
-        char *item = (char*)items + i*item_size;
-        const char *item_key = *(const char**)item;
-        void *item_value = item + item_value_offset;
-        if (strcmp(key, item_key) == 0) {
-            return item_value;
-        }
-    }
-    return NULL;
-}
-
-#define assoc_find(table, key) \
-    assoc_find_((table).items, \
-                sizeof((table).items[0]), \
-                (table).count, \
-                ((char*)&(table).items[0].value - (char*)&(table).items[0]), \
-                (key))
-
-typedef struct {
-    Images images;
-    Textures textures;
-} Assets;
-
-typedef struct {
     float lifetime;
 } Popup;
 
@@ -198,8 +151,27 @@ typedef enum {
     SIDE_BOTTOM,
 } Side;
 
+typedef enum {
+    UI_ICON_FULLSCREEN,
+    UI_ICON_VOLUME,
+    UI_ICON_PLAY,
+    UI_ICON_RENDER,
+    UI_ICON_MICROPHONE,
+    COUNT_UI_ICONS,
+} UI_Icon;
+
+static_assert(COUNT_UI_ICONS == 5, "Amount of icons changed");
+static const char *icon_file_paths[COUNT_UI_ICONS] = {
+    [UI_ICON_FULLSCREEN] = "./resources/icons/fullscreen.png",
+    [UI_ICON_VOLUME]     = "./resources/icons/volume.png",
+    [UI_ICON_PLAY]       = "./resources/icons/play.png",
+    [UI_ICON_RENDER]     = "./resources/icons/render.png",
+    [UI_ICON_MICROPHONE] = "./resources/icons/microphone.png",
+};
+
 typedef struct {
-    Assets assets;
+    // Assets
+    Texture2D icon_textures[COUNT_UI_ICONS];
 
     // Visualizer
     Tracks tracks;
@@ -247,50 +219,6 @@ typedef struct {
 } Plug;
 
 static Plug *p = NULL;
-
-static Image assets_image(const char *file_path)
-{
-    Image *image = assoc_find(p->assets.images, file_path);
-    if (image) return *image;
-
-    Image_Item item = {0};
-    item.key = file_path;
-
-    size_t data_size;
-    void *data = plug_load_resource(file_path, &data_size);
-    item.value = LoadImageFromMemory(GetFileExtension(file_path), data, data_size);
-    plug_free_resource(data);
-
-    nob_da_append(&p->assets.images, item);
-    return item.value;
-}
-
-static Texture assets_texture(const char *file_path)
-{
-    Texture *texture = assoc_find(p->assets.textures, file_path);
-    if (texture) return *texture;
-
-    Image image = assets_image(file_path);
-    Texture_Item item = {0};
-    item.key = file_path;
-    item.value = LoadTextureFromImage(image);
-    GenTextureMipmaps(&item.value);
-    SetTextureFilter(item.value, TEXTURE_FILTER_BILINEAR);
-    nob_da_append(&p->assets.textures, item);
-    return item.value;
-}
-
-static void assets_unload_everything(void)
-{
-    for (size_t i = 0; i < p->assets.textures.count; ++i) {
-        UnloadTexture(p->assets.textures.items[i].value);
-    }
-    p->assets.textures.count = 0;
-    for (size_t i = 0; i < p->assets.images.count; ++i) {
-        UnloadImage(p->assets.images.items[i].value);
-    }
-    p->assets.images.count = 0;
-}
 
 static bool fft_settled(void)
 {
@@ -933,7 +861,7 @@ static int fullscreen_button_with_loc(const char *file, int line, Rectangle full
         }
     }
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
-    DrawTexturePro(assets_texture("./resources/icons/fullscreen.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(p->icon_textures[UI_ICON_FULLSCREEN], source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     if (p->fullscreen) {
         tooltip(fullscreen_button_boundary, "Collapse [F]", SIDE_TOP, false);
@@ -1052,7 +980,7 @@ static bool volume_slider_with_location(const char *file, int line, Rectangle vo
 
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
 
-    DrawTexturePro(assets_texture("./resources/icons/volume.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(p->icon_textures[UI_ICON_VOLUME], source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     bool updated = false;
 
@@ -1212,7 +1140,7 @@ static int play_button_with_location(const char *file, int line, Track *track, R
     };
 
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
-    DrawTexturePro(assets_texture("./resources/icons/play.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(p->icon_textures[UI_ICON_PLAY], source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     if (IsMusicStreamPlaying(track->music)) {
         tooltip(boundary, "Pause [SPACE]", SIDE_TOP, false);
@@ -1244,7 +1172,7 @@ static int render_button_with_location(const char *file, int line, Rectangle bou
     };
 
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
-    DrawTexturePro(assets_texture("./resources/icons/render.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(p->icon_textures[UI_ICON_RENDER], source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
     tooltip(boundary, "Render [R]", SIDE_TOP, false);
 
@@ -1273,9 +1201,9 @@ static int microphone_button_with_location(const char *file, int line, Rectangle
     };
 
     Rectangle source = {icon_size*icon_index, 0, icon_size, icon_size};
-    DrawTexturePro(assets_texture("./resources/icons/microphone.png"), source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
+    DrawTexturePro(p->icon_textures[UI_ICON_MICROPHONE], source, dest, CLITERAL(Vector2){0}, 0, ColorBrightness(WHITE, -0.10));
 
-    tooltip(boundary, "Microphone [C]", SIDE_TOP);
+    tooltip(boundary, "Microphone [C]", SIDE_TOP, false);
 
     return state;
 }
@@ -1804,35 +1732,57 @@ static void rendering_screen(void)
     }
 }
 
-MUSIALIZER_PLUG void plug_init(void)
+static void load_assets(void)
 {
-    p = malloc(sizeof(*p));
-    assert(p != NULL && "Buy more RAM lol");
-    memset(p, 0, sizeof(*p));
+    size_t data_size = 0;
+    void *data = NULL;
 
     const char *alegreya_path = "./resources/fonts/Alegreya-Regular.ttf";
-    {
-        size_t data_size;
-        void *data = plug_load_resource(alegreya_path, &data_size);
+    data = plug_load_resource(alegreya_path, &data_size);
         p->font = LoadFontFromMemory(GetFileExtension(alegreya_path), data, data_size, FONT_SIZE, NULL, 0);
-        plug_free_resource(data);
-    }
-    GenTextureMipmaps(&p->font.texture);
-    SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
+        GenTextureMipmaps(&p->font.texture);
+        SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
+    plug_free_resource(data);
+
     // TODO: Maybe we should try to keep compiling different versions of shaders
     // until one of them works?
     //
     // If the shader can not be compiled maybe we could fallback to software rendering
     // of the texture of a fuzzy circle? The shader does not really do anything particularly
     // special.
-    {
-        size_t data_size;
-        void *data = plug_load_resource(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
+    data = plug_load_resource(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
         p->circle = LoadShaderFromMemory(NULL, data);
+        p->circle_radius_location = GetShaderLocation(p->circle, "radius");
+        p->circle_power_location = GetShaderLocation(p->circle, "power");
+    plug_free_resource(data);
+
+    for (UI_Icon icon = 0; icon < COUNT_UI_ICONS; ++icon) {
+        data = plug_load_resource(icon_file_paths[icon], &data_size);
+            Image image = LoadImageFromMemory(GetFileExtension(icon_file_paths[icon]), data, data_size);
+                p->icon_textures[icon] = LoadTextureFromImage(image);
+                GenTextureMipmaps(&p->icon_textures[icon]);
+                SetTextureFilter(p->icon_textures[icon], TEXTURE_FILTER_BILINEAR);
+            UnloadImage(image);
         plug_free_resource(data);
     }
-    p->circle_radius_location = GetShaderLocation(p->circle, "radius");
-    p->circle_power_location = GetShaderLocation(p->circle, "power");
+}
+
+static void unload_assets()
+{
+    UnloadFont(p->font);
+    UnloadShader(p->circle);
+    for (UI_Icon icon = 0; icon < COUNT_UI_ICONS; ++icon) {
+        UnloadTexture(p->icon_textures[icon]);
+    }
+}
+
+MUSIALIZER_PLUG void plug_init(void)
+{
+    p = malloc(sizeof(*p));
+    assert(p != NULL && "Buy more RAM lol");
+    memset(p, 0, sizeof(*p));
+
+    load_assets();
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
     p->current_track = -1;
 
@@ -1846,7 +1796,7 @@ MUSIALIZER_PLUG Plug *plug_pre_reload(void)
         Track *it = &p->tracks.items[i];
         DetachAudioStreamProcessor(it->music.stream, callback);
     }
-    assets_unload_everything();
+    unload_assets();
     return p;
 }
 
@@ -1857,14 +1807,7 @@ MUSIALIZER_PLUG void plug_post_reload(Plug *pp)
         Track *it = &p->tracks.items[i];
         AttachAudioStreamProcessor(it->music.stream, callback);
     }
-    UnloadShader(p->circle);
-
-    size_t data_size;
-    void *data = plug_load_resource(TextFormat("./resources/shaders/glsl%d/circle.fs", GLSL_VERSION), &data_size);
-    p->circle = LoadShaderFromMemory(NULL, data);
-    plug_free_resource(data);
-    p->circle_radius_location = GetShaderLocation(p->circle, "radius");
-    p->circle_power_location = GetShaderLocation(p->circle, "power");
+    load_assets();
 }
 
 MUSIALIZER_PLUG void plug_update(void)
