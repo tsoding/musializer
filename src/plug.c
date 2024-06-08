@@ -16,6 +16,10 @@
 #include <raylib.h>
 #include <rlgl.h>
 
+#define PLUG(name, ...) name##_t name;
+LIST_OF_PLUGS
+#undef PLUG
+
 #ifdef _WIN32
 #define MUSIALIZER_PLUG __declspec(dllexport)
 #else
@@ -1790,7 +1794,7 @@ MUSIALIZER_PLUG void plug_init(void)
     SetMasterVolume(0.5);
 }
 
-MUSIALIZER_PLUG Plug *plug_pre_reload(void)
+MUSIALIZER_PLUG void *plug_pre_reload(void)
 {
     for (size_t i = 0; i < p->tracks.count; ++i) {
         Track *it = &p->tracks.items[i];
@@ -1800,7 +1804,7 @@ MUSIALIZER_PLUG Plug *plug_pre_reload(void)
     return p;
 }
 
-MUSIALIZER_PLUG void plug_post_reload(Plug *pp)
+MUSIALIZER_PLUG void plug_post_reload(void *pp)
 {
     p = pp;
     for (size_t i = 0; i < p->tracks.count; ++i) {
