@@ -64,7 +64,7 @@
 
 #define NOB_ARRAY_LEN(array) (sizeof(array)/sizeof(array[0]))
 #define NOB_ARRAY_GET(array, index) \
-    (NOB_ASSERT(index >= 0), NOB_ASSERT(index < NOB_ARRAY_LEN(array)), array[index])
+    (NOB_ASSERT((size_t)index < NOB_ARRAY_LEN(array)), array[(size_t)index])
 
 typedef enum {
     NOB_INFO,
@@ -193,7 +193,9 @@ typedef struct {
 void nob_cmd_render(Nob_Cmd cmd, Nob_String_Builder *render);
 
 #define nob_cmd_append(cmd, ...) \
-    nob_da_append_many(cmd, ((const char*[]){__VA_ARGS__}), (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
+    nob_da_append_many(cmd, \
+                       ((const char*[]){__VA_ARGS__}), \
+                       (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*)))
 
 // Free all the memory allocated by command arguments
 #define nob_cmd_free(cmd) NOB_FREE(cmd.items)
