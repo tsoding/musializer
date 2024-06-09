@@ -19,7 +19,7 @@ bool build_musializer(void)
             nob_cmd_append(&cmd, "cl.exe");
             nob_cmd_append(&cmd, "/LD");
             nob_cmd_append(&cmd, "/Fobuild\\", "/Fe./build/libplug.dll");
-            nob_cmd_append(&cmd, "/I", "./build/");
+            nob_cmd_append(&cmd, "/I", "./");
             nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
             nob_cmd_append(&cmd,
                 "src/plug.c",
@@ -30,10 +30,10 @@ bool build_musializer(void)
                 "raylib.lib");
             nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib");
         nob_da_append(&procs, nob_cmd_run_async(cmd));
-            
+
         cmd.count = 0;
             nob_cmd_append(&cmd, "cl.exe");
-            nob_cmd_append(&cmd, "/I", "./build/");
+            nob_cmd_append(&cmd, "/I", "./");
             nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
             nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
             nob_cmd_append(&cmd,
@@ -52,7 +52,7 @@ bool build_musializer(void)
 #else
     cmd.count = 0;
         nob_cmd_append(&cmd, "cl.exe");
-        nob_cmd_append(&cmd, "/I", "./build/");
+        nob_cmd_append(&cmd, "/I", "./");
         nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
         nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
         nob_cmd_append(&cmd,
@@ -141,7 +141,7 @@ bool build_raylib(void)
         if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
     }
 #endif // MUSIALIZER_HOTRELOAD
-    
+
 defer:
     nob_cmd_free(cmd);
     nob_da_free(object_files);
