@@ -62,8 +62,8 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #endif
 
 #define _WINDOWS_
-#include "miniaudio.h"
-#include "dr_wav.h"
+#include "external/miniaudio.h"
+#include "external/dr_wav.h"
 
 #define GLSL_VERSION 330
 
