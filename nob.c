@@ -146,13 +146,13 @@ bool generate_resource_bundle(void)
     genf(out, "Resource resources[] = {");
     for (size_t i = 0; i < NOB_ARRAY_LEN(resources); ++i) {
         genf(out, "    {.file_path = \"%s\", .offset = %zu, .size = %zu},",
-               resources[i].file_path, resources[i].offset, resources[i].size);
+             resources[i].file_path, resources[i].offset, resources[i].size);
     }
     genf(out, "};");
 
     genf(out, "unsigned char bundle[] = {");
     size_t row_size = 20;
-    for (size_t i = 0; i < bundle.count; ){
+    for (size_t i = 0; i < bundle.count; ) {
         fprintf(out, "     ");
         for (size_t col = 0; col < row_size && i < bundle.count; ++col, ++i) {
             fprintf(out, "0x%02X, ", (unsigned char)bundle.items[i]);
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
         }
 
         if (!nob_procs_wait(procs)) return 1;
-    } else if (strcmp(subcommand, "help") == 0){
+    } else if (strcmp(subcommand, "help") == 0) {
         log_available_subcommands(program, NOB_INFO);
     } else {
         nob_log(NOB_ERROR, "Unknown subcommand %s", subcommand);
@@ -287,7 +287,12 @@ void generate_default_config(Nob_String_Builder *content)
 
     nob_sb_append_cstr(content, "\n");
     nob_sb_append_cstr(content, "//// Moves everything in src/plug.c to a separate \"DLL\" so it can be hotreloaded. Works only for Linux right now\n");
+    // TODO: FIX ASAP! This requires bootstrapping nob with additional flags which goes against its philosophy!
+#ifdef MUSIALIZER_HOTRELOAD
+    nob_sb_append_cstr(content, "#define MUSIALIZER_HOTRELOAD\n");
+#else
     nob_sb_append_cstr(content, "// #define MUSIALIZER_HOTRELOAD\n");
+#endif
     nob_sb_append_cstr(content, "\n");
     nob_sb_append_cstr(content, "//// Don't bundle resources/ folder with the executable and load the resources directly from the folder.\n");
     nob_sb_append_cstr(content, "// #define MUSIALIZER_UNBUNDLE\n");
