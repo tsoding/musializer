@@ -20,10 +20,10 @@
 LIST_OF_PLUGS
 #undef PLUG
 
-#ifdef _WIN32
-#define MUSIALIZER_PLUG __declspec(dllexport)
+#if defined(_WIN32) && defined(MUSIALIZER_HOTRELOAD)
+    #define MUSIALIZER_PLUG __declspec(dllexport)
 #else
-#define MUSIALIZER_PLUG
+    #define MUSIALIZER_PLUG
 #endif
 
 #ifndef MUSIALIZER_UNBUNDLE
