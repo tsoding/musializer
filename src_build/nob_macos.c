@@ -14,7 +14,7 @@ bool build_musializer(void)
         // Like `clang` for instance
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
-        nob_cmd_append(&cmd, "-I./build/");
+        nob_cmd_append(&cmd, "-I.");
         nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
         nob_cmd_append(&cmd, "-fPIC", "-shared");
         nob_cmd_append(&cmd, "-o", "./build/libplug.dylib");
@@ -28,7 +28,7 @@ bool build_musializer(void)
     cmd.count = 0;
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
-        nob_cmd_append(&cmd, "-I./build/");
+        nob_cmd_append(&cmd, "-I.");
         nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
         nob_cmd_append(&cmd, "-o", "./build/musializer");
         nob_cmd_append(&cmd,
@@ -46,7 +46,7 @@ bool build_musializer(void)
     cmd.count = 0;
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
-        nob_cmd_append(&cmd, "-I./build/");
+        nob_cmd_append(&cmd, "-I.");
         nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
         nob_cmd_append(&cmd, "-o", "./build/musializer");
         nob_cmd_append(&cmd,

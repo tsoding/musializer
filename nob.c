@@ -7,13 +7,13 @@
 #include <errno.h>
 
 #define NOB_IMPLEMENTATION
-#include "./src/nob.h"
+#include "./nob.h"
 
 #define CONFIG_PATH "./build/config.h"
 
 #ifdef CONFIGURED
 
-#include "./src/targets.h"
+#include "./src_build/targets.h"
 #include CONFIG_PATH
 
 #define RAYLIB_VERSION "5.0"
@@ -37,15 +37,15 @@ static const char *raylib_modules[] = {
 };
 
 #if MUSIALIZER_TARGET == TARGET_LINUX
-#include "src/nob_linux.c"
+#include "src_build/nob_linux.c"
 #elif MUSIALIZER_TARGET == TARGET_MACOS
-#include "src/nob_macos.c"
+#include "src_build/nob_macos.c"
 #elif MUSIALIZER_TARGET == TARGET_WIN64_MINGW
-#include "src/nob_win64_mingw.c"
+#include "src_build/nob_win64_mingw.c"
 #elif MUSIALIZER_TARGET == TARGET_WIN64_MSVC
-#include "src/nob_win64_msvc.c"
+#include "src_build/nob_win64_msvc.c"
 #elif MUSIALIZER_TARGET == TARGET_OPENBSD
-#include "src/nob_openbsd.c"
+#include "src_build/nob_openbsd.c"
 #endif // MUSIALIZER_TARGET
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)

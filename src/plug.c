@@ -6,8 +6,8 @@
 #include <string.h>
 #include <complex.h>
 
-#include "targets.h"
-#include "config.h"
+#include "src_build/targets.h"
+#include "build/config.h"
 #include "plug.h"
 #include "ffmpeg.h"
 #define NOB_IMPLEMENTATION
@@ -27,7 +27,7 @@ LIST_OF_PLUGS
 #undef PLUG
 
 #ifndef MUSIALIZER_UNBUNDLE
-#include "bundle.h"
+#include "build/bundle.h"
 
 MUSIALIZER_PLUG void plug_free_resource(void *data)
 {
