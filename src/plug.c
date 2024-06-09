@@ -16,15 +16,15 @@
 #include <raylib.h>
 #include <rlgl.h>
 
-#define PLUG(name, ...) name##_t name;
-LIST_OF_PLUGS
-#undef PLUG
-
 #if defined(_WIN32) && defined(MUSIALIZER_HOTRELOAD)
     #define MUSIALIZER_PLUG __declspec(dllexport)
 #else
     #define MUSIALIZER_PLUG
 #endif
+
+#define PLUG(name, ret, ...) MUSIALIZER_HOTRELOAD ret name(__VA_ARGS__);
+LIST_OF_PLUGS
+#undef PLUG
 
 #ifndef MUSIALIZER_UNBUNDLE
 #include "bundle.h"
