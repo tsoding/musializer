@@ -22,7 +22,7 @@
     #define MUSIALIZER_PLUG
 #endif
 
-#define PLUG(name, ret, ...) MUSIALIZER_HOTRELOAD ret name(__VA_ARGS__);
+#define PLUG(name, ret, ...) MUSIALIZER_PLUG ret name(__VA_ARGS__);
 LIST_OF_PLUGS
 #undef PLUG
 
