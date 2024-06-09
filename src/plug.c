@@ -16,15 +16,15 @@
 #include <raylib.h>
 #include <rlgl.h>
 
-#define PLUG(name, ...) name##_t name;
+#if defined(_WIN32) && defined(MUSIALIZER_HOTRELOAD)
+    #define MUSIALIZER_PLUG __declspec(dllexport)
+#else
+    #define MUSIALIZER_PLUG
+#endif
+
+#define PLUG(name, ret, ...) MUSIALIZER_PLUG ret name(__VA_ARGS__);
 LIST_OF_PLUGS
 #undef PLUG
-
-#ifdef _WIN32
-#define MUSIALIZER_PLUG __declspec(dllexport)
-#else
-#define MUSIALIZER_PLUG
-#endif
 
 #ifndef MUSIALIZER_UNBUNDLE
 #include "bundle.h"
@@ -62,8 +62,8 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #endif
 
 #define _WINDOWS_
-#include "miniaudio.h"
-#include "dr_wav.h"
+#include "external/miniaudio.h"
+#include "external/dr_wav.h"
 
 #define GLSL_VERSION 330
 

@@ -37,6 +37,11 @@ jobs:
           path: build/
   windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        hotreload:
+          - "/DMUSIALIZER_HOTRELOAD"
+          - ""
     steps:
       - name: Clone GIT repo
         uses: actions/checkout@v4
@@ -48,7 +53,7 @@ jobs:
         # https://learn.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=msvc-170#create-your-own-command-prompt-shortcut
         run: |
           call "C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\VC\\Auxiliary\\Build\\vcvars64.bat"
-          cl.exe -o nob.exe nob.c
+          cl.exe ${{ matrix.hotreload }} -o nob.exe nob.c
       - name: Run nob
         shell: cmd
         run: |
