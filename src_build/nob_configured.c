@@ -3,16 +3,9 @@
 #define NOB_IMPLEMENTATION
 #include "../nob.h"
 #include "../build/config.h"
-#include "targets.h"
 
 #define RAYLIB_VERSION "5.0"
 #define CONFIG_PATH "./build/config.h"
-
-#define TARGET_LINUX 0
-#define TARGET_WIN64_MINGW 1
-#define TARGET_WIN64_MSVC 2
-#define TARGET_MACOS 3
-#define TARGET_OPENBSD 4
 
 static const char *raylib_modules[] = {
     "rcore",
@@ -25,16 +18,23 @@ static const char *raylib_modules[] = {
     "utils",
 };
 
-#if MUSIALIZER_TARGET == TARGET_LINUX
+// @backcomp
+#if defined(MUSIALIZER_TARGET)
+#error "We recently replaced a single MUSIALIZER_TARGET macro with a bunch of MUSIALIZER_TARGET_<TARGET> macros instead. Since MUSIALIZER_TARGET is still defined your ./build/ is probably old. Please remove it so ./build/config.h gets regenerated."
+#endif // MUSIALIZER_TARGET
+
+#if defined(MUSIALIZER_TARGET_LINUX)
 #include "nob_linux.c"
-#elif MUSIALIZER_TARGET == TARGET_MACOS
+#elif defined(MUSIALIZER_TARGET_MACOS)
 #include "nob_macos.c"
-#elif MUSIALIZER_TARGET == TARGET_WIN64_MINGW
+#elif defined(MUSIALIZER_TARGET_WIN64_MINGW)
 #include "nob_win64_mingw.c"
-#elif MUSIALIZER_TARGET == TARGET_WIN64_MSVC
+#elif defined(MUSIALIZER_TARGET_WIN64_MSVC)
 #include "nob_win64_msvc.c"
-#elif MUSIALIZER_TARGET == TARGET_OPENBSD
+#elif defined(MUSIALIZER_TARGET_OPENBSD)
 #include "nob_openbsd.c"
+#else
+#error "No Musializer Target is defined. Check your ./build/config.h."
 #endif // MUSIALIZER_TARGET
 
 void log_available_subcommands(const char *program, Nob_Log_Level level)

@@ -5,7 +5,7 @@
 
 #include "hotreload.h"
 
-#if MUSIALIZER_TARGET == TARGET_MACOS
+#if defined(MUSIALIZER_TARGET_MACOS)
     static const char *libplug_file_name = "libplug.dylib";
 #else
     static const char *libplug_file_name = "libplug.so";
