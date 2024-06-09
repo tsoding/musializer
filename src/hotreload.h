@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #include "plug.h"
-#include "src_build/targets.h"
 #include "build/config.h"
 
 #ifdef MUSIALIZER_HOTRELOAD

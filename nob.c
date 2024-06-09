@@ -16,36 +16,36 @@ void generate_default_config(Nob_String_Builder *content)
     nob_sb_append_cstr(content, "//// Build target. Pick only one!\n");
 #ifdef _WIN32
 #   if defined(_MSC_VER)
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_OPENBSD\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_MACOS\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_OPENBSD\n");
 #   else
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
-    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_OPENBSD\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_MACOS\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_OPENBSD\n");
 #   endif
 #elif defined (__APPLE__) || defined (__MACH__)
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_MACOS\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_OPENBSD\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_MACOS\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_OPENBSD\n");
 #elif defined(__OpenBSD__)
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_LINUX\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
-    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_OPENBSD\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_MACOS\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_OPENBSD\n");
 #else
-    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET TARGET_LINUX\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MINGW\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_WIN64_MSVC\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_MACOS\n");
-    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET TARGET_OPENBSD\n");
+    nob_sb_append_cstr(content, "#define MUSIALIZER_TARGET_LINUX\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MINGW\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_WIN64_MSVC\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_MACOS\n");
+    nob_sb_append_cstr(content, "// #define MUSIALIZER_TARGET_OPENBSD\n");
 #endif
 
     nob_sb_append_cstr(content, "\n");
@@ -76,6 +76,7 @@ int main(int argc, char **argv)
     int build_conf_exists = nob_file_exists(build_conf_path);
     if (build_conf_exists < 0) return 1;
     if (build_conf_exists) {
+        // @backcomp
         nob_log(NOB_ERROR, "We found %s. That means your build folder has an old schema.", build_conf_path);
         nob_log(NOB_ERROR, "Instead of %s you are suppose to use %s to configure the build now.", build_conf_path, CONFIG_PATH);
         nob_log(NOB_ERROR, "Remove your ./build/ folder and run %s again to regenerate the folder with the new schema.", program);
