@@ -84,8 +84,15 @@ static Feature_Flag feature_flags[] = {
         fprintf((out), " // %s:%d\n", __FILE__, __LINE__); \
     } while(0)
 
-void generate_default_config(FILE *f)
+bool generate_default_config(const char *file_path)
 {
+    nob_log(NOB_INFO, "Generating %s", file_path);
+    FILE *f = fopen(file_path, "wb");
+    if (f == NULL) {
+        nob_log(NOB_ERROR, "Could not generate %s: %s", file_path, strerror(errno));
+        return false;
+    }
+
     fprintf(f, "//// Build target. Pick only one!\n");
     for (size_t i = 0; i < NOB_ARRAY_LEN(target_flags); ++i) {
         if (target_flags[i].enabled_by_default) {
@@ -95,7 +102,7 @@ void generate_default_config(FILE *f)
         }
     }
 
-    fprintf(f, "");
+    fprintf(f, "\n");
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(feature_flags); ++i) {
         fprintf(f, "//// %s\n", feature_flags[i].description);
@@ -111,10 +118,20 @@ void generate_default_config(FILE *f)
         }
         fprintf(f, "\n");
     }
+
+    fclose(f);
+    return true;
 }
 
-void generate_config_logger(FILE *f)
+bool generate_config_logger(const char *config_logger_path)
 {
+    nob_log(NOB_INFO, "Generating %s", config_logger_path);
+    FILE *f = fopen(config_logger_path, "wb");
+    if (f == NULL) {
+        nob_log(NOB_ERROR, "Could not generate %s: %s", config_logger_path, strerror(errno));
+        return false;
+    }
+
     genf(f, "void log_config(Nob_Log_Level level)");
     genf(f, "{");
     genf(f, "    nob_log(level, \"Target: %%s\", MUSIALIZER_TARGET_NAME);");
@@ -126,4 +143,7 @@ void generate_config_logger(FILE *f)
         genf(f, "    #endif");
     }
     genf(f, "}");
+
+    fclose(f);
+    return true;
 }
