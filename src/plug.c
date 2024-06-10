@@ -12,6 +12,10 @@
 #define NOB_IMPLEMENTATION
 #include "nob.h"
 
+#define ARENA_IMPLEMENTATION
+#include "arena.h"
+#include "external/dr_wav.h"
+
 #include <raylib.h>
 #include <rlgl.h>
 
@@ -188,11 +192,10 @@ typedef struct {
     // Renderer
     bool rendering;
     RenderTexture2D screen;
-    Wave wave;
-    float *wave_samples;
     size_t wave_cursor;
     FFMPEG *ffmpeg;
     bool cancel_rendering;
+    Arena rendering_arena;
 
     // FFT Analyzer
     float in_raw[FFT_SIZE];
@@ -1221,21 +1224,153 @@ static void toggle_track_playing(Track *track)
     }
 }
 
+// Music context type
+// NOTE: Depends on data structure provided by the library
+// in charge of reading the different file types
+typedef enum {
+    MUSIC_AUDIO_NONE = 0,   // No audio context loaded
+    MUSIC_AUDIO_WAV,        // WAV audio context
+    MUSIC_AUDIO_OGG,        // OGG audio context
+    MUSIC_AUDIO_FLAC,       // FLAC audio context
+    MUSIC_AUDIO_MP3,        // MP3 audio context
+    MUSIC_AUDIO_QOA,        // QOA audio context
+    MUSIC_MODULE_XM,        // XM module audio context
+    MUSIC_MODULE_MOD        // MOD module audio context
+} MusicContextType;
+
+typedef struct stb_vorbis stb_vorbis;
+extern int stb_vorbis_get_samples_short_interleaved(stb_vorbis *f, int channels, short *buffer, int num_shorts);
+
+#define SUPPORT_FILEFORMAT_WAV
+#define SUPPORT_FILEFORMAT_OGG
+int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_floats)
+{
+    switch (music.ctxType)
+    {
+    #if defined(SUPPORT_FILEFORMAT_WAV)
+        case MUSIC_AUDIO_WAV:
+        {
+            size_t num_samples = num_floats/music.stream.channels;
+            if (music.stream.sampleSize == 16)
+            {
+                short *samples = (short *)arena_alloc(a, num_floats*sizeof(short));
+                int frameCountRead = (int)drwav_read_pcm_frames_s16((drwav *)music.ctxData, num_samples, samples);
+                for (size_t i = 0; i < frameCountRead*music.stream.channels; ++i) {
+                    buffer[i] = (float)(samples[i])/32767.0f;
+                }
+                return frameCountRead;
+            }
+            else if (music.stream.sampleSize == 32)
+            {
+                int frameCountRead = (int)drwav_read_pcm_frames_f32((drwav *)music.ctxData, num_samples, buffer);
+                return frameCountRead;
+            }
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_OGG)
+        case MUSIC_AUDIO_OGG:
+        {
+            short *samples = (short *)arena_alloc(a, num_floats*sizeof(short));
+            int frameCountRead = stb_vorbis_get_samples_short_interleaved((stb_vorbis *)music.ctxData, music.stream.channels, samples, num_floats);
+            for (size_t i = 0; i < frameCountRead*music.stream.channels; ++i) {
+                buffer[i] = (float)(samples[i])/32767.0f;
+            }
+            return frameCountRead;
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_MP3)
+        case MUSIC_AUDIO_MP3:
+        {
+            while (true)
+            {
+                int frameCountRead = (int)drmp3_read_pcm_frames_f32((drmp3 *)music.ctxData, frameCountStillNeeded, (float *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize));
+                frameCountReadTotal += frameCountRead;
+                frameCountStillNeeded -= frameCountRead;
+                if (frameCountStillNeeded == 0) break;
+                else drmp3_seek_to_start_of_stream((drmp3 *)music.ctxData);
+            }
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_QOA)
+        case MUSIC_AUDIO_QOA:
+        {
+            unsigned int frameCountRead = qoaplay_decode((qoaplay_desc *)music.ctxData, (float *)AUDIO.System.pcmBuffer, framesToStream);
+            frameCountReadTotal += frameCountRead;
+            /*
+            while (true)
+            {
+                int frameCountRead = (int)qoaplay_decode((qoaplay_desc *)music.ctxData, (float *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize),  frameCountStillNeeded);
+                frameCountReadTotal += frameCountRead;
+                frameCountStillNeeded -= frameCountRead;
+                if (frameCountStillNeeded == 0) break;
+                else qoaplay_rewind((qoaplay_desc *)music.ctxData);
+            }
+            */
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_FLAC)
+        case MUSIC_AUDIO_FLAC:
+        {
+            while (true)
+            {
+                int frameCountRead = (int)drflac_read_pcm_frames_s16((drflac *)music.ctxData, frameCountStillNeeded, (short *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize));
+                frameCountReadTotal += frameCountRead;
+                frameCountStillNeeded -= frameCountRead;
+                if (frameCountStillNeeded == 0) break;
+                else drflac__seek_to_first_frame((drflac *)music.ctxData);
+            }
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_XM)
+        case MUSIC_MODULE_XM:
+        {
+            // NOTE: Internally we consider 2 channels generation, so sampleCount/2
+            if (AUDIO_DEVICE_FORMAT == ma_format_f32) jar_xm_generate_samples((jar_xm_context_t *)music.ctxData, (float *)AUDIO.System.pcmBuffer, framesToStream);
+            else if (AUDIO_DEVICE_FORMAT == ma_format_s16) jar_xm_generate_samples_16bit((jar_xm_context_t *)music.ctxData, (short *)AUDIO.System.pcmBuffer, framesToStream);
+            else if (AUDIO_DEVICE_FORMAT == ma_format_u8) jar_xm_generate_samples_8bit((jar_xm_context_t *)music.ctxData, (char *)AUDIO.System.pcmBuffer, framesToStream);
+            //jar_xm_reset((jar_xm_context_t *)music.ctxData);
+
+        } break;
+    #endif
+    #if defined(SUPPORT_FILEFORMAT_MOD)
+        case MUSIC_MODULE_MOD:
+        {
+            // NOTE: 3rd parameter (nbsample) specify the number of stereo 16bits samples you want, so sampleCount/2
+            jar_mod_fillbuffer((jar_mod_context_t *)music.ctxData, (short *)AUDIO.System.pcmBuffer, framesToStream, 0);
+            //jar_mod_seek_start((jar_mod_context_t *)music.ctxData);
+
+        } break;
+    #endif
+        default: break;
+    }
+
+    // TODO: do something better with that
+    fprintf(stderr, "UNREACHABLE: Unsupported format!\n");
+    abort();
+}
+
 static void start_rendering_track(Track *track)
 {
     StopMusicStream(track->music);
 
     fft_clean();
-    // TODO: LoadWave is pretty slow on big files
-    p->wave = LoadWave(track->file_path);
     p->wave_cursor = 0;
-    p->wave_samples = LoadWaveSamples(p->wave);
     // TODO: set the rendering output path based on the input path
     // Basically output into the same folder
     p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
     p->rendering = true;
     p->cancel_rendering = false;
     SetTraceLogLevel(LOG_WARNING);
+    SetTargetFPS(0);
+}
+
+static void finish_rendering_track(Track *track)
+{
+    SetTraceLogLevel(LOG_INFO);
+    p->rendering = false;
+    fft_clean();
+    PlayMusicStream(track->music);
+    SetTargetFPS(60);
 }
 
 #ifdef MUSIALIZER_MICROPHONE
@@ -1599,12 +1734,7 @@ static void rendering_screen(void)
     NOB_ASSERT(track != NULL);
     if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
         if (IsKeyPressed(KEY_ESCAPE)) {
-            SetTraceLogLevel(LOG_INFO);
-            UnloadWave(p->wave);
-            UnloadWaveSamples(p->wave_samples);
-            p->rendering = false;
-            fft_clean();
-            PlayMusicStream(track->music);
+            finish_rendering_track(track);
         }
 
         const char *label = "FFmpeg Failure: Check the Logs";
@@ -1625,7 +1755,7 @@ static void rendering_screen(void)
         DrawTextEx(p->font, label, position, fontSize, 0, color);
     } else { // FFmpeg process is going
         // TODO: introduce a rendering mode that perfectly loops the video
-        if (p->wave_cursor >= p->wave.frameCount && fft_settled()) { // Rendering is finished
+        if (p->wave_cursor >= track->music.frameCount && fft_settled()) { // Rendering is finished
             if (!ffmpeg_end_rendering(p->ffmpeg, false)) {
                 // NOTE: Ending FFmpeg process has failed, let's mark ffmpeg handle as NULL
                 // which will be interpreted as "FFmpeg Failure" on the next frame.
@@ -1634,23 +1764,12 @@ static void rendering_screen(void)
                 // cause it should deallocate all the resources even in case of a failure.
                 p->ffmpeg = NULL;
             } else {
-                SetTraceLogLevel(LOG_INFO);
-                UnloadWave(p->wave);
-                UnloadWaveSamples(p->wave_samples);
-                p->rendering = false;
-                fft_clean();
-                PlayMusicStream(track->music);
+                finish_rendering_track(track);
             }
         } else if (IsKeyPressed(KEY_ESCAPE) || p->cancel_rendering) {  // Rendering is cancelled
             ffmpeg_end_rendering(p->ffmpeg, true);
             p->ffmpeg = NULL;
-
-            SetTraceLogLevel(LOG_INFO);
-            UnloadWave(p->wave);
-            UnloadWaveSamples(p->wave_samples);
-            p->rendering = false;
-            fft_clean();
-            PlayMusicStream(track->music);
+            finish_rendering_track(track);
         } else { // Rendering is going...
             // Label
             const char *label = "Rendering video...";
@@ -1666,7 +1785,7 @@ static void rendering_screen(void)
             // Progress bar
             float bar_width = w*2/3;
             float bar_height = p->font.baseSize*0.25;
-            float bar_progress = (float)p->wave_cursor/p->wave.frameCount;
+            float bar_progress = (float)p->wave_cursor/track->music.frameCount;
             float bar_padding_top = p->font.baseSize*0.5;
             if (bar_progress > 1) bar_progress = 1;
             Rectangle bar_filling = {
@@ -1700,14 +1819,13 @@ static void rendering_screen(void)
 
             // Rendering
             {
-                size_t chunk_size = p->wave.sampleRate/RENDER_FPS;
-                float *fs = (float*)p->wave_samples;
+                size_t channels = track->music.stream.channels;
+                size_t chunk_size = track->music.stream.sampleRate/RENDER_FPS;
+                float *buffer = arena_alloc(&p->rendering_arena, chunk_size*channels*sizeof(*buffer));
+                memset(buffer, 0, chunk_size*channels*sizeof(*buffer));
+                poll_samples_from_music(&p->rendering_arena, track->music, buffer, chunk_size*channels);
                 for (size_t i = 0; i < chunk_size; ++i) {
-                    if (p->wave_cursor < p->wave.frameCount) {
-                        fft_push(fs[p->wave_cursor*p->wave.channels + 0]);
-                    } else {
-                        fft_push(0);
-                    }
+                    fft_push(buffer[i*channels + 0]);
                     p->wave_cursor += 1;
                 }
             }
