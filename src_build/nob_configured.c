@@ -3,9 +3,7 @@
 #define NOB_IMPLEMENTATION
 #include "../nob.h"
 #include "../build/config.h"
-
-#define RAYLIB_VERSION "5.0"
-#define CONFIG_PATH "./build/config.h"
+#include "./configurer.c"
 
 static const char *raylib_modules[] = {
     "rcore",
@@ -37,6 +35,8 @@ static const char *raylib_modules[] = {
 #error "No Musializer Target is defined. Check your ./build/config.h."
 #endif // MUSIALIZER_TARGET
 
+#include "../build/config_logger.c"
+
 void log_available_subcommands(const char *program, Nob_Log_Level level)
 {
     nob_log(level, "Usage: %s [subcommand]", program);
@@ -45,31 +45,6 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "    dist");
     nob_log(level, "    svg");
     nob_log(level, "    help");
-}
-
-void log_config(Nob_Log_Level level)
-{
-    nob_log(level, "Target: %s", MUSIALIZER_TARGET_NAME);
-#ifdef MUSIALIZER_HOTRELOAD
-    nob_log(level, "Hotreload: ENABLED");
-#else
-    nob_log(level, "Hotreload: DISABLED");
-#endif // MUSIALIZER_HOTRELOAD
-#ifdef MUSIALIZER_MICROPHONE
-    nob_log(level, "Microphone: ENABLED");
-#else
-    nob_log(level, "Microphone: DISABLED");
-#endif // MUSIALIZER_MICROPHONE
-#ifdef MUSIALIZER_UNBUNDLE
-    nob_log(level, "Unbundle: ENABLED");
-#else
-    nob_log(level, "Unbundle: DISABLED");
-#endif // MUSIALIZER_UNBUNDLE
-#ifdef MUSIALIZER_ACT_ON_PRESS
-    nob_log(level, "Act on Press: ENABLED");
-#else
-    nob_log(level, "Act on Press: DISABLED");
-#endif // MUSIALIZER_ACT_ON_PRESS
 }
 
 #define genf(out, ...) \
