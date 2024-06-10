@@ -30,21 +30,32 @@ int main(int argc, char **argv)
 
     if (!nob_mkdir_if_not_exists("build")) return 1;
 
-    Nob_String_Builder content = {0};
     int config_exists = nob_file_exists(CONFIG_PATH);
     if (config_exists < 0) return 1;
     if (config_exists == 0) {
         nob_log(NOB_INFO, "Generating %s", CONFIG_PATH);
-        generate_default_config(&content);
-        if (!nob_write_entire_file(CONFIG_PATH, content.items, content.count)) return 1;
+        FILE *f = fopen(CONFIG_PATH, "wb");
+        if (f == NULL) {
+            nob_log(NOB_ERROR, "Could not generate %s: %s", CONFIG_PATH, strerror(errno));
+            return 1;
+        }
+        generate_default_config(f);
+        fclose(f);
     } else {
         nob_log(NOB_INFO, "file `%s` already exists", CONFIG_PATH);
     }
 
-    nob_log(NOB_INFO, "Generating build/config_logger.c");
-    content.count = 0;
-    generate_config_logger(&content);
-    if (!nob_write_entire_file("build/config_logger.c", content.items, content.count)) return 1;
+    const char *config_logger_path = "build/config_logger.c";
+    nob_log(NOB_INFO, "Generating %s", config_logger_path);
+    {
+        FILE *f = fopen(config_logger_path, "wb");
+        if (f == NULL) {
+            nob_log(NOB_ERROR, "Could not generate %s: %s", config_logger_path, strerror(errno));
+            return 1;
+        }
+        generate_config_logger(f);
+        fclose(f);
+    }
 
     Nob_Cmd cmd = {0};
     const char *stage2_binary = "build/nob_stage2";

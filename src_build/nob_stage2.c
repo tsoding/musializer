@@ -47,12 +47,6 @@ void log_available_subcommands(const char *program, Nob_Log_Level level)
     nob_log(level, "    help");
 }
 
-#define genf(out, ...) \
-    do { \
-        fprintf((out), __VA_ARGS__); \
-        fprintf((out), " // %s:%d\n", __FILE__, __LINE__); \
-    } while(0)
-
 typedef struct {
     const char *file_path;
     size_t offset;
