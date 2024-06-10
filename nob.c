@@ -47,12 +47,12 @@ int main(int argc, char **argv)
     if (!nob_write_entire_file("build/config_logger.c", content.items, content.count)) return 1;
 
     Nob_Cmd cmd = {0};
-    const char *configured_binary = "build/nob.configured";
-    nob_cmd_append(&cmd, NOB_REBUILD_URSELF(configured_binary, "./src_build/nob_configured.c"));
+    const char *stage2_binary = "build/nob_stage2";
+    nob_cmd_append(&cmd, NOB_REBUILD_URSELF(stage2_binary, "./src_build/nob_stage2.c"));
     if (!nob_cmd_run_sync(cmd)) return 1;
 
     cmd.count = 0;
-    nob_cmd_append(&cmd, configured_binary);
+    nob_cmd_append(&cmd, stage2_binary);
     nob_da_append_many(&cmd, argv, argc);
     if (!nob_cmd_run_sync(cmd)) return 1;
 
