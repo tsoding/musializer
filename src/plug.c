@@ -1828,6 +1828,7 @@ static void rendering_screen(void)
                     fft_push(buffer[i*channels + 0]);
                     p->wave_cursor += 1;
                 }
+                arena_reset(&p->rendering_arena);
             }
 
             size_t m = fft_analyze(1.0f/RENDER_FPS);
