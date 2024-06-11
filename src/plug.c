@@ -15,6 +15,7 @@
 #define ARENA_IMPLEMENTATION
 #include "arena.h"
 #include "external/dr_wav.h"
+#include "external/dr_mp3.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -1243,6 +1244,7 @@ extern int stb_vorbis_get_samples_short_interleaved(stb_vorbis *f, int channels,
 
 #define SUPPORT_FILEFORMAT_WAV
 #define SUPPORT_FILEFORMAT_OGG
+#define SUPPORT_FILEFORMAT_MP3
 int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_floats)
 {
     switch (music.ctxType)
@@ -1281,14 +1283,9 @@ int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_flo
     #if defined(SUPPORT_FILEFORMAT_MP3)
         case MUSIC_AUDIO_MP3:
         {
-            while (true)
-            {
-                int frameCountRead = (int)drmp3_read_pcm_frames_f32((drmp3 *)music.ctxData, frameCountStillNeeded, (float *)((char *)AUDIO.System.pcmBuffer + frameCountReadTotal*frameSize));
-                frameCountReadTotal += frameCountRead;
-                frameCountStillNeeded -= frameCountRead;
-                if (frameCountStillNeeded == 0) break;
-                else drmp3_seek_to_start_of_stream((drmp3 *)music.ctxData);
-            }
+            size_t num_samples = num_floats/music.stream.channels;
+            int frameCountRead = (int)drmp3_read_pcm_frames_f32((drmp3 *)music.ctxData, num_samples, buffer);
+            return frameCountRead;
         } break;
     #endif
     #if defined(SUPPORT_FILEFORMAT_QOA)
