@@ -51,8 +51,6 @@ $ ./nob
 $ ./build/musializer
 ```
 
-Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
-
 If the build fails because of missing header files, you may need to install the X11 dev packages.
 
 On Debian, Ubuntu, etc, do this:
