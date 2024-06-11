@@ -1242,14 +1242,10 @@ typedef enum {
 typedef struct stb_vorbis stb_vorbis;
 extern int stb_vorbis_get_samples_short_interleaved(stb_vorbis *f, int channels, short *buffer, int num_shorts);
 
-#define SUPPORT_FILEFORMAT_WAV
-#define SUPPORT_FILEFORMAT_OGG
-#define SUPPORT_FILEFORMAT_MP3
 int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_floats)
 {
     switch (music.ctxType)
     {
-    #if defined(SUPPORT_FILEFORMAT_WAV)
         case MUSIC_AUDIO_WAV:
         {
             size_t num_samples = num_floats/music.stream.channels;
@@ -1268,8 +1264,6 @@ int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_flo
                 return frameCountRead;
             }
         } break;
-    #endif
-    #if defined(SUPPORT_FILEFORMAT_OGG)
         case MUSIC_AUDIO_OGG:
         {
             short *samples = (short *)arena_alloc(a, num_floats*sizeof(short));
@@ -1279,15 +1273,12 @@ int poll_samples_from_music(Arena *a, Music music, float *buffer, size_t num_flo
             }
             return frameCountRead;
         } break;
-    #endif
-    #if defined(SUPPORT_FILEFORMAT_MP3)
         case MUSIC_AUDIO_MP3:
         {
             size_t num_samples = num_floats/music.stream.channels;
             int frameCountRead = (int)drmp3_read_pcm_frames_f32((drmp3 *)music.ctxData, num_samples, buffer);
             return frameCountRead;
         } break;
-    #endif
     #if defined(SUPPORT_FILEFORMAT_QOA)
         case MUSIC_AUDIO_QOA:
         {
