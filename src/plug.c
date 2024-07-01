@@ -64,7 +64,11 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #include "external/miniaudio.h"
 #include "external/dr_wav.h"
 
+#ifdef MUSIALIZER_TARGET_WEB
+#define GLSL_VERSION 100
+#else
 #define GLSL_VERSION 330
+#endif
 
 #define FFT_SIZE (1<<13)
 #define FONT_SIZE 64

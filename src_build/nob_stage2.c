@@ -31,6 +31,8 @@ static const char *raylib_modules[] = {
 #include "nob_win64_msvc.c"
 #elif defined(MUSIALIZER_TARGET_OPENBSD)
 #include "nob_openbsd.c"
+#elif defined(MUSIALIZER_TARGET_WEB)
+#include "nob_web.c"
 #else
 #error "No Musializer Target is defined. Check your ./build/config.h."
 #endif // MUSIALIZER_TARGET
@@ -57,6 +59,7 @@ Resource resources[] = {
     { .file_path = "./resources/logo/logo-256.png" },
     { .file_path = "./resources/shaders/glsl330/circle.fs" },
     { .file_path = "./resources/shaders/glsl120/circle.fs" },
+    { .file_path = "./resources/shaders/glsl100/circle.fs" },
     { .file_path = "./resources/icons/volume.png" },
     { .file_path = "./resources/icons/play.png" },
     { .file_path = "./resources/icons/render.png" },
