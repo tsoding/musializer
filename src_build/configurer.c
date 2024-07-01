@@ -47,6 +47,10 @@ static Target_Flag target_flags[] = {
             .enabled_by_default = false,
         #endif
     },
+    {
+        .macro = "MUSIALIZER_TARGET_WEB",
+        .enabled_by_default = false,
+    },
 };
 
 typedef struct {
