@@ -1,27 +1,32 @@
-// This is a complete backward incompatible rewrite of https://github.com/tsoding/nobuild
-// because I'm really unhappy with the direction it is going. It's gonna sit in this repo
-// until it's matured enough and then I'll probably extract it to its own repo.
+/* nob - v1.1.0 - Public Domain - https://github.com/tsoding/nob
 
-// Copyright 2023 Alexey Kutepov <reximkut@gmail.com>
-//
-// Permission is hereby granted, free of charge, to any person obtaining
-// a copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to
-// permit persons to whom the Software is furnished to do so, subject to
-// the following conditions:
-//
-// The above copyright notice and this permission notice shall be
-// included in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   This library is the next generation of the [NoBuild](https://github.com/tsoding/nobuild) idea.
+
+   Quick example:
+
+      ```c
+      // nob.c
+      #define NOB_IMPLEMENTATION
+      #include "nob.h"
+
+      int main(int argc, char **argv)
+      {
+          NOB_GO_REBUILD_URSELF(argc, argv);
+          Nob_Cmd cmd = {0};
+          nob_cmd_append(&cmd, "cc", "-Wall", "-Wextra", "-o", "main", "main.c");
+          if (!nob_cmd_run_sync(cmd)) return 1;
+          return 0;
+      }
+      ```
+
+      ```console
+      $ cc -o nob nob.c
+      $ ./nob
+      ```
+
+      The `nob` automatically rebuilds itself if `nob.c` is modified thanks to
+      the `NOB_GO_REBUILD_URSELF` macro (don't forget to check out how it works below)
+*/
 
 #ifndef NOB_H_
 #define NOB_H_
@@ -70,12 +75,16 @@ typedef enum {
     NOB_INFO,
     NOB_WARNING,
     NOB_ERROR,
+    NOB_NO_LOGS,
 } Nob_Log_Level;
+
+// Any messages with the level below nob_minimal_log_level are going to be suppressed.
+Nob_Log_Level nob_minimal_log_level = NOB_INFO;
 
 void nob_log(Nob_Log_Level level, const char *fmt, ...);
 
-// It is an equivalent of shift command from bash. It basically pops a command line
-// argument from the beginning.
+// It is an equivalent of shift command from bash. It basically pops an element from
+// the beginning of a sized array.
 #define nob_shift(xs, xs_sz) (NOB_ASSERT((xs_sz) > 0), (xs_sz)--, *(xs)++)
 // NOTE: nob_shift_args() is an alias for an old variant of nob_shift that only worked with
 // the command line arguments passed to the main() function. nob_shift() is more generic.
@@ -210,6 +219,9 @@ Nob_Proc nob_cmd_run_async(Nob_Cmd cmd);
 
 // Run command synchronously
 bool nob_cmd_run_sync(Nob_Cmd cmd);
+// NOTE: nob_cmd_run_sync_and_reset() is just like nob_cmd_run_sync() except it also resets cmd.count to 0
+// so the Nob_Cmd instance can be seamlessly used several times in a row
+bool nob_cmd_run_sync_and_reset(Nob_Cmd *cmd);
 
 #ifndef NOB_TEMP_CAPACITY
 #define NOB_TEMP_CAPACITY (8*1024*1024)
@@ -626,8 +638,17 @@ bool nob_cmd_run_sync(Nob_Cmd cmd)
     return nob_proc_wait(p);
 }
 
+bool nob_cmd_run_sync_and_reset(Nob_Cmd *cmd)
+{
+    Nob_Proc p = nob_cmd_run_sync(*cmd);
+    cmd->count = 0;
+    return p;
+}
+
 void nob_log(Nob_Log_Level level, const char *fmt, ...)
 {
+    if (level < nob_minimal_log_level) return;
+
     switch (level) {
     case NOB_INFO:
         fprintf(stderr, "[INFO] ");
@@ -1156,3 +1177,69 @@ int closedir(DIR *dirp)
 // minirent.h SOURCE END ////////////////////////////////////////
 
 #endif
+
+/*
+   Revision history:
+
+      1.1.0 (2024-10-15) nob_minimal_log_level
+                         nob_cmd_run_sync_and_reset
+      1.0.0 (2024-10-15) first release based on https://github.com/tsoding/musializer/blob/f106c92934172096ed6822b6b9b276410cd99a31/nob.h
+
+*/
+
+/*
+   Version Conventions:
+
+      We are following https://semver.org/ so the version has a format MAJOR.MINOR.PATCH:
+      - Modifying comments does not update the version.
+      - PATCH is incremented in case of a bug fix or refactoring without touching the API.
+      - MINOR is incremented when new functions and/or types are added in a way that does
+        not break any existing user code. We want to do this in the majority of the situation.
+        If we want to delete a certain function or type in favor of another one we should
+        just add the new function/type and deprecate the old one in a backward compatible way
+        and let them co-exist for a while.
+      - MAJOR update should be just a periodic cleanup of the deprecated functions and types
+        without really modifying any existing functionality.
+*/
+
+/*
+   ------------------------------------------------------------------------------
+   This software is available under 2 licenses -- choose whichever you prefer.
+   ------------------------------------------------------------------------------
+   ALTERNATIVE A - MIT License
+   Copyright (c) 2024 Alexey Kutepov
+   Permission is hereby granted, free of charge, to any person obtaining a copy of
+   this software and associated documentation files (the "Software"), to deal in
+   the Software without restriction, including without limitation the rights to
+   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+   of the Software, and to permit persons to whom the Software is furnished to do
+   so, subject to the following conditions:
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+   ------------------------------------------------------------------------------
+   ALTERNATIVE B - Public Domain (www.unlicense.org)
+   This is free and unencumbered software released into the public domain.
+   Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+   software, either in source code form or as a compiled binary, for any purpose,
+   commercial or non-commercial, and by any means.
+   In jurisdictions that recognize copyright laws, the author or authors of this
+   software dedicate any and all copyright interest in the software to the public
+   domain. We make this dedication for the benefit of the public at large and to
+   the detriment of our heirs and successors. We intend this dedication to be an
+   overt act of relinquishment in perpetuity of all present and future rights to
+   this software under copyright law.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+   ------------------------------------------------------------------------------
+*/
