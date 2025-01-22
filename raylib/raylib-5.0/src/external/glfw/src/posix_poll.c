@@ -46,7 +46,7 @@ GLFWbool _glfwPollPOSIX(struct pollfd* fds, nfds_t count, double* timeout)
             const time_t seconds = (time_t) *timeout;
             const long nanoseconds = (long) ((*timeout - seconds) * 1e9);
             const struct timespec ts = { seconds, nanoseconds };
-            const int result = ppoll(fds, count, &ts, NULL);
+            const int result = poll(fds, count, &ts, NULL);
 #elif defined(__NetBSD__)
             const time_t seconds = (time_t) *timeout;
             const long nanoseconds = (long) ((*timeout - seconds) * 1e9);
