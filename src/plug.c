@@ -10,7 +10,9 @@
 #include "plug.h"
 #include "ffmpeg.h"
 #define NOB_IMPLEMENTATION
+#define NOB_STRIP_PREFIX
 #include "nob.h"
+#include "tinyfiledialogs.h"
 
 #include <raylib.h>
 #include <rlgl.h>
@@ -1234,6 +1236,10 @@ static void toggle_track_playing(Track *track)
 
 static void start_rendering_track(Track *track)
 {
+    char const * filter_params[] = { "*.mp4" };
+    char *output_path = tinyfd_saveFileDialog("Path to rendered video", ".", NOB_ARRAY_LEN(filter_params), filter_params, "mp4 video file");
+    if (output_path == NULL) return;
+
     StopMusicStream(track->music);
 
     fft_clean();
@@ -1243,7 +1249,7 @@ static void start_rendering_track(Track *track)
     p->wave_samples = LoadWaveSamples(p->wave);
     // TODO: set the rendering output path based on the input path
     // Basically output into the same folder
-    p->ffmpeg = ffmpeg_start_rendering(p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
+    p->ffmpeg = ffmpeg_start_rendering(output_path, p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
     p->rendering = true;
     p->cancel_rendering = false;
     SetTraceLogLevel(LOG_WARNING);
@@ -1353,6 +1359,8 @@ static bool toolbar(Track *track, Rectangle boundary)
         start_capture();
     }
 #endif // MUSIALIZER_MICROPHONE
+
+    // TODO: implement "add new track" button that uses tinyfiledialogs
 
     bool volume_slider_interacted = volume_slider((CLITERAL(Rectangle) {
         x,
@@ -1518,20 +1526,55 @@ static void preview_screen(void)
             });
         }
     } else { // We are waiting for the user to Drag&Drop the Music
-        const char *label = "Drag&Drop Music Here";
+        const char *label = "Click to Select File";
+        int font_size = p->font.baseSize;
         Color color = WHITE;
-        Vector2 size = MeasureTextEx(p->font, label, p->font.baseSize, 0);
+        Vector2 size = MeasureTextEx(p->font, label, font_size, 0);
         Vector2 position = {
             w/2 - size.x/2,
             h/2 - size.y/2,
         };
-        DrawTextEx(p->font, label, position, p->font.baseSize, 0, color);
+        DrawTextEx(p->font, label, position, font_size, 0, color);
+
+        font_size /= 2;
+        label = "(or just Drag&Drop it)";
+        color = WHITE;
+        size = MeasureTextEx(p->font, label, font_size, 0);
+        position.y += font_size*2;
+        position.x = w/2 - size.x/2;
+        DrawTextEx(p->font, label, position, font_size, 0, color);
+
         popup_tray(&p->pt, CLITERAL(Rectangle) {
             .x = 0,
             .y = 0,
             .width = w,
             .height = h,
         });
+
+        if (button(((Rectangle) {0, 0, w, h})) & BS_CLICKED) {
+            int allow_multiple_selects = 0; // TODO: enable multiple selects
+            char const *filter_params[] = {"*.wav", "*.ogg", "*.mp3", "*.qoa", "*.xm", "*.mod", "*.flac"};
+            char *input_path = tinyfd_openFileDialog("Path to music file", ".", NOB_ARRAY_LEN(filter_params), filter_params, "music file", allow_multiple_selects);
+            if (input_path) {
+                Music music = LoadMusicStream(input_path);
+                if (IsMusicReady(music)) {
+                    AttachAudioStreamProcessor(music.stream, callback);
+                    char *file_path = strdup(input_path);
+                    assert(file_path != NULL);
+                    nob_da_append(&p->tracks, (CLITERAL(Track) {
+                        .file_path = file_path,
+                        .music = music,
+                    }));
+                } else {
+                    popup_tray_push(&p->pt);
+                }
+
+                if (current_track() == NULL && p->tracks.count > 0) {
+                    p->current_track = 0;
+                    PlayMusicStream(p->tracks.items[0].music);
+                }
+            }
+        }
     }
 }
 

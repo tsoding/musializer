@@ -22,7 +22,7 @@ struct FFMPEG {
     pid_t pid;
 };
 
-FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *sound_file_path)
+FFMPEG *ffmpeg_start_rendering(const char *output_path, size_t width, size_t height, size_t fps, const char *sound_file_path)
 {
     int pipefd[2];
 
@@ -66,7 +66,7 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
             "-c:a", "aac",
             "-ab", "200k",
             "-pix_fmt", "yuv420p",
-            "output.mp4",
+            output_path,
 
             NULL
         );

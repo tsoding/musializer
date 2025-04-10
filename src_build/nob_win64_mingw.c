@@ -30,7 +30,8 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "-o", "./build/libplug.dll");
                 nob_cmd_append(&cmd,
                     "./src/plug.c",
-                    "./src/ffmpeg_windows.c");
+                    "./src/ffmpeg_windows.c",
+                    "./src/tinyfiledialogs.c");
                 nob_cmd_append(&cmd,
                     "-L./build",
                     "-l:raylib.dll");
@@ -69,12 +70,13 @@ bool build_musializer(void)
             "./src/plug.c",
             "./src/ffmpeg_windows.c",
             "./src/musializer.c",
+            "./src/tinyfiledialogs.c",
             "./build/musializer.res"
             );
         nob_cmd_append(&cmd,
             nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
             "-l:libraylib.a");
-        nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
+        nob_cmd_append(&cmd, "-lwinmm", "-lgdi32", "-lole32");
         nob_cmd_append(&cmd, "-static");
     if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
 #endif // MUSIALIZER_HOTRELOAD
