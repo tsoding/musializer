@@ -243,25 +243,36 @@ static void fft_clean(void)
     memset(p->out_smear, 0, sizeof(p->out_smear));
 }
 
-// Ported from https://rosettacode.org/wiki/Fast_Fourier_transform#Python
-static void fft(float in[], size_t stride, Float_Complex out[], size_t n)
+// Ported from https://cp-algorithms.com/algebra/fft.html
+static void fft(float in[], Float_Complex out[], size_t n)
 {
-    assert(n > 0);
-
-    if (n == 1) {
-        out[0] = cfromreal(in[0]);
-        return;
+    for(size_t i = 0; i < n; i++) {
+        out[i] = cfromreal(in[i]);
     }
 
-    fft(in, stride*2, out, n/2);
-    fft(in + stride, stride*2,  out + n/2, n/2);
+    for (size_t i = 1, j = 0; i < n; i++) {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+            Float_Complex temp = out[i];
+            out[i] = out[j];
+            out[j] = temp;
+        }
+    }
 
-    for (size_t k = 0; k < n/2; ++k) {
-        float t = (float)k/n;
-        Float_Complex v = mulcc(cexpf(cfromimag(-2*PI*t)), out[k + n/2]);
-        Float_Complex e = out[k];
-        out[k]       = addcc(e, v);
-        out[k + n/2] = subcc(e, v);
+    for (size_t len = 2; len <= n; len <<= 1) {
+        float ang = 2 * PI / len;
+        Float_Complex wlen = cos(ang) + I*sin(ang) ;
+        for (size_t i = 0; i < n; i += len) {
+            Float_Complex w = 1;
+            for (size_t j = 0; j < len / 2; j++) {
+                Float_Complex u = out[i+j], v = out[i+j+len/2] * w;
+                out[i+j] = u + v;
+                out[i+j+len/2] = u - v;
+                w *= wlen;
+            }
+        }
     }
 }
 
@@ -282,7 +293,7 @@ static size_t fft_analyze(float dt)
     }
 
     // FFT
-    fft(p->in_win, 1, p->out_raw, FFT_SIZE);
+    fft(p->in_win, p->out_raw, FFT_SIZE);
 
     // "Squash" into the Logarithmic Scale
     float step = 1.06;

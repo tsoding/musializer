@@ -16,6 +16,7 @@ bool build_musializer(void)
         "-o", "./build/libplug.so",
         "./src/plug.c", "./src/ffmpeg_linux.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.so",
+        "-O3", "-march=native", "-flto", "-ffast-math",
         "-lm", "-ldl", "-lpthread");
     nob_da_append(&procs, nob_cmd_run_async_and_reset(&cmd));
 
@@ -30,6 +31,7 @@ bool build_musializer(void)
         // NOTE: just in case somebody wants to run musializer from within the ./build/ folder
         nob_temp_sprintf("-Wl,-rpath=./raylib/%s", MUSIALIZER_TARGET_NAME),
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
+        "-O3", "-march=native", "-flto", "-ffast-math",
         "-l:libraylib.so", "-lm", "-ldl", "-lpthread");
     nob_da_append(&procs, nob_cmd_run_async_and_reset(&cmd));
 
@@ -42,6 +44,7 @@ bool build_musializer(void)
         "-o", "./build/musializer",
         "./src/plug.c", "./src/ffmpeg_linux.c", "./src/musializer.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.a",
+        "-O3", "-march=native", "-flto", "-ffast-math",
         "-lm", "-ldl", "-lpthread");
     if (!nob_cmd_run_sync_and_reset(&cmd)) nob_return_defer(false);
 #endif // MUSIALIZER_HOTRELOAD
