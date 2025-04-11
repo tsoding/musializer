@@ -94,6 +94,8 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #define HUD_BUTTON_MARGIN 50
 #define HUD_ICON_SCALE 0.5
 #define HUD_POPUP_LIFETIME_SECS 2.0f
+#define HUD_POPUP_INVALID_FILE 0
+#define HUD_POPUP_DUPLICATE_FILE 1
 #define HUD_POPUP_SLIDEIN_SECS 0.1f
 #define TOOLTIP_PADDING 20.0f
 
@@ -134,6 +136,7 @@ typedef struct {
 
 typedef struct {
     float lifetime;
+    int reason;
 } Popup;
 
 #define PT_GET(pt, index) (assert(index < (pt)->count), &(pt)->items[((pt)->begin + index)%POPUP_TRAY_CAPACITY])
@@ -463,7 +466,7 @@ static Track *current_track(void)
 }
 
 
-static void popup_tray_push(Popup_Tray *pt)
+static void popup_tray_push(Popup_Tray *pt, int reason)
 {
     if (pt->count < POPUP_TRAY_CAPACITY) {
         if (pt->begin == 0) {
@@ -475,6 +478,7 @@ static void popup_tray_push(Popup_Tray *pt)
 
         pt->slide += HUD_POPUP_SLIDEIN_SECS;
         PT_FIRST(pt)->lifetime = HUD_POPUP_LIFETIME_SECS + pt->slide;
+        PT_FIRST(pt)->reason = reason;
     }
 }
 
@@ -1076,7 +1080,18 @@ static void popup_tray(Popup_Tray *pt, Rectangle preview_boundary)
             .height = popup_height,
         };
         DrawRectangleRounded(popup_boundary, 0.3, 20, ColorAlpha(COLOR_POPUP_BACKGROUND, alpha));
-        const char *text = "Could not load file";
+        int reason=it->reason;
+        const char *text = NULL;
+        switch (reason) {
+            case HUD_POPUP_INVALID_FILE:
+                text="Could not load file";
+                break;
+            case HUD_POPUP_DUPLICATE_FILE:
+                text="File already loaded";
+                break;
+            default:
+            break;
+        }
         float fontSize = popup_boundary.width*0.15;
         Vector2 size = MeasureTextEx(p->font, text, fontSize, 0);
         Vector2 position = {
@@ -1401,7 +1416,10 @@ static void preview_screen(void)
                     is_already_loaded = true;
                 }
             }
-            if (is_already_loaded) continue;
+            if (is_already_loaded) {
+                popup_tray_push(&p->pt,HUD_POPUP_DUPLICATE_FILE);
+                continue;
+            };
             Music music = LoadMusicStream(droppedFiles.paths[i]);
             if (IsMusicValid(music)) {
                 AttachAudioStreamProcessor(music.stream, callback);
@@ -1412,7 +1430,7 @@ static void preview_screen(void)
                     .music = music,
                 }));
             } else {
-                popup_tray_push(&p->pt);
+                popup_tray_push(&p->pt, HUD_POPUP_INVALID_FILE);
             }
         }
         UnloadDroppedFiles(droppedFiles);
@@ -1573,7 +1591,7 @@ static void preview_screen(void)
                         .music = music,
                     }));
                 } else {
-                    popup_tray_push(&p->pt);
+                    popup_tray_push(&p->pt, HUD_POPUP_INVALID_FILE);
                 }
 
                 if (current_track() == NULL && p->tracks.count > 0) {
@@ -1610,7 +1628,7 @@ static void capture_screen(void)
                     .music = music,
                 }));
             } else {
-                popup_tray_push(&p->pt);
+                popup_tray_push(&p->pt, HUD_POPUP_INVALID_FILE);
             }
 
             if (current_track() == NULL && p->tracks.count > 0) {
