@@ -17,6 +17,7 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
                 nob_cmd_append(&cmd, "-fPIC", "-shared");
                 nob_cmd_append(&cmd, "-o", "./build/libplug.so");
+                nob_cmd_append(&cmd, "./src/tinyfiledialogs.c");
                 nob_cmd_append(&cmd,
                     "./src/plug.c",
                     "./src/ffmpeg_linux.c");
@@ -34,7 +35,7 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "-o", "./build/musializer");
                 nob_cmd_append(&cmd,
                     "./src/musializer.c",
-                    "./src/hotreload_linux.c");
+                    "./src/hotreload_posix.c");
                 nob_cmd_append(&cmd,
                     "-Wl,-rpath=./build/",
                     "-Wl,-rpath=./",
@@ -54,6 +55,7 @@ bool build_musializer(void)
             nob_cmd_append(&cmd, "-I.");
             nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/");
             nob_cmd_append(&cmd, "-o", "./build/musializer");
+            nob_cmd_append(&cmd, "./src/tinyfiledialogs.c");
             nob_cmd_append(&cmd,
                 "./src/plug.c",
                 "./src/ffmpeg_linux.c",
@@ -99,6 +101,7 @@ bool build_raylib(void)
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             cmd.count = 0;
             nob_cmd_append(&cmd, "cc");
+            nob_cmd_append(&cmd, "-w");
             nob_cmd_append(&cmd, "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1");
             nob_cmd_append(&cmd, "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
             nob_cmd_append(&cmd, "-c", input_path);

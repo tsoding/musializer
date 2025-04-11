@@ -1594,7 +1594,7 @@ static void capture_screen(void)
 
             const char *recording_file_path = "recording.wav";
             Music music = LoadMusicStream(recording_file_path);
-            if (IsMusicReady(music)) {
+            if (IsMusicValid(music)) {
                 AttachAudioStreamProcessor(music.stream, callback);
                 char *file_path = strdup(recording_file_path);
                 assert(file_path != NULL);
