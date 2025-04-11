@@ -1237,7 +1237,7 @@ static void toggle_track_playing(Track *track)
 static void start_rendering_track(Track *track)
 {
     char const * filter_params[] = { "*.mp4" };
-    char *output_path = tinyfd_saveFileDialog("Path to rendered video", ".", NOB_ARRAY_LEN(filter_params), filter_params, "mp4 video file");
+    char *output_path = tinyfd_saveFileDialog("Path to rendered video", "./", NOB_ARRAY_LEN(filter_params), filter_params, "mp4 video file");
     if (output_path == NULL) return;
 
     StopMusicStream(track->music);
@@ -1554,7 +1554,7 @@ static void preview_screen(void)
         if (button(((Rectangle) {0, 0, w, h})) & BS_CLICKED) {
             int allow_multiple_selects = 0; // TODO: enable multiple selects
             char const *filter_params[] = {"*.wav", "*.ogg", "*.mp3", "*.qoa", "*.xm", "*.mod", "*.flac"};
-            char *input_path = tinyfd_openFileDialog("Path to music file", ".", NOB_ARRAY_LEN(filter_params), filter_params, "music file", allow_multiple_selects);
+            char *input_path = tinyfd_openFileDialog("Path to music file", "./", NOB_ARRAY_LEN(filter_params), filter_params, "music file", allow_multiple_selects);
             if (input_path) {
                 Music music = LoadMusicStream(input_path);
                 if (IsMusicValid(music)) {
