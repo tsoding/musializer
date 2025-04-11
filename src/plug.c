@@ -1395,6 +1395,13 @@ static void preview_screen(void)
         // TODO: loading files synchronously like that actually blocks the UI thread
         // Maybe we should do that in a separate thread.
         for (size_t i = 0; i < droppedFiles.count; ++i) {
+            bool is_already_loaded=false;
+            for (size_t t=0; t<p->tracks.count; ++t){
+                if (strncmp(p->tracks.items[t].file_path, droppedFiles.paths[i], 1024) == 0){
+                    is_already_loaded = true;
+                }
+            }
+            if (is_already_loaded) continue;
             Music music = LoadMusicStream(droppedFiles.paths[i]);
             if (IsMusicValid(music)) {
                 AttachAudioStreamProcessor(music.stream, callback);
