@@ -20,7 +20,8 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "-o", "./build/libplug.dylib");
         nob_cmd_append(&cmd,
             "./src/plug.c",
-            "./src/ffmpeg_linux.c");
+            "./src/ffmpeg_linux.c",
+            "./src/tinyfiledialogs.c");
         nob_cmd_append(&cmd, "./build/raylib/macos/libraylib.dylib");
         nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
     nob_da_append(&procs, nob_cmd_run_async(cmd));
@@ -52,7 +53,8 @@ bool build_musializer(void)
         nob_cmd_append(&cmd,
             "./src/plug.c",
             "./src/ffmpeg_linux.c",
-            "./src/musializer.c");
+            "./src/musializer.c",
+            "./src/tinyfiledialogs.c");
         nob_cmd_append(&cmd, "./build/raylib/macos/libraylib.a");
 
         nob_cmd_append(&cmd, "-framework", "CoreVideo");
