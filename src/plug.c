@@ -1396,7 +1396,7 @@ static void preview_screen(void)
         // Maybe we should do that in a separate thread.
         for (size_t i = 0; i < droppedFiles.count; ++i) {
             Music music = LoadMusicStream(droppedFiles.paths[i]);
-            if (IsMusicReady(music)) {
+            if (IsMusicValid(music)) {
                 AttachAudioStreamProcessor(music.stream, callback);
                 char *file_path = strdup(droppedFiles.paths[i]);
                 assert(file_path != NULL);
@@ -1557,7 +1557,7 @@ static void preview_screen(void)
             char *input_path = tinyfd_openFileDialog("Path to music file", ".", NOB_ARRAY_LEN(filter_params), filter_params, "music file", allow_multiple_selects);
             if (input_path) {
                 Music music = LoadMusicStream(input_path);
-                if (IsMusicReady(music)) {
+                if (IsMusicValid(music)) {
                     AttachAudioStreamProcessor(music.stream, callback);
                     char *file_path = strdup(input_path);
                     assert(file_path != NULL);

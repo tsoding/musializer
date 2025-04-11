@@ -82,7 +82,7 @@ bool build_raylib(void)
 
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             nob_cmd_append(&cmd, "cc",
-                "-ggdb", "-DPLATFORM_DESKTOP", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1",
+                "-ggdb", "-DPLATFORM_DESKTOP", "-D_GLFW_X11", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1",
                 "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include",
                 "-c", input_path,
                 "-o", output_path);

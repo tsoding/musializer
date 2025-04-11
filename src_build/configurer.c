@@ -1,4 +1,4 @@
-#define RAYLIB_VERSION "5.0"
+#define RAYLIB_VERSION "5.5"
 #define CONFIG_PATH "./build/config.h"
 
 typedef struct {
