@@ -73,6 +73,11 @@ static Feature_Flag feature_flags[] = {
     },
 };
 
+// Removed feature flags
+#ifdef MUSIALIZER_ACT_ON_PRESS
+#error "MUSIALIZER_ACT_ON_PRESS no longer exists. Please remove it from your build/config.h"
+#endif // MUSIALIZER_ACT_ON_PRESS
+
 #define genf(out, ...) \
     do { \
         fprintf((out), __VA_ARGS__); \
