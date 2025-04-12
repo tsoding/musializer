@@ -1,5 +1,13 @@
 #define MUSIALIZER_TARGET_NAME "win64-mingw"
 
+// On windows, mingw doesn't have the `x86_64-w64-mingw32-` prefix for tools such as `windres` or `ar`.
+// For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
+#ifdef _WIN32
+#define MAYBE_PREFIXED(x) x
+#else
+#define MAYBE_PREFIXED(x) "x86_64-w64-mingw32-"x
+#endif // _WIN32
+
 bool build_musializer(void)
 {
     bool result = true;
@@ -7,13 +15,7 @@ bool build_musializer(void)
     Nob_Procs procs = {0};
 
     cmd.count = 0;
-    #ifdef _WIN32
-        // On windows, mingw doesn't have the `x86_64-w64-mingw32-` prefix for windres.
-        // For gcc, you can use both `x86_64-w64-mingw32-gcc` and just `gcc`
-        nob_cmd_append(&cmd, "windres");
-    #else
-        nob_cmd_append(&cmd, "x86_64-w64-mingw32-windres");
-    #endif // _WIN32
+        nob_cmd_append(&cmd, MAYBE_PREFIXED("windres"));
         nob_cmd_append(&cmd, "./src/musializer.rc");
         nob_cmd_append(&cmd, "-O", "coff");
         nob_cmd_append(&cmd, "-o", "./build/musializer.res");
@@ -134,7 +136,8 @@ bool build_raylib()
     const char *libraylib_path = nob_temp_sprintf("%s/libraylib.a", build_path);
 
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
-        nob_cmd_append(&cmd, "x86_64-w64-mingw32-ar", "-crs", libraylib_path);
+        nob_cmd_append(&cmd, MAYBE_PREFIXED("ar"));
+        nob_cmd_append(&cmd, "-crs", libraylib_path);
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);
