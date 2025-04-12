@@ -1,4 +1,5 @@
 // TODO: confirm that MacOS build works on MacOS
+#include <stddef.h>
 #define MUSIALIZER_TARGET_NAME "macos"
 
 bool build_musializer(void)
@@ -158,11 +159,61 @@ defer:
 
 bool build_dist(void)
 {
-#ifdef MUSIALIZER_HOTRELOAD
+#if defined(MUSIALIZER_HOTRELOAD)
     nob_log(NOB_ERROR, "We do not ship with hotreload enabled");
     return false;
-#else
-    nob_log(NOB_ERROR, "TODO: Creating distro for MacOS build is not implemented yet");
+#elif defined(MUSIALIZER_UNBUNDLE)
+    nob_log(NOB_ERROR, "We do not ship with unbundled resources");
     return false;
+#else
+    if (!nob_mkdir_if_not_exists("./build/Musializer.app/")) return false;
+    if (!nob_mkdir_if_not_exists("./build/Musializer.app/Contents")) return false;
+    if (!nob_mkdir_if_not_exists("./build/Musializer.app/Contents/MacOS")) return false;
+    if (!nob_mkdir_if_not_exists("./build/Musializer.app/Contents/Resources")) return false;
+    if (!nob_mkdir_if_not_exists("./build/AppIcon.iconset")) return false;
+
+    if (!nob_copy_file("./build/musializer", "./build/Musializer.app/Contents/MacOS/Musializer")) return false;
+    if (!nob_copy_file("./src_build/Info.plist", "./build/Musializer.app/Contents/Info.plist")) return false;
+
+    typedef struct {
+        const char *out_path;
+        int size;
+    } Icon;
+    Icon icons[] = {
+        {.out_path = "icon_16x16.png", .size = 16},
+        {.out_path = "icon_16x16@2x.png", .size = 32},
+        {.out_path = "icon_32x32.png", .size = 32},
+        {.out_path = "icon_32x32@2x.png", .size = 64},
+        {.out_path = "icon_128x128.png", .size = 128},
+        {.out_path = "icon_128x128@2x.png", .size = 256},
+        {.out_path = "icon_256x256.png", .size = 256},
+        {.out_path = "icon_256x256@2x.png", .size = 512},
+        {.out_path = "icon_512x512.png", .size = 512},
+        {.out_path = "icon_512x512@2x.png", .size = 1024},
+    };
+
+    Nob_Procs procs = {0};
+    Nob_Cmd cmd = {0};
+    for (size_t i=0; i<NOB_ARRAY_LEN(icons); ++i) {
+        char* icon = nob_temp_sprintf("./build/AppIcon.iconset/%s", icons[i].out_path);
+        if (nob_needs_rebuild1(icon, "./resources/logo/logo.svg")) {
+            cmd.count = 0;
+                nob_cmd_append(&cmd, "convert",
+                    "-background", "none",
+                    "./resources/logo/logo.svg",
+                    "-resize", nob_temp_sprintf("%dx%d", icons[i].size, icons[i].size),
+                    icon);
+            nob_da_append(&procs, nob_cmd_run_async(cmd));
+        } else {
+            nob_log(NOB_INFO, "%s is up to date", icon);
+        }
+    }
+    if (!nob_procs_wait(procs)) return false;
+    cmd.count = 0;
+        nob_cmd_append(&cmd, "iconutil", "-c", "icns",
+                        "-o", "./build/Musializer.app/Contents/Resources/AppIcon.icns",
+                        "./build/AppIcon.iconset");
+    if (!nob_cmd_run_sync(cmd)) return false;
+    return true;
 #endif // MUSIALIZER_HOTRELOAD
 }
