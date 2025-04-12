@@ -9,12 +9,12 @@
 #define NOB_IMPLEMENTATION
 #define NOB_STRIP_PREFIX
 #define NOB_EXPERIMENTAL_DELETE_OLD
-#include "./nob.h"
+#include "./thirdparty/nob.h"
 #include "./src_build/configurer.c"
 
 int main(int argc, char **argv)
 {
-    NOB_GO_REBUILD_URSELF(argc, argv);
+    NOB_GO_REBUILD_URSELF_PLUS(argc, argv, "./thirdparty/nob.h", "./src_build/configurer.c");
 
     const char *program = nob_shift_args(&argc, &argv);
 
