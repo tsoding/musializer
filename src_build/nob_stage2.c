@@ -5,6 +5,11 @@
 #include "../build/config.h"
 #include "./configurer.c"
 
+// Removed feature flags
+#ifdef MUSIALIZER_ACT_ON_PRESS
+#error "MUSIALIZER_ACT_ON_PRESS no longer exists. Please remove it from your build/config.h"
+#endif // MUSIALIZER_ACT_ON_PRESS
+
 static const char *raylib_modules[] = {
     "rcore",
     "raudio",

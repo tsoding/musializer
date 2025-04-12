@@ -206,9 +206,7 @@ typedef struct {
     float out_smooth[FFT_SIZE];
     float out_smear[FFT_SIZE];
 
-#ifndef MUSIALIZER_ACT_ON_PRESS
     uint64_t active_button_id;
-#endif // MUSIALIZER_ACT_ON_PRESS
 
     Popup_Tray pt;
 
@@ -640,7 +638,6 @@ static int button_with_id(uint64_t id, Rectangle boundary)
     Vector2 mouse = GetMousePosition();
     int hoverover = CheckCollisionPointRec(mouse, boundary);
 
-#ifndef MUSIALIZER_ACT_ON_PRESS
     int clicked = 0;
     if (p->active_button_id == 0) {
         if (hoverover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -652,10 +649,6 @@ static int button_with_id(uint64_t id, Rectangle boundary)
             if (hoverover) clicked = 1;
         }
     }
-#else
-    (void) id;
-    int clicked = hoverover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-#endif // MUSIALIZER_ACT_ON_PRESS
 
     return (clicked<<1) | hoverover;
 }

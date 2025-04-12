@@ -71,11 +71,6 @@ static Feature_Flag feature_flags[] = {
         .macro = "MUSIALIZER_MICROPHONE",
         .description = "Unfinished feature that enables capturing sound from the mic."
     },
-    {
-        .display = "Act on Press",
-        .macro = "MUSIALIZER_ACT_ON_PRESS",
-        .description = "Activate UI buttons on Press instead of Release just as John Carmack explained https://twitter.com/ID_AA_Carmack/status/1787850053912064005"
-    },
 };
 
 #define genf(out, ...) \
