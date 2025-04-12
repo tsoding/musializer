@@ -29,7 +29,7 @@ bool build_musializer(void)
                 "/link",
                 nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
                 "raylib.lib");
-            nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib");
+            nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "Ole32.lib");
         nob_da_append(&procs, nob_cmd_run_async(cmd));
 
         cmd.count = 0;
@@ -67,7 +67,7 @@ bool build_musializer(void)
             "/entry:mainCRTStartup",
             nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
             "raylib.lib");
-        nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "./build/musializer.res");
+        nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "Ole32.lib", "./build/musializer.res");
         // TODO: is some sort of `-static` flag needed for MSVC to get a statically linked executable
         //nob_cmd_append(&cmd, "-static");
     if (!nob_cmd_run_sync(cmd)) nob_return_defer(false);
