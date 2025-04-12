@@ -21,7 +21,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "-o", "./build/libplug.dylib");
         nob_cmd_append(&cmd,
             "./src/plug.c",
-            "./src/ffmpeg_linux.c",
+            "./src/ffmpeg_posix.c",
             "./src/tinyfiledialogs.c");
         nob_cmd_append(&cmd, "./build/raylib/macos/libraylib.dylib");
         nob_cmd_append(&cmd, "-lm", "-ldl", "-lpthread");
@@ -53,7 +53,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "-o", "./build/musializer");
         nob_cmd_append(&cmd,
             "./src/plug.c",
-            "./src/ffmpeg_linux.c",
+            "./src/ffmpeg_posix.c",
             "./src/musializer.c",
             "./src/tinyfiledialogs.c");
         nob_cmd_append(&cmd, "./build/raylib/macos/libraylib.a");
