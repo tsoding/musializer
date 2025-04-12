@@ -107,6 +107,7 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/complex-math-support?view=msvc-170#types-used-in-complex-math
 #ifdef _MSC_VER
 #    define Float_Complex _Fcomplex
+#    define cbuild(re, im) _FCbuild(re, im)
 #    define cfromreal(re) _FCbuild(re, 0)
 #    define cfromimag(im) _FCbuild(0, im)
 #    define mulcc _FCmulcc
@@ -114,6 +115,7 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #    define subcc(a, b) _FCbuild(crealf(a) - crealf(b), cimagf(a) - cimagf(b))
 #else
 #    define Float_Complex float complex
+#    define cbuild(re, im) ((re) + (im)*I)
 #    define cfromreal(re) (re)
 #    define cfromimag(im) ((im)*I)
 #    define mulcc(a, b) ((a)*(b))
@@ -265,14 +267,14 @@ static void fft(float in[], Float_Complex out[], size_t n)
 
     for (size_t len = 2; len <= n; len <<= 1) {
         float ang = 2 * PI / len;
-        Float_Complex wlen = cos(ang) + I*sin(ang) ;
+        Float_Complex wlen = cbuild(cosf(ang), sinf(ang));
         for (size_t i = 0; i < n; i += len) {
-            Float_Complex w = 1;
+            Float_Complex w = cfromreal(1);
             for (size_t j = 0; j < len / 2; j++) {
-                Float_Complex u = out[i+j], v = out[i+j+len/2] * w;
-                out[i+j] = u + v;
-                out[i+j+len/2] = u - v;
-                w *= wlen;
+                Float_Complex u = out[i+j], v = mulcc(out[i+j+len/2], w);
+                out[i+j] = addcc(u, v);
+                out[i+j+len/2] = subcc(u, v);
+                w = mulcc(w, wlen);
             }
         }
     }
