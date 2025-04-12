@@ -35,7 +35,7 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd,
                     "-L./build",
                     "-l:raylib.dll");
-                nob_cmd_append(&cmd, "-lwinmm", "-lgdi32");
+                nob_cmd_append(&cmd, "-lwinmm", "-lgdi32", "-lole32");
             nob_da_append(&procs, nob_cmd_run_async(cmd));
 
             cmd.count = 0;
