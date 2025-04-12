@@ -20,7 +20,7 @@ bool build_musializer(void)
             nob_cmd_append(&cmd, "/LD");
             nob_cmd_append(&cmd, "/Fobuild\\", "/Fe./build/libplug.dll");
             nob_cmd_append(&cmd, "/I", "./");
-            nob_cmd_append(&cmd, "/I", "./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+            nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
             nob_cmd_append(&cmd,
                 "src/plug.c",
                 "src/ffmpeg_windows.c",
@@ -35,7 +35,7 @@ bool build_musializer(void)
         cmd.count = 0;
             nob_cmd_append(&cmd, "cl.exe");
             nob_cmd_append(&cmd, "/I", "./");
-            nob_cmd_append(&cmd, "/I", "./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+            nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
             nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
             nob_cmd_append(&cmd,
                 "./src/musializer.c",
@@ -54,7 +54,7 @@ bool build_musializer(void)
     cmd.count = 0;
         nob_cmd_append(&cmd, "cl.exe");
         nob_cmd_append(&cmd, "/I", "./");
-        nob_cmd_append(&cmd, "/I", "./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+        nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
         nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
         nob_cmd_append(&cmd,
             "./src/musializer.c",
@@ -98,7 +98,7 @@ bool build_raylib(void)
     }
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-        const char *input_path = nob_temp_sprintf("./thirdparty/raylib-"RAYLIB_VERSION"/src/%s.c", raylib_modules[i]);
+        const char *input_path = nob_temp_sprintf(RAYLIB_SRC_FOLDER"%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.obj", build_path, raylib_modules[i]);
 
         nob_da_append(&object_files, output_path);
@@ -109,7 +109,7 @@ bool build_raylib(void)
             #ifdef MUSIALIZER_HOTRELOAD
                 nob_cmd_append(&cmd, "/DBUILD_LIBTYPE_SHARED");
             #endif
-            nob_cmd_append(&cmd, "/I", "./thirdparty/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
+            nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER"external/glfw/include");
             nob_cmd_append(&cmd, "/c", input_path);
             nob_cmd_append(&cmd, nob_temp_sprintf("/Fo%s", output_path));
             Nob_Proc proc = nob_cmd_run_async(cmd);

@@ -16,7 +16,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
         nob_cmd_append(&cmd, "-I.");
-        nob_cmd_append(&cmd, "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+        nob_cmd_append(&cmd, "-I"RAYLIB_SRC_FOLDER);
         nob_cmd_append(&cmd, "-fPIC", "-shared");
         nob_cmd_append(&cmd, "-o", "./build/libplug.dylib");
         nob_cmd_append(&cmd,
@@ -31,7 +31,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
         nob_cmd_append(&cmd, "-I.");
-        nob_cmd_append(&cmd, "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+        nob_cmd_append(&cmd, "-I"RAYLIB_SRC_FOLDER);
         nob_cmd_append(&cmd, "-o", "./build/musializer");
         nob_cmd_append(&cmd,
             "./src/musializer.c",
@@ -49,7 +49,7 @@ bool build_musializer(void)
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "-Wall", "-Wextra", "-g");
         nob_cmd_append(&cmd, "-I.");
-        nob_cmd_append(&cmd, "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/");
+        nob_cmd_append(&cmd, "-I"RAYLIB_SRC_FOLDER);
         nob_cmd_append(&cmd, "-o", "./build/musializer");
         nob_cmd_append(&cmd,
             "./src/plug.c",
@@ -93,7 +93,7 @@ bool build_raylib(void)
     }
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-        const char *input_path = nob_temp_sprintf("./thirdparty/raylib-"RAYLIB_VERSION"/src/%s.c", raylib_modules[i]);
+        const char *input_path = nob_temp_sprintf(RAYLIB_SRC_FOLDER"%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
 
         nob_da_append(&object_files, output_path);
@@ -102,7 +102,7 @@ bool build_raylib(void)
             cmd.count = 0;
             nob_cmd_append(&cmd, "clang");
             nob_cmd_append(&cmd, "-g", "-DPLATFORM_DESKTOP", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1");
-            nob_cmd_append(&cmd, "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/external/glfw/include");
+            nob_cmd_append(&cmd, "-I"RAYLIB_SRC_FOLDER"external/glfw/include");
             nob_cmd_append(&cmd, "-Iexternal/glfw/deps/ming");
             nob_cmd_append(&cmd, "-DGRAPHICS_API_OPENGL_33");
             if(strcmp(raylib_modules[i], "rglfw") == 0) {
