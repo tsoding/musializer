@@ -1,5 +1,6 @@
 #define RAYLIB_VERSION "5.5"
 #define CONFIG_PATH "./build/config.h"
+#define RAYLIB_SRC_FOLDER "./thirdparty/raylib-" RAYLIB_VERSION "/src/"
 
 typedef struct {
     const char *macro;
