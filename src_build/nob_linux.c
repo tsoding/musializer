@@ -17,7 +17,7 @@ bool build_musializer(void)
         "./src/plug.c", "./src/ffmpeg_linux.c", "./src/tinyfiledialogs.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.so",
         "-O3", "-march=native", "-ffast-math",
-        "-lm", "-ldl", "-lpthread");
+        "-lm", "-ldl", "-flto=auto", "-lpthread");
     nob_da_append(&procs, nob_cmd_run_async_and_reset(&cmd));
 
     nob_cmd_append(&cmd, "cc",
@@ -32,7 +32,7 @@ bool build_musializer(void)
         nob_temp_sprintf("-Wl,-rpath=./raylib/%s", MUSIALIZER_TARGET_NAME),
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
         "-O3", "-march=native", "-ffast-math",
-        "-l:libraylib.so", "-lm", "-ldl", "-lpthread");
+        "-l:libraylib.so", "-lm", "-ldl", "-flto=auto", "-lpthread");
     nob_da_append(&procs, nob_cmd_run_async_and_reset(&cmd));
 
     if (!nob_procs_wait_and_reset(&procs)) nob_return_defer(false);
@@ -45,7 +45,7 @@ bool build_musializer(void)
         "./src/plug.c", "./src/ffmpeg_linux.c", "./src/musializer.c", "./src/tinyfiledialogs.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.a",
         "-O3", "-march=native", "-ffast-math",
-        "-lm", "-ldl", "-lpthread");
+        "-lm", "-ldl", "-flto=auto", "-lpthread");
     if (!nob_cmd_run_sync_and_reset(&cmd)) nob_return_defer(false);
 #endif // MUSIALIZER_HOTRELOAD
 
