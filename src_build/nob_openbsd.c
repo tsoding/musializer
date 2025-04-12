@@ -20,7 +20,7 @@ bool build_musializer(void)
                 nob_cmd_append(&cmd, "./src/tinyfiledialogs.c");
                 nob_cmd_append(&cmd,
                     "./src/plug.c",
-                    "./src/ffmpeg_linux.c");
+                    "./src/ffmpeg_posix.c");
                 nob_cmd_append(&cmd,
                     nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
                     "-l:libraylib.so");
@@ -58,7 +58,7 @@ bool build_musializer(void)
             nob_cmd_append(&cmd, "./src/tinyfiledialogs.c");
             nob_cmd_append(&cmd,
                 "./src/plug.c",
-                "./src/ffmpeg_linux.c",
+                "./src/ffmpeg_posix.c",
                 "./src/musializer.c");
             nob_cmd_append(&cmd,
                 nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME),
