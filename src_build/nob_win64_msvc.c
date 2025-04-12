@@ -23,7 +23,8 @@ bool build_musializer(void)
             nob_cmd_append(&cmd, "/I", "./raylib/raylib-"RAYLIB_VERSION"/src/");
             nob_cmd_append(&cmd,
                 "src/plug.c",
-                "src/ffmpeg_windows.c");
+                "src/ffmpeg_windows.c",
+                "./src/tinyfiledialogs.c");
             nob_cmd_append(&cmd,
                 "/link",
                 nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
@@ -58,7 +59,8 @@ bool build_musializer(void)
         nob_cmd_append(&cmd,
             "./src/musializer.c",
             "./src/plug.c",
-            "./src/ffmpeg_windows.c");
+            "./src/ffmpeg_windows.c",
+            "./src/tinyfiledialogs.c");
         nob_cmd_append(&cmd,
             "/link",
             "/SUBSYSTEM:WINDOWS",
