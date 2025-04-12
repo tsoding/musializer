@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
 #define NOB_IMPLEMENTATION
-#include "../nob.h"
+#include "../thirdparty/nob.h"
 #include "../build/config.h"
 #include "./configurer.c"
 

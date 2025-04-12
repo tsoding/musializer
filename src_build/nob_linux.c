@@ -11,10 +11,10 @@ bool build_musializer(void)
     // Like `clang` for instance
     nob_cmd_append(&cmd, "cc",
         "-Wall", "-Wextra", "-ggdb",
-        "-I.", "-I./raylib/raylib-"RAYLIB_VERSION"/src/",
+        "-I.", "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/",
         "-fPIC", "-shared",
         "-o", "./build/libplug.so",
-        "./src/plug.c", "./src/ffmpeg_posix.c", "./src/tinyfiledialogs.c",
+        "./src/plug.c", "./src/ffmpeg_posix.c", "./thirdparty/tinyfiledialogs.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.so",
         "-O3", "-march=native", "-ffast-math",
         "-lm", "-ldl", "-flto=auto", "-lpthread");
@@ -22,7 +22,7 @@ bool build_musializer(void)
 
     nob_cmd_append(&cmd, "cc",
         "-Wall", "-Wextra", "-ggdb",
-        "-I.", "-I./raylib/raylib-"RAYLIB_VERSION"/src/",
+        "-I.", "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/",
         "-o", "./build/musializer",
         "./src/musializer.c", "./src/hotreload_posix.c",
         "-Wl,-rpath=./build/",
@@ -40,9 +40,9 @@ bool build_musializer(void)
     nob_cmd_append(&cmd, "cc",
         "-Wall", "-Wextra", "-ggdb",
         "-I.",
-        "-I./raylib/raylib-"RAYLIB_VERSION"/src/",
+        "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/",
         "-o", "./build/musializer",
-        "./src/plug.c", "./src/ffmpeg_posix.c", "./src/musializer.c", "./src/tinyfiledialogs.c",
+        "./src/plug.c", "./src/ffmpeg_posix.c", "./src/musializer.c", "./thirdparty/tinyfiledialogs.c",
         nob_temp_sprintf("-L./build/raylib/%s", MUSIALIZER_TARGET_NAME), "-l:libraylib.a",
         "-O3", "-march=native", "-ffast-math",
         "-lm", "-ldl", "-flto=auto", "-lpthread");
@@ -74,7 +74,7 @@ bool build_raylib(void)
     }
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
-        const char *input_path = nob_temp_sprintf("./raylib/raylib-"RAYLIB_VERSION"/src/%s.c", raylib_modules[i]);
+        const char *input_path = nob_temp_sprintf("./thirdparty/raylib-"RAYLIB_VERSION"/src/%s.c", raylib_modules[i]);
         const char *output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
         output_path = nob_temp_sprintf("%s/%s.o", build_path, raylib_modules[i]);
 
@@ -83,7 +83,7 @@ bool build_raylib(void)
         if (nob_needs_rebuild(output_path, &input_path, 1)) {
             nob_cmd_append(&cmd, "cc",
                 "-ggdb", "-DPLATFORM_DESKTOP", "-D_GLFW_X11", "-fPIC", "-DSUPPORT_FILEFORMAT_FLAC=1",
-                "-I./raylib/raylib-"RAYLIB_VERSION"/src/external/glfw/include",
+                "-I./thirdparty/raylib-"RAYLIB_VERSION"/src/external/glfw/include",
                 "-c", input_path,
                 "-o", output_path);
             nob_da_append(&procs, nob_cmd_run_async_and_reset(&cmd));

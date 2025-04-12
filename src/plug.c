@@ -11,8 +11,8 @@
 #include "ffmpeg.h"
 #define NOB_IMPLEMENTATION
 #define NOB_STRIP_PREFIX
-#include "nob.h"
-#include "tinyfiledialogs.h"
+#include "thirdparty/nob.h"
+#include "thirdparty/tinyfiledialogs.h"
 
 #include <raylib.h>
 #include <rlgl.h>
