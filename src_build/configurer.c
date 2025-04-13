@@ -51,25 +51,26 @@ static Target_Flag target_flags[] = {
 };
 
 typedef struct {
-    const char *display;
+    const char *name;
     const char *macro;
     const char *description;
+    bool enabled_by_default;
 } Feature_Flag;
 
 static Feature_Flag feature_flags[] = {
     {
-        .display = "Hotreload",
         .macro = "MUSIALIZER_HOTRELOAD",
+        .name = "hotreload",
         .description = "Moves everything in src/plug.c to a separate \"DLL\" so it can be hotreloaded.",
     },
     {
-        .display = "Unbundle",
         .macro = "MUSIALIZER_UNBUNDLE",
+        .name = "unbundle",
         .description = "Don't bundle resources/ folder with the executable and load the resources directly from the folder.",
     },
     {
-        .display = "Microphone",
         .macro = "MUSIALIZER_MICROPHONE",
+        .name = "microphone",
         .description = "Unfinished feature that enables capturing sound from the mic."
     },
 };
@@ -94,6 +95,7 @@ bool generate_default_config(const char *file_path)
         return false;
     }
 
+    // TODO: generate_default_config() should also log what platform it picked
     fprintf(f, "//// Build target. Pick only one!\n");
     for (size_t i = 0; i < NOB_ARRAY_LEN(target_flags); ++i) {
         if (target_flags[i].enabled_by_default) {
@@ -107,17 +109,15 @@ bool generate_default_config(const char *file_path)
 
     for (size_t i = 0; i < NOB_ARRAY_LEN(feature_flags); ++i) {
         fprintf(f, "//// %s\n", feature_flags[i].description);
-        if (strcmp(feature_flags[i].macro, "MUSIALIZER_HOTRELOAD") == 0) {
-            // TODO: FIX ASAP! This requires bootstrapping nob with additional flags which goes against its philosophy!
-            #ifdef MUSIALIZER_HOTRELOAD
-                fprintf(f, "#define %s\n", feature_flags[i].macro);
-            #else
-                fprintf(f, "// #define %s\n", feature_flags[i].macro);
-            #endif
+        if (feature_flags[i].enabled_by_default) {
+            nob_log(INFO, "%s: ENABLED", feature_flags[i].name);
+            fprintf(f, "#define %s\n", feature_flags[i].macro);
         } else {
+            nob_log(INFO, "%s: DISABLED", feature_flags[i].name);
             fprintf(f, "// #define %s\n", feature_flags[i].macro);
         }
         fprintf(f, "\n");
+
     }
 
     fclose(f);
@@ -138,9 +138,9 @@ bool generate_config_logger(const char *config_logger_path)
     genf(f, "    nob_log(level, \"Target: %%s\", MUSIALIZER_TARGET_NAME);");
     for (size_t i = 0; i < NOB_ARRAY_LEN(feature_flags); ++i) {
         genf(f, "    #ifdef %s", feature_flags[i].macro);
-        genf(f, "        nob_log(level, \"%s: ENABLED\");", feature_flags[i].display);
+        genf(f, "        nob_log(level, \"%s: ENABLED\");", feature_flags[i].name);
         genf(f, "    #else");
-        genf(f, "        nob_log(level, \"%s: DISABLED\");", feature_flags[i].display);
+        genf(f, "        nob_log(level, \"%s: DISABLED\");", feature_flags[i].name);
         genf(f, "    #endif");
     }
     genf(f, "}");
