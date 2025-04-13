@@ -71,6 +71,8 @@ MUSIALIZER_PLUG void *plug_load_resource(const char *file_path, size_t *size)
 #define FFT_SIZE (1<<13)
 #define FONT_SIZE 64
 
+#define PREVIEW_FPS 60
+
 #define RENDER_FPS 30
 #define RENDER_FACTOR 100
 #define RENDER_WIDTH (16*RENDER_FACTOR)
@@ -1245,9 +1247,21 @@ static void start_rendering_track(Track *track)
     // TODO: set the rendering output path based on the input path
     // Basically output into the same folder
     p->ffmpeg = ffmpeg_start_rendering(output_path, p->screen.texture.width, p->screen.texture.height, RENDER_FPS, track->file_path);
+    SetTargetFPS(0);
     p->rendering = true;
     p->cancel_rendering = false;
     SetTraceLogLevel(LOG_WARNING);
+}
+
+static void finish_rendering_track(Track *track)
+{
+    SetTraceLogLevel(LOG_INFO);
+    UnloadWave(p->wave);
+    UnloadWaveSamples(p->wave_samples);
+    SetTargetFPS(PREVIEW_FPS);
+    p->rendering = false;
+    fft_clean();
+    PlayMusicStream(track->music);
 }
 
 #ifdef MUSIALIZER_MICROPHONE
@@ -1648,12 +1662,7 @@ static void rendering_screen(void)
     NOB_ASSERT(track != NULL);
     if (p->ffmpeg == NULL) { // Starting FFmpeg process has failed for some reason
         if (IsKeyPressed(KEY_ESCAPE)) {
-            SetTraceLogLevel(LOG_INFO);
-            UnloadWave(p->wave);
-            UnloadWaveSamples(p->wave_samples);
-            p->rendering = false;
-            fft_clean();
-            PlayMusicStream(track->music);
+            finish_rendering_track(track);
         }
 
         const char *label = "FFmpeg Failure: Check the Logs";
@@ -1683,23 +1692,13 @@ static void rendering_screen(void)
                 // cause it should deallocate all the resources even in case of a failure.
                 p->ffmpeg = NULL;
             } else {
-                SetTraceLogLevel(LOG_INFO);
-                UnloadWave(p->wave);
-                UnloadWaveSamples(p->wave_samples);
-                p->rendering = false;
-                fft_clean();
-                PlayMusicStream(track->music);
+                finish_rendering_track(track);
             }
         } else if (IsKeyPressed(KEY_ESCAPE) || p->cancel_rendering) {  // Rendering is cancelled
             ffmpeg_end_rendering(p->ffmpeg, true);
             p->ffmpeg = NULL;
 
-            SetTraceLogLevel(LOG_INFO);
-            UnloadWave(p->wave);
-            UnloadWaveSamples(p->wave_samples);
-            p->rendering = false;
-            fft_clean();
-            PlayMusicStream(track->music);
+            finish_rendering_track(track);
         } else { // Rendering is going...
             // Label
             const char *label = "Rendering video...";
@@ -1840,6 +1839,7 @@ MUSIALIZER_PLUG void plug_init(void)
 
     // TODO: restore master volume between sessions
     SetMasterVolume(0.5);
+    SetTargetFPS(PREVIEW_FPS);
 }
 
 MUSIALIZER_PLUG void *plug_pre_reload(void)
