@@ -207,6 +207,8 @@ typedef struct {
     float out_log[FFT_SIZE];
     float out_smooth[FFT_SIZE];
     float out_smear[FFT_SIZE];
+    // TODO: Make FFT Analyzer take into account multiple channels somehow
+    //   Extracted from https://github.com/tsoding/musializer/pull/11
 
     uint64_t active_button_id;
 
