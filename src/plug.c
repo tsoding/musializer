@@ -723,11 +723,6 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
 
     Vector2 mouse = GetMousePosition();
 
-    static float dt = 0;
-    static uint64_t hovered_label_id = 0;
-    static int px_shift = 0;
-    static bool scroll_left = true;
-
     float scroll_bar_width = panel_boundary.width*0.03;
     float item_size = panel_boundary.width*0.2;
     float visible_area_size = panel_boundary.height;
@@ -806,6 +801,11 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
             BeginScissorMode(position.x, position.y, max_width, item_boundary.height);
 
             if (state & BS_HOVEROVER) { // <-- Current item is being hovered on and needs scrolling
+                static float dt = 0;
+                static uint64_t hovered_label_id = 0;
+                static int px_shift = 0;
+                static bool scroll_left = true;
+
                 dt += GetFrameTime();
                 if (item_id != hovered_label_id) { // <-- But it is not same as the last hovered item, so reset the shift
                     px_shift = 0;
