@@ -36,7 +36,6 @@ int main(void)
         SetWindowIcon(logo);
         plug_free_resource(data);
     }
-    SetTargetFPS(60);
     SetExitKey(KEY_NULL);
     InitAudioDevice();
 

@@ -51,8 +51,6 @@ $ ./nob
 $ ./build/musializer
 ```
 
-Keep in mind that the application needs [./resources/](./resources/) to be present in the folder it is ran from.
-
 If the build fails because of missing header files, you may need to install the X11 dev packages.
 
 On Debian, Ubuntu, etc, do this:
@@ -77,7 +75,7 @@ From within `vcvarsall.bat` do
 
 Install [MinGW-w64](https://www.mingw-w64.org/) from your distro repository.
 
-Edit `./build/config.h` and set `MUSIALIZER_TARGET` to `TARGET_WIN64_MINGW`.
+Edit `./build/config.h` and set `MUSIALIZER_TARGET_WIN64_MINGW` instead of `MUSIALIZER_TARGET_LINUX`.
 
 ```console
 $ ./nob

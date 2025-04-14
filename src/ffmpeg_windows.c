@@ -12,12 +12,14 @@
 
 #include <raylib.h>
 
-typedef struct {
+#include "ffmpeg.h"
+
+struct FFMPEG {
     HANDLE hProcess;
     HANDLE hPipeWrite;
-} FFMPEG;
+};
 
-FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const char *sound_file_path)
+FFMPEG *ffmpeg_start_rendering(const char *output_path, size_t width, size_t height, size_t fps, const char *sound_file_path)
 {
     HANDLE pipe_read;
     HANDLE pipe_write;
@@ -62,7 +64,7 @@ FFMPEG *ffmpeg_start_rendering(size_t width, size_t height, size_t fps, const ch
     // TODO: use String_Builder in here
     // TODO: sanitize user input through sound_file_path
     char cmd_buffer[1024*2];
-    snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -vb 2500k -c:a aac -ab 200k -pix_fmt yuv420p output.mp4", (int)width, (int)height, (int)fps, sound_file_path);
+    snprintf(cmd_buffer, sizeof(cmd_buffer), "ffmpeg.exe -loglevel verbose -y -f rawvideo -pix_fmt rgba -s %dx%d -r %d -i - -i \"%s\" -c:v libx264 -vb 2500k -c:a aac -ab 200k -pix_fmt yuv420p %s", (int)width, (int)height, (int)fps, sound_file_path, output_path);
 
     if (!CreateProcess(NULL, cmd_buffer, NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo)) {
         TraceLog(LOG_ERROR, "FFMPEG: Could not create child process. System Error Code: %d", GetLastError());
@@ -97,7 +99,7 @@ bool ffmpeg_send_frame_flipped(FFMPEG *ffmpeg, void *data, size_t width, size_t 
     return true;
 }
 
-bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
+bool ffmpeg_end_rendering(FFMPEG *ffmpeg, bool cancel)
 {
     HANDLE hPipeWrite = ffmpeg->hPipeWrite;
     HANDLE hProcess = ffmpeg->hProcess;
@@ -105,6 +107,8 @@ bool ffmpeg_end_rendering(FFMPEG *ffmpeg)
 
     FlushFileBuffers(hPipeWrite);
     CloseHandle(hPipeWrite);
+
+    if (cancel) TerminateProcess(hProcess, 69);
 
     if (WaitForSingleObject(hProcess, INFINITE) == WAIT_FAILED) {
         TraceLog(LOG_ERROR, "FFMPEG: could not wait on child process. System Error Code: %d", GetLastError());

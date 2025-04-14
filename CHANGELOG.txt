@@ -6,6 +6,11 @@ Alpha Release 3
 
 - Added FLAC support
 
+- Added Cancel Rendering button
+
+- Added File Dialogs for adding new tracks and specifying the output
+  path for the rendered video
+
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
