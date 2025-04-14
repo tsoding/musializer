@@ -1,4 +1,3 @@
-// TODO: confirm that MacOS build works on MacOS
 #include <stddef.h>
 #define MUSIALIZER_TARGET_NAME "macos"
 

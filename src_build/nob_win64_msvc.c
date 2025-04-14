@@ -1,4 +1,3 @@
-// TODO: confirm that MSVC build works on Windows
 #define MUSIALIZER_TARGET_NAME "win64-msvc"
 
 bool build_musializer(void)
