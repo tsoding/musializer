@@ -11,6 +11,8 @@ Alpha Release 3
 - Added File Dialogs for adding new tracks and specifying the output
   path for the rendered video
 
+- Scroll track labels on hover (by @abhra0897)
+
 Windows Alpha Release 2
 ----------------------------------------------------------------------
 
