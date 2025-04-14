@@ -28,12 +28,13 @@ int main(int argc, char **argv)
     if (argc > 0) {
         const char *command_name = shift(argv, argc);
         if (strcmp(command_name, "config") == 0) {
-            // TODO: an ability to set target through the `config` command
+            // TODO: an ability to set the target through the `config` command
             while (argc > 0) {
                 const char *flag_name = shift(argv, argc);
                 bool found = false;
                 for (size_t i = 0; !found && i < ARRAY_LEN(feature_flags); ++i) {
                     // TODO: an ability to disable flags that enabled by default
+                    //   We don't have such flags yet, but maybe we will at some point?
                     if (strcmp(feature_flags[i].name, flag_name) == 0) {
                         feature_flags[i].enabled_by_default = true;
                         found = true;
