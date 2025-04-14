@@ -681,7 +681,7 @@ static int button_with_location(const char *file, int line, Rectangle boundary)
 
 // NOTE: This is literally DrawTextEx() copy-pasted from Raylib itself but with the
 // max_width support and without newlines
-void track_label(Font font, const char *text, Vector2 position, float fontSize, Color tint, float max_width)
+void track_label(Font font, const char *text, Vector2 position, float fontSize, Color tint)
 {
     if (font.texture.id == 0) font = GetFontDefault();  // Security check in case of not valid font
 
@@ -822,11 +822,11 @@ static void tracks_panel_with_location(const char *file, int line, Rectangle pan
                 }
                 position.x += px_shift; // <-- Apply the shift
             }
-            track_label(p->font, text, position, fontSize, WHITE, max_width);
+            track_label(p->font, text, position, fontSize, WHITE);
             EndScissorMode();
 
         } else { // <-- No need for ScissorMode
-            track_label(p->font, text, position, fontSize, WHITE, max_width);
+            track_label(p->font, text, position, fontSize, WHITE);
         }
     }
 
