@@ -1817,6 +1817,80 @@ static void rendering_screen(void)
     }
 }
 
+static char read_u16_be(const uint8_t *f, const uint8_t *max_addr, uint16_t *result)
+{
+    if (f + 1 < max_addr)
+    {
+        *result = (f[0] << 8) | f[1];
+        return 1;
+    }
+    return 0;
+}
+
+static char read_u32_be(const uint8_t *f, const uint8_t *max_addr, uint32_t *result)
+{
+    if (f + 3 < max_addr)
+    {
+        *result = (f[0] << 24) | (f[1] << 16) | (f[2] << 8) | f[3];
+        return 1;
+    }
+    return 0;
+}
+
+static int get_glyph_count(uint8_t *buffer, size_t size)
+{
+    uint8_t *f = buffer;
+    // read sfntVersion + numTables
+    uint16_t numTables;
+    if (!read_u16_be(f + 4, buffer + size, &numTables))
+    {
+        return 0;
+    }
+    // 2. jump to Table Directory（Offset Subtable's length is 12 bytes）
+    f = f + 12;
+    // 3. search for 'maxp'
+    uint32_t maxp_offset = 0;
+    for (int i = 0; i < numTables; i++)
+    {
+        uint32_t tag;
+        if (!read_u32_be(f, buffer + size, &tag))
+        {
+            return 0;
+        }
+        f += 4;
+        // skip checksum
+        f += 4;
+        uint32_t offset;
+        if (!read_u32_be(f, buffer + size, &offset))
+        {
+            return 0;
+        }
+        f += 4;
+        // skip length
+        f += 4;
+
+        if (tag == 0x6D617870)
+        { // 'm' 'a' 'x' 'p'
+            maxp_offset = offset;
+            break;
+        }
+    }
+
+    if (!maxp_offset)
+    {
+        return 0;
+    }
+
+    // 4. jump to maxp table，skip version number（4 bytes），get numGlyphs（2 bytes）
+    uint16_t numGlyphs;
+    if (!read_u16_be(buffer + maxp_offset + 4, buffer + size, &numGlyphs))
+    {
+        return 0;
+    }
+
+    return numGlyphs;
+}
+
 static void load_assets(void)
 {
     size_t data_size = 0;
@@ -1824,7 +1898,8 @@ static void load_assets(void)
 
     const char *alegreya_path = "./resources/fonts/Alegreya-Regular.ttf";
     data = plug_load_resource(alegreya_path, &data_size);
-        p->font = LoadFontFromMemory(GetFileExtension(alegreya_path), data, data_size, FONT_SIZE, NULL, 0);
+    int codepointCount = get_glyph_count(data, data_size);
+        p->font = LoadFontFromMemory(GetFileExtension(alegreya_path), data, data_size, FONT_SIZE, NULL, codepointCount);
         GenTextureMipmaps(&p->font.texture);
         SetTextureFilter(p->font.texture, TEXTURE_FILTER_BILINEAR);
     plug_free_resource(data);
