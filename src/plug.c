@@ -16,6 +16,7 @@
 #include "thirdparty/tinyfiledialogs.h"
 
 #include <raylib.h>
+#include <raymath.h>
 #include <rlgl.h>
 
 #if defined(_WIN32) && defined(MUSIALIZER_HOTRELOAD)
@@ -180,6 +181,8 @@ static const char *icon_file_paths[COUNT_UI_ICONS] = {
     [UI_ICON_MICROPHONE] = "./resources/icons/microphone.png",
 };
 
+typedef void fft_render_fn(Rectangle boundary, size_t m);
+
 typedef struct {
     // Assets
     Texture2D icon_textures[COUNT_UI_ICONS];
@@ -201,6 +204,8 @@ typedef struct {
     size_t wave_cursor;
     FFMPEG *ffmpeg;
     bool cancel_rendering;
+    fft_render_fn *fft_render;
+    bool show_visualizer_selector;
 
     // FFT Analyzer
     float in_raw[FFT_SIZE];
@@ -335,7 +340,7 @@ static size_t fft_analyze(float dt)
     return m;
 }
 
-static void fft_render(Rectangle boundary, size_t m)
+static void fft_render_blobs_and_bars(Rectangle boundary, size_t m)
 {
     // The width of a single bar
     float cell_width = boundary.width/m;
@@ -424,6 +429,179 @@ static void fft_render(Rectangle boundary, size_t m)
         DrawTextureEx(texture, position, 0, 2*radius, color);
     }
     EndShaderMode();
+}
+
+static void fft_render_simple_bars_rainbow(Rectangle boundary, size_t m)
+{
+    // The width of a single bar
+    float cell_width = boundary.width/m;
+
+    // Global color parameters
+    float saturation = 0.75f;
+    float value = 1.0f;
+
+    // Display the Bars
+    for (size_t i = 0; i < m; ++i) {
+        float t = p->out_smooth[i];
+        float hue = (float)i/m;
+        Color color = ColorFromHSV(hue*360, saturation, value);
+        Vector2 startPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*t,
+        };
+        Vector2 endPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height,
+        };
+        float thick = cell_width/3;
+        DrawLineEx(startPos, endPos, thick, color);
+    }
+}
+
+static void fft_render_simple_bars_red_blue(Rectangle boundary, size_t m)
+{
+    // The width of a single bar
+    float cell_width = boundary.width/m;
+
+
+    // Display the Bars
+    for (size_t i = 0; i < m; ++i) {
+        float t = p->out_smooth[i];
+        float factor = (float)i/m;
+        Color color = ColorLerp(RED, BLUE, factor);
+        Vector2 startPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height - boundary.height*2/3*t,
+        };
+        Vector2 endPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height,
+        };
+        float thick = cell_width/3;
+        DrawLineEx(startPos, endPos, thick, color);
+    }
+}
+
+static void fft_render_line_red_blue(Rectangle boundary, size_t m)
+{
+    // The width of a single bar
+    float cell_width = boundary.width/m;
+
+
+    // Display the Bars
+    for (size_t i = 0; i < m - 1; ++i) {
+        float t = p->out_smooth[i];
+        float t_next = p->out_smooth[i+1];
+        float factor = (float)i/m;
+        Color color = ColorLerp(GOLD, WHITE, factor);
+        Vector2 pos1 = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height/2 - boundary.height*1/6*t,
+        };
+        Vector2 pos2 = {
+            boundary.x + (i+1)*cell_width + cell_width/2,
+            boundary.y + boundary.height/2 - boundary.height*1/6*t_next,
+        };
+        float thick = cell_width/3;
+        DrawLineEx(pos1, pos2, thick, color);
+        pos1.y += 32;
+        pos2.y += 32;
+        DrawLineEx(pos1, pos2, thick, color);
+        pos1.y += 32;
+        pos2.y += 32;
+        DrawLineEx(pos1, pos2, thick, color);
+        pos1.y += 32;
+        pos2.y += 32;
+        DrawLineEx(pos1, pos2, thick, color);
+    }
+}
+
+static void fft_render_mirrored_simple_bars_red_blue(Rectangle boundary, size_t m)
+{
+    // The width of a single bar
+    float cell_width = boundary.width/m;
+
+
+    // Display the Bars
+    for (size_t i = 0; i < m; ++i) {
+        float t = p->out_smooth[i];
+        float factor = (float)i/m;
+        Color color = ColorLerp(RED, BLUE, factor);
+        Vector2 startPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height/2 - boundary.height*1/3*t,
+        };
+        Vector2 endPos = {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height/2,
+        };
+        float thick = cell_width/3;
+        DrawLineEx(startPos, endPos, thick, color);
+        startPos = (Vector2) {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height/2
+        };
+
+        endPos = (Vector2) {
+            boundary.x + i*cell_width + cell_width/2,
+            boundary.y + boundary.height/2 + boundary.height*1/3*t
+        };
+        DrawLineEx(startPos, endPos, thick, color);
+    }
+}
+
+static void fft_render_circular_wave_red_blue(Rectangle boundary, size_t m) {
+    for(size_t i = 0; i < m; i++) {
+        float angle = 2 * PI * (float)i/(float)m;
+        float angle_next = 2 * PI * (float)(i+1)/(float)m;
+        int radius = boundary.width < boundary.height ? boundary.width : boundary.height;
+        radius /= 4;
+        for(int rad = radius/10; rad <= radius; rad += radius/10) {
+            float t = p->out_smooth[i];
+            float t_next = p->out_smooth[(i + 1) % m];
+            float rad_current = rad + radius/2 * t;
+            float rad_next = rad + radius/2 * t_next;
+            int x = boundary.x + boundary.width/2 + rad_current * cosf(angle);
+            int y = boundary.y + boundary.height/2 + rad_current * sinf(angle);
+            int x_next = boundary.x + boundary.width/2 + rad_next * cosf(angle_next);
+            int y_next = boundary.y + boundary.height/2 + rad_next * sinf(angle_next);
+            Color color = ColorLerp(RED, BLUE, angle/(2*PI));
+            DrawCircle(x, y, 2, color);
+            DrawLineEx(
+                (Vector2){x, y},
+                (Vector2) {x_next, y_next},
+                2,
+                color
+            );
+        }
+    }
+}
+
+static void fft_render_circular_wave_red_blue_variant(Rectangle boundary, size_t m) {
+    for(size_t i = 0; i < m; i++) {
+        float angle = 2 * PI * (float)i/(float)m;
+        float angle_next = 2 * PI * (float)(i+1)/(float)m;
+        int radius = boundary.width < boundary.height ? boundary.width : boundary.height;
+        radius /= 4;
+        for(int rad = radius/10; rad <= radius; rad += radius/10) {
+            float t = p->out_smooth[i];
+            float t_next = p->out_smooth[(i + 1) % m];
+            float rad_current = rad + radius/2 * t;
+            float rad_next = rad + radius/2 * t_next;
+            int x = boundary.x + boundary.width/2 + rad_current * cosf(angle);
+            int y = boundary.y + boundary.height/2 + rad_current * sinf(angle);
+            int x_next = boundary.x + boundary.width/2 + rad_next * cosf(angle_next);
+            int y_next = boundary.y + boundary.height/2 + rad_next * sinf(angle_next);
+            Color color = ColorLerp(RED, BLUE, (float)rad/(float)radius);
+            DrawCircle(x, y, 2, color);
+            DrawLineEx(
+                (Vector2){x, y},
+                (Vector2) {x_next, y_next},
+                2,
+                color
+            );
+        }
+    }
 }
 
 static void fft_push(float frame)
@@ -1480,6 +1658,28 @@ static void preview_screen(void)
             p->fullscreen = !p->fullscreen;
         }
 
+        if(IsKeyPressed(KEY_ONE)) {
+            p->fft_render = fft_render_blobs_and_bars;
+        }
+        if(IsKeyPressed(KEY_TWO)) {
+            p->fft_render = fft_render_circular_wave_red_blue;
+        }
+        if(IsKeyPressed(KEY_THREE)) {
+            p->fft_render = fft_render_circular_wave_red_blue_variant;
+        }
+        if(IsKeyPressed(KEY_FOUR)) {
+            p->fft_render = fft_render_mirrored_simple_bars_red_blue;
+        }
+        if(IsKeyPressed(KEY_FIVE)) {
+            p->fft_render = fft_render_simple_bars_rainbow;
+        }
+        if(IsKeyPressed(KEY_SIX)) {
+            p->fft_render = fft_render_simple_bars_red_blue;
+        }
+        if(IsKeyPressed(KEY_SEVEN)) {
+            p->fft_render = fft_render_line_red_blue;
+        }
+
         size_t m = fft_analyze(GetFrameTime());
 
         float toolbar_height = HUD_BUTTON_SIZE;
@@ -1512,7 +1712,7 @@ static void preview_screen(void)
             bool moved = fabsf(delta.x) + fabsf(delta.y) > 0.0;
             if (moved) hud_timer = HUD_TIMER_SECS;
 
-            fft_render(preview_boundary, m);
+            p->fft_render(preview_boundary, m);
 
 #if 0
             // TODO: toggle track playing on right mouse click on the preview
@@ -1544,7 +1744,7 @@ static void preview_screen(void)
 #endif
 
             BeginScissorMode(preview_boundary.x, preview_boundary.y, preview_boundary.width, preview_boundary.height);
-            fft_render(preview_boundary, m);
+            p->fft_render(preview_boundary, m);
             popup_tray(&p->pt, preview_boundary);
             EndScissorMode();
 
@@ -1658,7 +1858,7 @@ static void capture_screen(void)
 
 
         size_t m = fft_analyze(GetFrameTime());
-        fft_render(CLITERAL(Rectangle) {
+        p->fft_render(CLITERAL(Rectangle) {
             0, 0, GetScreenWidth(), GetScreenHeight()
         }, m);
     } else {
@@ -1799,7 +1999,7 @@ static void rendering_screen(void)
 
             BeginTextureMode(p->screen);
             ClearBackground(COLOR_BACKGROUND);
-            fft_render(CLITERAL(Rectangle) {
+            p->fft_render(CLITERAL(Rectangle) {
                 0, 0, p->screen.texture.width, p->screen.texture.height
             }, m);
             EndTextureMode();
@@ -1871,6 +2071,7 @@ MUSIALIZER_PLUG void plug_init(void)
     load_assets();
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
     p->current_track = -1;
+    p->fft_render = fft_render_blobs_and_bars;
 
     // TODO: restore master volume between sessions
     SetMasterVolume(0.5);
