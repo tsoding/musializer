@@ -1429,6 +1429,25 @@ static bool toolbar(Track *track, Rectangle boundary)
     return interacted;
 }
 
+static void add_track(const char *file_path)
+{
+    Music music = LoadMusicStream(file_path);
+    if (IsMusicValid(music))
+    {
+        AttachAudioStreamProcessor(music.stream, callback);
+        char *file_path_copy = strdup(file_path);
+        assert(file_path_copy != NULL);
+        nob_da_append(&p->tracks, (CLITERAL(Track){
+                                      .file_path = file_path_copy,
+                                      .music = music,
+                                  }));
+    }
+    else
+    {
+        popup_tray_push(&p->pt);
+    }
+}
+
 static void preview_screen(void)
 {
     int w = GetScreenWidth();
@@ -1600,19 +1619,7 @@ static void preview_screen(void)
             char const *filter_params[] = {"*.wav", "*.ogg", "*.mp3", "*.qoa", "*.xm", "*.mod", "*.flac"};
             char *input_path = tinyfd_openFileDialog("Path to music file", "./", NOB_ARRAY_LEN(filter_params), filter_params, "music file", allow_multiple_selects);
             if (input_path) {
-                Music music = LoadMusicStream(input_path);
-                if (IsMusicValid(music)) {
-                    AttachAudioStreamProcessor(music.stream, callback);
-                    char *file_path = strdup(input_path);
-                    assert(file_path != NULL);
-                    nob_da_append(&p->tracks, (CLITERAL(Track) {
-                        .file_path = file_path,
-                        .music = music,
-                    }));
-                } else {
-                    popup_tray_push(&p->pt);
-                }
-
+                add_track(input_path);
                 if (current_track() == NULL && p->tracks.count > 0) {
                     p->current_track = 0;
                     PlayMusicStream(p->tracks.items[0].music);
@@ -1862,7 +1869,7 @@ static void unload_assets()
     }
 }
 
-MUSIALIZER_PLUG void plug_init(void)
+MUSIALIZER_PLUG void plug_init(Nob_File_Paths *paths)
 {
     p = malloc(sizeof(*p));
     assert(p != NULL && "Buy more RAM lol");
@@ -1871,6 +1878,15 @@ MUSIALIZER_PLUG void plug_init(void)
     load_assets();
     p->screen = LoadRenderTexture(RENDER_WIDTH, RENDER_HEIGHT);
     p->current_track = -1;
+    da_foreach(const char *, i, paths)
+    {
+        add_track(*i);
+        if (current_track() == NULL && p->tracks.count > 0)
+        {
+            p->current_track = 0;
+            PlayMusicStream(p->tracks.items[0].music);
+        }
+    }
 
     // TODO: restore master volume between sessions
     SetMasterVolume(0.5);
@@ -1921,6 +1937,39 @@ MUSIALIZER_PLUG void plug_update(void)
     end_tooltip_frame();
 
     EndDrawing();
+}
+
+MUSIALIZER_PLUG void plug_start_cli_rendering_track(const char *input_path, const char *output_path)
+{
+    if (input_path == NULL || output_path == NULL)
+        return;
+    Music music = LoadMusicStream(input_path);
+    if (!IsMusicValid(music))
+        return;
+    AttachAudioStreamProcessor(music.stream, callback);
+    char *file_path = strdup(input_path);
+    assert(file_path != NULL);
+    nob_da_append(&p->tracks, (CLITERAL(Track){
+                                  .file_path = file_path,
+                                  .music = music,
+                              }));
+    p->current_track = 0;
+    fft_clean();
+    // TODO: LoadWave is pretty slow on big files
+    p->wave = LoadWave(input_path);
+    p->wave_cursor = 0;
+    p->wave_samples = LoadWaveSamples(p->wave);
+    // TODO: set the rendering output path based on the input path
+    // Basically output into the same folder
+    p->ffmpeg = ffmpeg_start_rendering(output_path, p->screen.texture.width, p->screen.texture.height, RENDER_FPS, input_path);
+    SetTargetFPS(0);
+    p->rendering = true;
+    p->cancel_rendering = false;
+    SetTraceLogLevel(LOG_WARNING);
+    while (p->rendering)
+    {
+        plug_update();
+    }
 }
 
 // TODO: About Page that includes current commit, version and the platforms
