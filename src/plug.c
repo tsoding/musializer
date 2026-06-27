@@ -204,6 +204,7 @@ typedef struct {
 
     // FFT Analyzer
     float in_raw[FFT_SIZE];
+    size_t in_raw_index;
     float in_win[FFT_SIZE];
     Float_Complex out_raw[FFT_SIZE];
     float out_log[FFT_SIZE];
@@ -244,6 +245,7 @@ static bool fft_settled(void)
 static void fft_clean(void)
 {
     memset(p->in_raw, 0, sizeof(p->in_raw));
+    p->in_raw_index = 0;
     memset(p->in_win, 0, sizeof(p->in_win));
     memset(p->out_raw, 0, sizeof(p->out_raw));
     memset(p->out_log, 0, sizeof(p->out_log));
@@ -297,7 +299,8 @@ static size_t fft_analyze(float dt)
     for (size_t i = 0; i < FFT_SIZE; ++i) {
         float t = (float)i/(FFT_SIZE - 1);
         float hann = 0.5 - 0.5*cosf(2*PI*t);
-        p->in_win[i] = p->in_raw[i]*hann;
+        int j = (i + p->in_raw_index)%FFT_SIZE;
+        p->in_win[i] = p->in_raw[j]*hann;
     }
 
     // FFT
@@ -428,8 +431,8 @@ static void fft_render(Rectangle boundary, size_t m)
 
 static void fft_push(float frame)
 {
-    memmove(p->in_raw, p->in_raw + 1, (FFT_SIZE - 1)*sizeof(p->in_raw[0]));
-    p->in_raw[FFT_SIZE-1] = frame;
+    p->in_raw_index = (p->in_raw_index + 1)%FFT_SIZE;
+    p->in_raw[p->in_raw_index] = frame;
 }
 
 // TODO: make sure the audio callback is thread-safe
