@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define WIN32_LEAN_AND_MEAN
 #define _WINUSER_
