@@ -49,6 +49,7 @@ int main(void)
         plug_update();
     }
 
+    plug_shutdown();
     CloseAudioDevice();
     CloseWindow();
 

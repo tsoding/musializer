@@ -64,7 +64,7 @@ Resource resources[] = {
     { .file_path = "./resources/icons/render.png" },
     { .file_path = "./resources/icons/fullscreen.png" },
     { .file_path = "./resources/icons/microphone.png" },
-    { .file_path = "./resources/fonts/Alegreya-Regular.ttf" },
+    { .file_path = "./resources/fonts/FreeSans.ttf" },
 };
 
 bool generate_resource_bundle(void)

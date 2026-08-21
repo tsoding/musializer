@@ -16,16 +16,19 @@ bool build_musializer(void)
     procs.count = 0;
         cmd.count = 0;
             nob_cmd_append(&cmd, "cl.exe");
+            nob_cmd_append(&cmd, "/O2", "/GL", "/fp:fast");
             nob_cmd_append(&cmd, "/LD");
             nob_cmd_append(&cmd, "/Fobuild\\", "/Fe./build/libplug.dll");
             nob_cmd_append(&cmd, "/I", "./");
             nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
             nob_cmd_append(&cmd,
                 "src/plug.c",
+                "src/platform_windows.c",
                 "src/ffmpeg_windows.c",
                 "./thirdparty/tinyfiledialogs.c");
             nob_cmd_append(&cmd,
                 "/link",
+                "/LTCG",
                 nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
                 "raylib.lib");
             nob_cmd_append(&cmd, "Winmm.lib", "gdi32.lib", "User32.lib", "Shell32.lib", "Ole32.lib", "comdlg32.lib");
@@ -33,6 +36,7 @@ bool build_musializer(void)
 
         cmd.count = 0;
             nob_cmd_append(&cmd, "cl.exe");
+            nob_cmd_append(&cmd, "/O2", "/GL", "/fp:fast");
             nob_cmd_append(&cmd, "/I", "./");
             nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
             nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
@@ -42,6 +46,7 @@ bool build_musializer(void)
                 );
             nob_cmd_append(&cmd,
                 "/link",
+                "/LTCG",
                 "/SUBSYSTEM:WINDOWS",
                 "/entry:mainCRTStartup",
                 nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
@@ -52,16 +57,19 @@ bool build_musializer(void)
 #else
     cmd.count = 0;
         nob_cmd_append(&cmd, "cl.exe");
+        nob_cmd_append(&cmd, "/O2", "/GL", "/fp:fast");
         nob_cmd_append(&cmd, "/I", "./");
         nob_cmd_append(&cmd, "/I", RAYLIB_SRC_FOLDER);
         nob_cmd_append(&cmd, "/Fobuild\\", "/Febuild\\musializer.exe");
         nob_cmd_append(&cmd,
             "./src/musializer.c",
             "./src/plug.c",
+            "./src/platform_windows.c",
             "./src/ffmpeg_windows.c",
             "./thirdparty/tinyfiledialogs.c");
         nob_cmd_append(&cmd,
             "/link",
+            "/LTCG",
             "/SUBSYSTEM:WINDOWS",
             "/entry:mainCRTStartup",
             nob_temp_sprintf("/LIBPATH:build/raylib/%s", MUSIALIZER_TARGET_NAME),
@@ -102,9 +110,11 @@ bool build_raylib(void)
 
         nob_da_append(&object_files, output_path);
 
-        if (nob_needs_rebuild(output_path, &input_path, 1)) {
+        const char *inputs[] = {input_path, "./src_build/nob_win64_msvc.c"};
+        if (nob_needs_rebuild(output_path, inputs, NOB_ARRAY_LEN(inputs))) {
             cmd.count = 0;
             nob_cmd_append(&cmd, "cl.exe", "/DPLATFORM_DESKTOP", "/DSUPPORT_FILEFORMAT_FLAC=1");
+            nob_cmd_append(&cmd, "/O2", "/GL", "/fp:fast");
             #ifdef MUSIALIZER_HOTRELOAD
                 nob_cmd_append(&cmd, "/DBUILD_LIBTYPE_SHARED");
             #endif
@@ -122,6 +132,7 @@ bool build_raylib(void)
     const char *libraylib_path = nob_temp_sprintf("%s/raylib.lib", build_path);
     if (nob_needs_rebuild(libraylib_path, object_files.items, object_files.count)) {
         nob_cmd_append(&cmd, "lib");
+        nob_cmd_append(&cmd, "/LTCG");
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.obj", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);
@@ -132,6 +143,7 @@ bool build_raylib(void)
 #else
     if (nob_needs_rebuild("./build/raylib.dll", object_files.items, object_files.count)) {
         nob_cmd_append(&cmd, "link.exe", "/DLL");
+        nob_cmd_append(&cmd, "/LTCG");
         for (size_t i = 0; i < NOB_ARRAY_LEN(raylib_modules); ++i) {
             const char *input_path = nob_temp_sprintf("%s/%s.obj", build_path, raylib_modules[i]);
             nob_cmd_append(&cmd, input_path);

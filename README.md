@@ -19,6 +19,8 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 
 ## Supported Audio Formats
 
+Supported directly:
+
 - wav
 - ogg
 - mp3
@@ -26,6 +28,15 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 - xm
 - mod
 - flac
+
+Supported through FFmpeg:
+
+- m4a
+- aac
+- wma
+- aiff
+- ape
+- opus
 
 ## Download Binaries
 
@@ -35,7 +46,7 @@ https://github.com/tsoding/musializer/assets/165283/8b9f9653-9b3d-4c04-9569-338f
 ## Build from Source
 
 External Dependencies:
-- [ffmpeg](https://ffmpeg.org/) executable available in `PATH` environment variable. It is called as a child process during the rendering of the videos. So if you don't plan to render any videos it's completely **optional**.
+- [ffmpeg](https://ffmpeg.org/) executable available in `PATH` (or `ffmpeg.exe` beside `musializer.exe` on Windows). It is used for video rendering, cover extraction, and formats that raylib cannot decode directly. It remains optional when you only use the directly supported formats and do not render videos.
 
 We are using Custom Build System written entirely in C called `nob`. [nob.c](./nob.c) is the program that builds Musializer. For more info on this Build System see the [nob.h repo](https://github.com/tsoding/nob.h).
 
@@ -61,9 +72,27 @@ $ sudo apt install libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi
 
 On other distro's, use the appropriate package manager.
 
+### Windows MinGW-w64 (automatic setup)
+
+From PowerShell, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\setup-windows.ps1
+```
+
+The script installs MSYS2 when needed, then installs the UCRT64 MinGW-w64 toolchain, FFmpeg, and zip. It adds the tools to your user `PATH`, bootstraps `nob`, and builds Musializer. The script is safe to run again when you need to update or repair the toolchain. Open a new terminal afterward so it sees the updated `PATH`.
+
+Run the app from the repository root:
+
+```powershell
+.\build\musializer.exe
+```
+
+Use `-SkipUpdate`, `-SkipPathUpdate`, or `-SkipBuild` if you want the script to omit those steps. If MSYS2 is installed in an unusual location, pass it with `-Msys2Root C:\path\to\msys64`.
+
 ### Windows MSVC
 
-From within `vcvarsall.bat` do
+The Windows build uses native Win32 threading and does not require pthreads or another compatibility library. Run these commands from an MSVC developer prompt initialized by `vcvarsall.bat`:
 
 ```console
 > cl.exe nob.c # ONLY ONCE!!!

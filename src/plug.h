@@ -3,6 +3,7 @@
 
 #define LIST_OF_PLUGS \
     PLUG(plug_init, void, void) \
+    PLUG(plug_shutdown, void, void) \
     PLUG(plug_pre_reload, void*, void) \
     PLUG(plug_post_reload, void, void*) \
     PLUG(plug_load_resource, void*, const char*, size_t*) \
